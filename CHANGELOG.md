@@ -1,5 +1,12 @@
 # Daylight Essentials
 
+## 1.1.0
+- New: Enemy Nearby, a small list of the enemy players seen near you lately (level, name in class colour, guild), the newest at the top. Names fade while unseen and leave after a minute (a choice). It sees players through their nameplates, your target, focus and mouseover, so enemy nameplates have to be shown: its page has the switch.
+- Click a name to target that player. In a fight the list keeps its order and players seen during it are added below, clickable once it ends.
+- Kill on Sight: right-click a name, or type /dui kos add Name, /dui kos remove Name or /dui kos list. Shared by all your characters; its names are marked in red.
+- Alerts: a line in the middle of the screen and a sound when someone on your Kill on Sight list shows up, and if you like when any new enemy does. The same player alerts again only after two minutes (a choice).
+- Rests in battlegrounds and dungeons unless you ask otherwise. /dui unlock shows sample names and a sample alert to place them.
+
 ## 1.0.0
 - New: Daylight Essentials, small combat aids in the DaylightUI look, each with its own switch and page in DaylightUI's options (Plugins, Essentials).
 - Healer Mana: your group's healers and the mana each has left (class icon, name in class colour, mana in percent, yellow when low and red when nearly out). It keeps working in a fight, when the game hides other players' mana from addons. Healers are the players given the healer role; with no roles set, priests, druids, shamans and paladins (or nobody).

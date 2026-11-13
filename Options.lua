@@ -15,7 +15,7 @@ local ok, err = pcall(function()
 		needs = { 1, 1 },
 		short = "Essentials",
 		color = { 0.45, 0.6, 1 },
-		blurb = "Healer mana, a combat timer and alert, a pet reminder and cursor cooldowns.",
+		blurb = "Healer mana, a combat timer and alert, a pet reminder, cursor cooldowns and enemies nearby.",
 	})
 	ns.DUI:RegisterModule(ADDON, { plugin = ADDON, label = "Essentials", defaults = ns.defaults,
 		options = { pages = pages } })
