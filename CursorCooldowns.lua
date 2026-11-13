@@ -9,6 +9,14 @@
 -- whatever rank you know. A dispel with no cooldown of its own only ever has the global one, so
 -- it shows nothing.
 --
+-- Ready at the cursor: up to six abilities you pick (per class: all your characters of that class
+-- share the picks) show their icons in a line by the pointer while each is ready to cast: off its
+-- cooldown (the global cooldown doesn't count) and usable now (enough mana, rage or energy, and an
+-- ability like Overpower or Execute only while the game allows it). A usability the game keeps
+-- secret in a fight counts as usable. The line sits on the side of the pointer you choose and
+-- runs away from it: to the left for the three left-hand spots, to the right for the right-hand
+-- ones, centered above or below for Top and Bottom. Picked by name, so a new rank still counts.
+--
 -- The cooldown is read the way the game allows in a fight: a time it keeps secret goes to the
 -- cooldown sweep untouched (the game draws it), and the global cooldown is told apart by the
 -- game's own flag for it.
@@ -32,10 +40,110 @@ P.defaults = {
 	onlyCombat = false,
 	size = 26,
 	distance = 22,
+	ready = true,
+	readyOnlyCombat = true,
+	readyAnchor = "TOP",
+	readySize = 24,
 }
 
+-- ---------------------------------------------------------------------------------------------
+-- Ready at the cursor: the picks (DaylightEssentialsDB.ready[CLASS][slot] = spell name)
+-- ---------------------------------------------------------------------------------------------
+
+local READY_SLOTS = 6
+local NONE = "none"
+local RefreshReady   -- below
+
+local function PlayerClass()
+	local _, token = UnitClass("player")
+	return token or "UNKNOWN"
+end
+
+local function Picks()
+	local db = _G.DaylightEssentialsDB
+	if type(db) ~= "table" then
+		db = {}
+		_G.DaylightEssentialsDB = db
+	end
+	if type(db.ready) ~= "table" then db.ready = {} end
+	local class = PlayerClass()
+	if type(db.ready[class]) ~= "table" then db.ready[class] = {} end
+	return db.ready[class]
+end
+
+-- The abilities you know (your spellbook, not passives), by name: name -> the highest spell id.
+local known, knownDirty = {}, true
+local function Known()
+	if not knownDirty then return known end
+	knownDirty = false
+	wipe(known)
+	local book = C_SpellBook
+	local bank = Enum and Enum.SpellBookSpellBank and Enum.SpellBookSpellBank.Player or 0
+	local spellType = Enum and Enum.SpellBookItemType and Enum.SpellBookItemType.Spell or 1
+	if not (book and book.GetNumSpellBookSkillLines and book.GetSpellBookSkillLineInfo and book.GetSpellBookItemInfo) then
+		return known
+	end
+	local okN, lines = pcall(book.GetNumSpellBookSkillLines)
+	for i = 1, (okN and type(lines) == "number") and lines or 0 do
+		local okL, line = pcall(book.GetSpellBookSkillLineInfo, i)
+		if okL and type(line) == "table" and not line.shouldHide then
+			local first = (line.itemIndexOffset or 0) + 1
+			for slot = first, first + (line.numSpellBookItems or 0) - 1 do
+				local okI, info = pcall(book.GetSpellBookItemInfo, slot, bank)
+				if okI and type(info) == "table" and info.itemType == spellType and not info.isPassive
+					and type(info.name) == "string" and info.name ~= "" and type(info.spellID) == "number" then
+					local have = known[info.name]
+					if not have or info.spellID > have then known[info.name] = info.spellID end
+				end
+			end
+		end
+	end
+	return known
+end
+
+-- A long name made to fit the option box (the list itself shows names in full): every word but
+-- the last cut to its first letter: "Blessing of Sanctuary" -> "B. o. Sanctuary".
+local function Short(name)
+	if type(name) ~= "string" or #name <= 16 then return name end
+	local words = {}
+	for w in string.gmatch(name, "%S+") do words[#words + 1] = w end
+	if #words < 2 then return name end
+	for i = 1, #words - 1 do words[i] = string.sub(words[i], 1, 1) .. "." end
+	return table.concat(words, " ")
+end
+
+local function ReadyOff(get) return get(KEY .. ".enabled") == false or get(KEY .. ".ready") == false end
+
+local function SlotRow(i)
+	return { type = "dropdown", label = "Ability " .. i,
+		desc = i == 1 and "Shows by the pointer while it's ready to cast. Lists the abilities you know; your picks are kept for each class." or nil,
+		default = function() return NONE end,
+		get = function()
+			local v = Picks()[i]
+			return type(v) == "string" and v or NONE
+		end,
+		set = function(v)
+			Picks()[i] = (v ~= NONE and type(v) == "string") and v or nil
+			if RefreshReady then RefreshReady(true) end
+			return true
+		end,
+		shownAs = function(v) return v == NONE and "None" or Short(v) end,
+		choices = function()
+			local values, keys = { [NONE] = "None" }, {}
+			for name in pairs(Known()) do values[name] = name end
+			-- A pick this character doesn't know (yet) stays listed.
+			local cur = Picks()[i]
+			if type(cur) == "string" then values[cur] = cur end
+			for k in pairs(values) do if k ~= NONE then keys[#keys + 1] = k end end
+			table.sort(keys)
+			table.insert(keys, 1, NONE)
+			return values, keys
+		end,
+		disabled = ReadyOff }
+end
+
 P.page = { id = KEY, label = "Cursor Cooldowns",
-	desc = "Your taunt and dispel cooldowns beside the mouse pointer.",
+	desc = "Your cooldowns, and abilities ready to cast, beside the mouse pointer.",
 	groups = {
 		{ label = "Cursor Cooldowns", items = {
 			{ type = "toggle", key = KEY .. ".enabled", label = "On" },
@@ -49,7 +157,24 @@ P.page = { id = KEY, label = "Cursor Cooldowns",
 			{ type = "slider", key = KEY .. ".size", label = "Icon size", min = 18, max = 44, step = 1, unit = "px" },
 			{ type = "slider", key = KEY .. ".distance", label = "Distance from the pointer", min = 8, max = 60, step = 1, unit = "px" },
 		} },
+		{ label = "Ready at the cursor",
+		  desc = "Abilities you pick show by the pointer while they're ready to cast: off cooldown and usable now (enough power, or an ability like Execute while it's allowed).",
+		  items = {
+			{ type = "toggle", key = KEY .. ".ready", label = "On" },
+			{ type = "toggle", key = KEY .. ".readyOnlyCombat", label = "Only in a fight", disabled = ReadyOff },
+			{ type = "dropdown", key = KEY .. ".readyAnchor", label = "Side of the pointer", disabled = ReadyOff,
+			  values = { TOPLEFT = "Top left", TOP = "Top", TOPRIGHT = "Top right", RIGHT = "Right",
+				BOTTOMRIGHT = "Bottom right", BOTTOM = "Bottom", BOTTOMLEFT = "Bottom left", LEFT = "Left" },
+			  order = { "TOPLEFT", "TOP", "TOPRIGHT", "RIGHT", "BOTTOMRIGHT", "BOTTOM", "BOTTOMLEFT", "LEFT" },
+			  desc = "The line runs away from the pointer: leftward on the left side, rightward on the right, centered for Top and Bottom. Bottom right sits under the cooldown icons." },
+			{ type = "slider", key = KEY .. ".readySize", label = "Icon size", min = 16, max = 48, step = 1, unit = "px", disabled = ReadyOff },
+		  } },
 	} }
+
+do
+	local items = P.page.groups[#P.page.groups].items
+	for i = 1, READY_SLOTS do items[#items + 1] = SlotRow(i) end
+end
 
 -- Each family: its ranks' spell ids (any one known puts the family in).
 local TAUNTS = {
@@ -242,17 +367,161 @@ local function Track()
 	Refresh()
 end
 
+-- ---------------------------------------------------------------------------------------------
+-- Ready at the cursor: the line
+-- ---------------------------------------------------------------------------------------------
+
+local readyHolder
+local readyIcons = {}    -- slot -> its icon
+local readyIds = {}      -- slot -> the spell id followed (nil: empty or not known)
+local readyShown = {}    -- the icons showing, in slot order (reused)
+
+-- Where the line sits: the holder's point put on the pointer, the x and y signs of the distance,
+-- and which way the icons run (-1 leftward, 1 rightward, 0 centered).
+local SIDES = {
+	TOPLEFT     = { "BOTTOMRIGHT", -1,  1, -1 },
+	TOP         = { "BOTTOM",       0,  1,  0 },
+	TOPRIGHT    = { "BOTTOMLEFT",   1,  1,  1 },
+	RIGHT       = { "LEFT",         1,  0,  1 },
+	BOTTOMRIGHT = { "TOPLEFT",      1, -1,  1 },
+	BOTTOM      = { "TOP",          0, -1,  0 },
+	BOTTOMLEFT  = { "TOPRIGHT",    -1, -1, -1 },
+	LEFT        = { "RIGHT",       -1,  0, -1 },
+}
+
+local function Side()
+	return SIDES[G("readyAnchor") or "TOP"] or SIDES.TOP
+end
+
+local rLastX, rLastY
+local function ReadyFollow()
+	local x, y = GetCursorPosition()
+	if x == rLastX and y == rLastY then return end
+	rLastX, rLastY = x, y
+	local scale = UIParent:GetEffectiveScale()
+	local d = G("distance") or 22
+	local side = Side()
+	local dy = side[3] * d
+	-- Bottom right is where the cooldown icons are: the line goes under them.
+	if G("readyAnchor") == "BOTTOMRIGHT" then dy = dy - ((G("size") or 26) + 4) end
+	readyHolder:ClearAllPoints()
+	readyHolder:SetPoint(side[1], UIParent, "BOTTOMLEFT", x / scale + side[2] * d, y / scale + dy)
+end
+
+local function ReadyIcon(slot)
+	local icon = readyIcons[slot]
+	if icon then return icon end
+	icon = CreateFrame("Frame", nil, readyHolder)
+	icon.art = icon:CreateTexture(nil, "ARTWORK")
+	icon.art:SetPoint("TOPLEFT", icon, "TOPLEFT", 2, -2)
+	icon.art:SetPoint("BOTTOMRIGHT", icon, "BOTTOMRIGHT", -2, 2)
+	icon.art:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+	API.Skin(icon, { noBevel = true, borderPx = 2, bgAlpha = 0.85 })
+	icon:Hide()
+	readyIcons[slot] = icon
+	return icon
+end
+
+local function ReadyLayout()
+	wipe(readyShown)
+	for slot = 1, READY_SLOTS do
+		local icon = readyIcons[slot]
+		if icon and icon:IsShown() then readyShown[#readyShown + 1] = icon end
+	end
+	local n = #readyShown
+	if n == 0 then
+		readyHolder:SetScript("OnUpdate", nil)
+		readyHolder:Hide()
+		return
+	end
+	local size, gap = G("readySize") or 24, 3
+	local run = Side()[4]
+	readyHolder:SetSize(n * size + (n - 1) * gap, size)
+	for i, icon in ipairs(readyShown) do
+		icon:SetSize(size, size)
+		icon:ClearAllPoints()
+		local step = (i - 1) * (size + gap)
+		if run < 0 then
+			-- The first pick nearest the pointer, the rest running left.
+			icon:SetPoint("TOPRIGHT", readyHolder, "TOPRIGHT", -step, 0)
+		else
+			icon:SetPoint("TOPLEFT", readyHolder, "TOPLEFT", step, 0)
+		end
+	end
+	rLastX = nil
+	ReadyFollow()
+	readyHolder:SetScript("OnUpdate", ReadyFollow)
+	readyHolder:Show()
+end
+
+-- Usable now (enough power, a reactive ability allowed). A secret or unknown answer counts as yes.
+local function Usable(id)
+	if not (C_Spell and C_Spell.IsSpellUsable) then return true end
+	local ok, can = pcall(C_Spell.IsSpellUsable, id)
+	if not ok or not Safe(can) or type(can) ~= "boolean" then return true end
+	return can
+end
+
+local function Ready(id)
+	local start, duration, info = ReadCooldown(id)
+	if (info ~= nil or type(start) ~= "nil") and Cooling(start, duration, info) then return false end
+	return Usable(id)
+end
+
+-- Which spell each slot follows, from the picks and what you know now.
+local function ReadyTrack()
+	local picks, book = Picks(), Known()
+	for slot = 1, READY_SLOTS do
+		local name = picks[slot]
+		local id = type(name) == "string" and book[name] or nil
+		readyIds[slot] = id   -- (nil entries leave the table empty when nothing is picked)
+		if id then ReadyIcon(slot).art:SetTexture(Texture(id)) end
+	end
+end
+
+function RefreshReady(retrack)
+	if not readyHolder then return end
+	if retrack then ReadyTrack() end
+	local allowed = G("enabled") and G("ready") and (not G("readyOnlyCombat") or inFight)
+		and not UnitIsDeadOrGhost("player")
+	local changed = false
+	for slot = 1, READY_SLOTS do
+		local id = readyIds[slot]
+		local on = allowed and id ~= nil and Ready(id)
+		local icon = readyIcons[slot]
+		if on and not icon:IsShown() then
+			icon:Show()
+			changed = true
+		elseif not on and icon and icon:IsShown() then
+			icon:Hide()
+			changed = true
+		end
+	end
+	if changed or retrack then ReadyLayout() end
+end
+
 local function OnEvent(_, event)
 	if event == "SPELL_UPDATE_COOLDOWN" then
 		Refresh()
+		RefreshReady()
+	elseif event == "UNIT_POWER_FREQUENT" or event == "PLAYER_TARGET_CHANGED" then
+		-- (Often: only looked at while an ability is picked.)
+		if next(readyIds) ~= nil then RefreshReady() end
+	elseif event == "SPELL_UPDATE_USABLE" or event == "PLAYER_DEAD" or event == "PLAYER_ALIVE"
+		or event == "PLAYER_UNGHOST" then
+		RefreshReady()
 	elseif event == "PLAYER_REGEN_DISABLED" then
 		inFight = true
 		Refresh()
+		RefreshReady()
 	elseif event == "PLAYER_REGEN_ENABLED" then
 		inFight = false
 		Refresh()
+		RefreshReady()
 	else
+		knownDirty = true
 		Track()
+		RefreshReady(true)
 	end
 end
 
@@ -263,13 +532,24 @@ function P.Login()
 	holder:Hide()
 	inFight = InCombatLockdown()
 	holder:SetScript("OnEvent", OnEvent)
+	readyHolder = CreateFrame("Frame", "DaylightEssentialsCursorReady", UIParent)
+	readyHolder:SetFrameStrata("TOOLTIP")
+	readyHolder:EnableMouse(false)
+	readyHolder:Hide()
 	for _, e in ipairs({ "SPELL_UPDATE_COOLDOWN", "SPELLS_CHANGED", "PLAYER_REGEN_DISABLED",
-		"PLAYER_REGEN_ENABLED", "LEARNED_SPELL_IN_SKILL_LINE" }) do
+		"PLAYER_REGEN_ENABLED", "LEARNED_SPELL_IN_SKILL_LINE", "SPELL_UPDATE_USABLE", "PLAYER_DEAD",
+		"PLAYER_ALIVE", "PLAYER_UNGHOST" }) do
 		pcall(holder.RegisterEvent, holder, e)
 	end
+	pcall(holder.RegisterEvent, holder, "PLAYER_TARGET_CHANGED")
+	pcall(holder.RegisterUnitEvent, holder, "UNIT_POWER_FREQUENT", "player")
 	Track()
+	RefreshReady(true)
 end
 
 function P.Setting()
-	if holder then Track() end
+	if holder then
+		Track()
+		RefreshReady(true)
+	end
 end

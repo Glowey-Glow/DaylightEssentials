@@ -6,9 +6,10 @@ A plugin for DaylightUI on WoW: Forever: small combat aids in the DaylightUI loo
 - **Combat Timer:** how long you've been fighting, and how long the last fight took.
 - **Combat Alert:** "+ Combat" and "- Combat" in the middle of the screen as fights start and end.
 - **Pet Reminder:** for hunters and warlocks, a warning while your pet is missing or set to passive.
-- **Cursor Cooldowns:** your taunt's and dispels' cooldowns beside the mouse pointer while they cool down.
+- **Cursor Cooldowns:** your taunt's and dispels' cooldowns beside the mouse pointer while they cool down, and the abilities you pick shown there while they're ready to cast.
 - **Enemy Nearby:** the enemy players seen near you lately, click to target, with a Kill on Sight list and an alert when one of them shows up.
 - **Secondary Stats:** the stats that matter for how you play (melee, ranged, caster, healer, tank, or your own pick of six) in a small box off the minimap's corner that folds away with a tab, live in a fight.
+- **Buff Manners:** one click (or one key) to buff a player who buffed you, your target, your group or a passer-by missing your buff, with an optional thank-you.
 
 ## Requirements
 
