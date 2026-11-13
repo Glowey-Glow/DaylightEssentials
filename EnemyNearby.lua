@@ -1,5 +1,5 @@
 -- Enemy Nearby: a small list of the enemy players seen near you lately, in the DaylightUI look:
--- their level, their name in their class color and their guild, the newest at the top. A name
+-- their level and their name in their class color, the newest at the top. A name
 -- fades as time passes without seeing them again, and leaves the list after a while (a choice).
 -- Click a name to target that player; right-click it to put them on (or take them off) your Kill
 -- on Sight list, which is shared by all your characters. A line in the middle of the screen (and,
@@ -196,7 +196,7 @@ P.page = { id = KEY, label = "Enemy Nearby",
 			{ type = "toggle", key = KEY .. ".windowless", label = "Windowless", disabled = Off,
 			  desc = "Just the names, with no window behind them. Click and right-click work the same." },
 			{ type = "slider", key = KEY .. ".width", label = "Width", min = 160, max = 320, step = 5, unit = "px", disabled = Off,
-			  desc = "At least this wide: it grows to fit a long name and guild." },
+			  desc = "At least this wide: it grows to fit a long name." },
 			{ type = "slider", key = KEY .. ".scale", label = "Size", min = 0.7, max = 1.6, step = 0.05, unit = "%", disabled = Off },
 		} },
 		{ label = "Alerts", items = {
@@ -354,12 +354,9 @@ local function Row(i)
 	row.level = API.Text(row, "small", "CENTER")
 	row.level:SetPoint("LEFT", row, "LEFT", 4, 0)
 	row.level:SetWidth(LVL_W)
-	row.guild = API.Text(row, "small", "RIGHT")
-	row.guild:SetPoint("RIGHT", row, "RIGHT", 0, 0)
-	row.guild:SetWordWrap(false)
 	row.name = API.Text(row, "body", "LEFT")
 	row.name:SetPoint("LEFT", row.level, "RIGHT", GAP, 0)
-	row.name:SetPoint("RIGHT", row.guild, "LEFT", -GAP, 0)
+	row.name:SetPoint("RIGHT", row, "RIGHT", 0, 0)
 	row.name:SetWordWrap(false)
 	-- Right-click works on every row (a plain frame); the left click lives on the secure buttons.
 	row:EnableMouse(true)
@@ -391,9 +388,6 @@ local function FillRow(row, name, class, level, guild, kos, age)
 	row.name:SetTextColor(r or 1, g or 1, b or 1)
 	row.level:SetText(level and level > 0 and tostring(level) or "??")
 	row.level:SetTextColor(LevelColor(level))
-	row.guild:SetText(guild and ("<" .. guild .. ">") or "")
-	ns.Ink(row.guild, "LABEL")
-	row.guild:SetWidth(guild and ((ns.TextWidth(row.guild) or 0) + 2) or 1)
 	if kos then
 		local c = ns.Colors().BAD or { 1, 0.3, 0.3 }
 		row.mark:SetVertexColor(c[1], c[2], c[3])
@@ -420,16 +414,15 @@ end
 -- The list's size and its own scale go on the body; the moved frame only takes the size it covers
 -- on screen. In a fight only the body grows (downward from the frame's top left), so the rows
 -- already listed, and the secure buttons over them, stay where they are.
--- The width: at least the Width setting, wider when a name and its guild need it (and for the
--- title and the "Nobody seen lately" line), so nothing is cut short. Names and guilds here are
+-- The width: at least the Width setting, wider when a name needs it (and for the
+-- title and the "Nobody seen lately" line), so nothing is cut short. Names here are
 -- always plain text: a player whose name was secret is never listed.
 local function NeedWidth(n)
 	local need = max((ns.TextWidth(title) or 0), empty:IsShown() and (ns.TextWidth(empty) or 0) or 0) + 2
 	for i = 1, n do
 		local row = rows[i]
 		if row and row:IsShown() then
-			local guildW = row.guild:GetText() ~= "" and ((ns.TextWidth(row.guild) or 0) + 2 + GAP) or 0
-			need = max(need, 4 + LVL_W + GAP + (ns.TextWidth(row.name) or 0) + 2 + guildW)
+			need = max(need, 4 + LVL_W + GAP + (ns.TextWidth(row.name) or 0) + 2)
 		end
 	end
 	return math.ceil(need) + PAD * 2

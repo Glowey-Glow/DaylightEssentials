@@ -1,7 +1,7 @@
 # Daylight Essentials
 
 ## 1.1.0
-- New: Enemy Nearby, a small list of the enemy players seen near you lately (level, name in class color, guild), the newest at the top. Names fade while unseen and leave after a minute (a choice). It sees players through their nameplates, your target, focus and mouseover, so enemy nameplates have to be shown: its page has the switch.
+- New: Enemy Nearby, a small list of the enemy players seen near you lately (level and name in class color), the newest at the top. Names fade while unseen and leave after a minute (a choice). It sees players through their nameplates, your target, focus and mouseover, so enemy nameplates have to be shown: its page has the switch.
 - Click a name to target that player. In a fight the list keeps its order and players seen during it are added below, clickable once it ends.
 - Kill on Sight: right-click a name, or type /dui kos add Name, /dui kos remove Name or /dui kos list. Shared by all your characters; its names are marked in red.
 - Alerts: a line in the middle of the screen and a sound when someone on your Kill on Sight list shows up, and if you like when any new enemy does. The same player alerts again only after two minutes (a choice).
@@ -18,7 +18,7 @@
 - Right-click the prompt for Not now or Never offer; /dui manners never Name, /dui manners allow Name and /dui manners list manage the Never list.
 - New: Halo. Hold a key (Key Bindings, AddOns, Daylight Essentials) for a ring of your own spells, items and macros around the mouse; point at one or scroll to it, then let go to use it. Fill its slots by dragging onto them (the Edit the slots button or /dui halo edit). Choose the shape, the number of slots, the ring size, the icon size and where it opens.
 - Cursor Cooldowns: Ready at the cursor. Pick up to six abilities, and their icons show in a line beside the mouse pointer while each is ready to cast (off cooldown and usable now). You choose the side (Top left through Left) and the icon size (24 px by default). Picks are kept per class.
-- Nothing is cut short any more: Healer Mana and Enemy Nearby grow wider to fit a long name, guild or "Offline" (their Width is now the least they take), and the option pages' descriptions and dropdown choices fit in full, with the detail in their tooltips.
+- Nothing is cut short any more: Healer Mana and Enemy Nearby grow wider to fit a long name or "Offline" (their Width is now the least they take), and the option pages' descriptions and dropdown choices fit in full, with the detail in their tooltips.
 - Fixed: no more "unknown unit" lines in chat about Combat Alert's "Stays for" and Combat Timer's "Keep the last fight's time" sliders.
 
 ## 1.0.0
