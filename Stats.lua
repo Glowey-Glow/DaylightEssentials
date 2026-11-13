@@ -213,6 +213,8 @@ P.defaults = {
 	scale = 1,
 	dock = "minimap",
 	corner = "auto",
+	meterCorner = "BOTTOMLEFT",
+	chatFade = false,
 	nudgeX = 0,
 	nudgeY = 0,
 	windowless = false,
@@ -229,6 +231,8 @@ end
 
 local function Off(get) return get(KEY .. ".enabled") == false end
 local function Free(get) return Off(get) or get(KEY .. ".dock") == "free" end
+local function DockIs(to) return function(get) return get(KEY .. ".dock") == to end end
+local function DockIsNot(to) return function(get) return get(KEY .. ".dock") ~= to end end
 local function NotCustom(get) return Off(get) or get(KEY .. ".role") ~= "custom" end
 
 local slotItems = {}
@@ -260,7 +264,15 @@ P.page = { id = KEY, label = "Secondary Stats",
 			  values = { minimap = "Minimap", meters = "Damage meters", chat = "Chat", free = "Free" },
 			  order = { "minimap", "meters", "chat", "free" },
 			  desc = "Docked, it sits against that frame's side at a corner, level with it, and slides out of it and back in with a tab on its edge. Damage meters: their own window when detached, else the minimap panel they sit in. Chat: DaylightUI's chat window. Free: move it anywhere with /dui unlock." },
-			{ type = "dropdown", key = KEY .. ".corner", label = "Corner", disabled = Free,
+			{ type = "dropdown", key = KEY .. ".meterCorner", label = "Corner", disabled = Off,
+			  hidden = DockIsNot("meters"),
+			  desc = "A bottom corner only: the threat meter slides out over the top ones.",
+			  values = { BOTTOMLEFT = "Bottom-left", BOTTOMRIGHT = "Bottom-right" },
+			  order = { "BOTTOMLEFT", "BOTTOMRIGHT" } },
+			{ type = "toggle", key = KEY .. ".chatFade", label = "Fade with the chat", disabled = Off,
+			  hidden = DockIsNot("chat"),
+			  desc = "The stats fade out and back in along with DaylightUI's chat window." },
+			{ type = "dropdown", key = KEY .. ".corner", label = "Corner", disabled = Free, hidden = DockIs("meters"),
 			  desc = "Auto: the corner facing the middle of the screen.",
 			  values = { auto = "Auto", BOTTOMLEFT = "Bottom-left",
 				BOTTOMRIGHT = "Bottom-right", TOPLEFT = "Top-left", TOPRIGHT = "Top-right" },
@@ -563,6 +575,10 @@ end
 local goesLeft, goesDown = true, true
 local function PickCorner(dock)
 	local corner = G("corner") or "auto"
+	-- By the damage meters, a bottom corner only (the threat meter slides out over the top ones).
+	if G("dock") == "meters" then
+		corner = G("meterCorner") == "BOTTOMRIGHT" and "BOTTOMRIGHT" or "BOTTOMLEFT"
+	end
 	if corner ~= "auto" then
 		goesLeft = corner:find("LEFT") ~= nil
 		goesDown = corner:find("BOTTOM") ~= nil
@@ -977,6 +993,22 @@ local function Build()
 	frame:SetFrameStrata("MEDIUM")
 	frame:SetClampedToScreen(true)
 	frame:Hide()
+	-- Docked to the chat with "Fade with the chat": as see-through as the chat window is now.
+	local fadeWait = 0
+	frame:HookScript("OnUpdate", function(self, dt)
+		fadeWait = fadeWait + (dt or 0)
+		if fadeWait < 0.03 then return end
+		fadeWait = 0
+		local a = 1
+		if G("chatFade") and G("dock") == "chat" then
+			local chat = _G.DaylightUIChatPanel
+			if type(chat) == "table" and chat.GetEffectiveAlpha then
+				local ok, v = pcall(chat.GetEffectiveAlpha, chat)
+				if ok and Safe(v) and type(v) == "number" then a = v end
+			end
+		end
+		if math.abs(self:GetAlpha() - a) > 0.01 then self:SetAlpha(a) end
+	end)
 	body = CreateFrame("Frame", nil, frame)
 	body:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
 	-- The window on its own layer so it can be left off; the text on a layer over it.
