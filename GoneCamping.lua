@@ -367,7 +367,7 @@ local function NoteObject(name, lines, spellID)
 	if not IsCampName(name) or IsFire(name) then return false end
 	local e, changed = camp.byName[low], false
 	if not e then
-		e = { name = name }
+		e = { name = name, spell = spellID }
 		camp.byName[low] = e
 		camp.list[#camp.list + 1] = e
 		changed = true
@@ -440,43 +440,12 @@ local function Notes()
 	local warn = (G("warn") or 3) * 60
 	local buffs = MyBuffs()
 	if buffs then
-		if G("fed") then
-			local fed = SpellName(WELL_FED) or "Well Fed"
-			local left = buffs[fed]
-			if not left then
-				notes[#notes + 1] = { "Not Well Fed", true }
-			elseif left < math.huge and left <= warn then
-				notes[#notes + 1] = { fed .. ": " .. Minutes(left), true }
-				counting = true
-			elseif left < math.huge then counting = counting or left - warn < 600 end
-		end
-		-- At a camp: its fire and how full it is (hover the tent for what each object gives).
-		if buffs[NEARBY] then
-			local count = #camp.list
-			local of = camp.full and " (full)" or (camp.slots and (" (" .. count .. " of " .. camp.slots .. ")"))
-				or (count > 0 and (" (" .. count .. ")")) or ""
-			notes[#notes + 1] = { "At camp: " .. (camp.fire or "a campfire") .. of, false, true }
-		end
-		if buffs[VIOLET] then
-			notes[#notes + 1] = { VIOLET .. ": camp buffs last 2 hours", false, true }
-		end
-		-- Sitting by the fire: the countdown to Camp Benefits (a look every second meanwhile).
-		local sitting = buffs[SITTING]
-		if sitting and sitting < math.huge then
-			notes[#notes + 1] = { "Stay seated: " .. CAMP_BUFF .. " in " .. Seconds(sitting), false, true }
-			fast = true
-		end
-		local camp = buffs[CAMP_BUFF]
-		if camp and camp < math.huge and camp > warn then
-			notes[#notes + 1] = { CAMP_BUFF .. ": " .. Minutes(camp) .. " (hover the tent)", false, true }
-			counting = true
-		end
+		-- (Well Fed, Camp Benefits, the sitting countdown and the camp have their own icons.)
+		if buffs[SITTING] and buffs[SITTING] < math.huge then fast = true end
 		for _, name in ipairs(DB().buffs) do
 			local left = buffs[name]
-			if not left and name == CAMP_BUFF and sitting then
-				-- (on its way: the countdown above)
-			elseif not left and name == CAMP_BUFF then
-				notes[#notes + 1] = { "Gone: " .. name .. " (sit by a lit fire)", true }
+			if name == CAMP_BUFF then
+				-- (the tent's border says it)
 			elseif not left then
 				notes[#notes + 1] = { "Gone: " .. name, true }
 			elseif left < math.huge and left <= warn then
@@ -602,7 +571,44 @@ local TENT, GAP, PAD = 34, 4, 6
 local DEFAULT = { "BOTTOMLEFT", UIParent, "BOTTOMLEFT", 380, 260 }
 local TENT_ICON = "Interface\\Icons\\Spell_Fire_Fire"   -- a campfire
 
-local frame, tent, tentIcon, notesBox, notesText   -- frame: what /dui unlock moves
+local frame, tent, tentIcon   -- frame: what /dui unlock moves
+local fedBox                  -- the smaller box to the tent's left: Well Fed
+local campIcons = {}          -- small icons beside the tent: the objects at this camp
+local FED, CAMP_ICON = 24, 18
+local GREEN, YELLOW, RED = { 0.35, 0.85, 0.4 }, { 1, 0.82, 0.2 }, { 0.9, 0.25, 0.25 }
+local SOON = 300   -- under 5 minutes left: yellow
+
+-- A colored edge round a box (four thin lines over its own), recolored by SetEdge.
+local function Edge(f, px)
+	f.edges = {}
+	for i = 1, 4 do
+		local t = f:CreateTexture(nil, "OVERLAY", nil, 7)
+		t:SetColorTexture(1, 1, 1, 1)
+		f.edges[i] = t
+	end
+	local e = f.edges
+	e[1]:SetPoint("TOPLEFT") e[1]:SetPoint("TOPRIGHT") e[1]:SetHeight(px)
+	e[2]:SetPoint("BOTTOMLEFT") e[2]:SetPoint("BOTTOMRIGHT") e[2]:SetHeight(px)
+	e[3]:SetPoint("TOPLEFT") e[3]:SetPoint("BOTTOMLEFT") e[3]:SetWidth(px)
+	e[4]:SetPoint("TOPRIGHT") e[4]:SetPoint("BOTTOMRIGHT") e[4]:SetWidth(px)
+end
+local function SetEdge(f, c)
+	for _, t in ipairs(f.edges) do
+		if c then t:SetVertexColor(c[1], c[2], c[3], 1) t:Show() else t:Hide() end
+	end
+end
+-- Green with time to spare, yellow under 5 minutes, red when it's gone.
+local function StateColor(left)
+	if not left then return RED end
+	if left < math.huge and left <= SOON then return YELLOW end
+	return GREEN
+end
+local function Short(sec)
+	if not sec or sec == math.huge then return "" end
+	if sec >= 3600 then return string.format("%dh", math.floor(sec / 3600)) end
+	if sec >= 60 then return string.format("%dm", math.ceil(sec / 60)) end
+	return string.format("%ds", math.ceil(sec))
+end
 local holder                                       -- the secure fan, laid over the frame
 local slots = {}
 local open = false
@@ -792,62 +798,140 @@ local function Tick(on)
 	end
 end
 
-local function SizeNotes()
-	local w = ns.TextWidth(notesText) or 0
-	local h = notesText:GetStringHeight() or 0
-	if not Safe(h) or type(h) ~= "number" then h = 14 end
-	notesBox:SetSize(math.ceil(w) + PAD * 2 + 2, math.ceil(h) + PAD * 2)
-	API.Skin(notesBox, { window = true })
+-- An object at this camp: its icon (from your spellbook, a cast, or your own kit), or a question mark.
+local function CampIcon(e)
+	if e.icon then return e.icon end
+	local id = e.spell or lastBook[e.name]
+	if id then e.icon = SpellIcon(id) return e.icon end
+	for _, o in ipairs(objects) do
+		if o.name == e.name then e.icon = o.icon return e.icon end
+	end
+	if C_Spell and C_Spell.GetSpellTexture then
+		local ok, t = pcall(C_Spell.GetSpellTexture, e.name)
+		if ok and t then e.icon = t return t end
+	end
+	return 134400
 end
 
-local function PlaceNotes()
-	notesBox:ClearAllPoints()
+local function CampIconFrame(i)
+	local f = campIcons[i]
+	if f then return f end
+	f = CreateFrame("Frame", nil, frame)
+	f:SetSize(CAMP_ICON, CAMP_ICON)
+	f.back = f:CreateTexture(nil, "BACKGROUND")
+	f.back:SetAllPoints()
+	f.back:SetColorTexture(0, 0, 0, 1)
+	f.icon = f:CreateTexture(nil, "ARTWORK")
+	f.icon:SetPoint("TOPLEFT", 1, -1)
+	f.icon:SetPoint("BOTTOMRIGHT", -1, 1)
+	f.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+	f:EnableMouse(true)
+	f:SetScript("OnEnter", function(self)
+		local e = self.entry
+		if not e then return end
+		GameTooltip:SetOwner(self, "ANCHOR_TOP")
+		GameTooltip:SetText(e.name)
+		for _, line in ipairs(e.lines or {}) do GameTooltip:AddLine(line, 1, 1, 1, true) end
+		if not e.lines then GameTooltip:AddLine("Mouse over it at the camp to see what it gives.", 0.6, 0.6, 0.6, true) end
+		GameTooltip:Show()
+	end)
+	f:SetScript("OnLeave", function() GameTooltip:Hide() end)
+	campIcons[i] = f
+	return f
+end
+
+-- The camp's objects in a row beside the tent (to its right; above it when the fan opens right).
+local function ShowCamp(list)
 	local dir = G("direction") or "up"
-	if dir == "up" or dir == "down" then
-		notesBox:SetPoint("LEFT", tent, "RIGHT", GAP, 0)
-	else
-		notesBox:SetPoint("TOP", tent, "BOTTOM", 0, -GAP)
+	for i, e in ipairs(list) do
+		local f = CampIconFrame(i)
+		f.entry = e
+		f.icon:SetTexture(CampIcon(e))
+		f:ClearAllPoints()
+		if dir == "right" then
+			f:SetPoint("BOTTOMLEFT", tent, "TOPLEFT", (i - 1) * (CAMP_ICON + 2), GAP)
+		else
+			f:SetPoint("BOTTOMLEFT", tent, "BOTTOMRIGHT", GAP + (i - 1) * (CAMP_ICON + 2), 0)
+		end
+		f:SetScale(G("scale") or 1)
+		f:Show()
 	end
+	for i = #list + 1, #campIcons do campIcons[i]:Hide() end
+end
+
+-- What the tent's left click does now: "/sit" at a camp, else your best campfire (Expert, then
+-- Journeyman, then Basic), or nothing if you have none. Also its words for the tooltip.
+local function TentAction()
+	if AtCamp() then return "/sit", "Left-click: sit by the fire" end
+	local best, rank
+	for _, o in ipairs(objects) do
+		local r = FIRES[string.lower(o.name or "")]
+		if r and (not rank or r > rank) then best, rank = o, r end
+	end
+	if not best then return "", "Left-click: no campfire to put down (learn one, or drag it here)" end
+	local m = best.kind == "spell" and ("/cast " .. best.name) or ("/use item:" .. best.id)
+	return m, "Left-click: put down your " .. best.name
 end
 
 function P.Look()
 	if not frame then return end
 	local fight = InCombatLockdown()
+	-- In a fight nothing here changes: the tent is a secure button now (hidden as the fight starts).
+	if fight then
+		Tick(false)
+		return
+	end
 	previewing = G("enabled") and ns.Previewing(KEY) or false
 	if not G("enabled") or (fight and not previewing) then
 		frame:Hide()
 		Tick(false)
 		return
 	end
+	local action = TentAction()
+	if tent.action ~= action then
+		tent:SetAttribute("macrotext1", action)
+		tent.action = action
+	end
 	local scale = G("scale") or 1
 	tent:SetScale(scale)
+	fedBox:SetScale(scale)
 	frame:SetSize(TENT * scale, TENT * scale)
 	frame:Show()
-	local notes, counting
+	local campLeft, sitting, fedLeft, list, counting
 	if previewing then
-		notes, counting = { { "Not Well Fed", true }, { "Camp pieces ready in 42m", false } }, false
+		campLeft, fedLeft = 52 * 60, 4 * 60
+		list = { { name = "Fish Bowl", icon = 132830, lines = { "+8% to all stats." } }, { name = "Camp Chair", icon = 134400 } }
+		counting = false
 	else
+		local notes
 		notes, counting = Notes()
+		local buffs = MyBuffs() or {}
+		campLeft, sitting = buffs[CAMP_BUFF], buffs[SITTING]
+		fedLeft = buffs[SpellName(WELL_FED) or "Well Fed"]
+		list = buffs[NEARBY] and camp.list or {}
+		counting = counting or campLeft ~= nil or fedLeft ~= nil
 	end
-	local lines, warn = {}, false
-	local warnHex, labelHex, goodHex = "|cffffbf4d", "|cffa0a0a0", "|cff7fd27f"
-	for _, n in ipairs(notes) do
-		lines[#lines + 1] = (n[2] and warnHex or (n[3] and goodHex) or labelHex) .. n[1] .. "|r"
-		warn = warn or n[2]
-	end
-	if #lines > 0 then
-		notesText:SetText(table.concat(lines, "\n"))
-		PlaceNotes()
-		SizeNotes()
-		notesBox:Show()
+	-- The tent: its edge says Camp Benefits (green, yellow under 5 minutes, red without), with its
+	-- time left on it, or the countdown while you sit by the fire.
+	SetEdge(tent, StateColor(campLeft))
+	if sitting and sitting < math.huge and not campLeft then
+		tent.time:SetText(Seconds(sitting))
 	else
-		notesBox:Hide()
+		tent.time:SetText(Short(campLeft))
 	end
-	-- The tent's edge in the warning color while something has run out.
-	tent.warn:SetShown(warn)
+	-- Well Fed, the same way, in the smaller box to its left.
+	if G("fed") and (RemindHere() or previewing) then
+		SetEdge(fedBox, StateColor(fedLeft))
+		fedBox.time:SetText(Short(fedLeft))
+		fedBox:Show()
+	else
+		fedBox:Hide()
+	end
+	ShowCamp(list)
 	Tick((counting or fast) and not fight)
-	-- Fades while idle: nothing to say, the fan shut, the mouse away.
-	local idle = G("fadeIdle") and not warn and not open and not frame:IsMouseOver()
+	-- Fades while idle: all green, the fan shut, the mouse away.
+	local fine = campLeft ~= nil and (fedLeft ~= nil or not G("fed"))
+	local idle = G("fadeIdle") and fine and not open and not frame:IsMouseOver()
 		and not (holder and holder:IsMouseOver()) and not previewing
 	API.Fade(frame, idle and 0.35 or 1, "NORMAL")
 end
@@ -973,7 +1057,9 @@ local function Build()
 	frame:SetClampedToScreen(true)
 	frame:Hide()
 
-	tent = CreateFrame("Button", "DaylightEssentialsGoneCampingTent", frame)
+	-- A secure button: its left click sits you down at a camp, or puts down your best campfire
+	-- away from one (a macro set out of a fight, Look); the right click opens the fan.
+	tent = CreateFrame("Button", "DaylightEssentialsGoneCampingTent", frame, "SecureActionButtonTemplate")
 	tent:SetSize(TENT, TENT)
 	tent:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 0, 0)
 	API.Skin(tent, { window = true })
@@ -982,53 +1068,54 @@ local function Build()
 	tentIcon:SetPoint("BOTTOMRIGHT", -4, 4)
 	tentIcon:SetTexture(TENT_ICON)
 	tentIcon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
-	tent.warn = tent:CreateTexture(nil, "OVERLAY")
-	tent.warn:SetPoint("BOTTOMLEFT", tent, "BOTTOMLEFT", 2, 2)
-	tent.warn:SetPoint("BOTTOMRIGHT", tent, "BOTTOMRIGHT", -2, 2)
-	tent.warn:SetHeight(2)
-	tent.warn:SetColorTexture(1, 0.75, 0.3, 1)
-	tent.warn:Hide()
-	tent:RegisterForClicks("LeftButtonUp", "RightButtonUp")
-	tent:SetScript("OnClick", function(_, which)
-		if InCombatLockdown() then return end
+	Edge(tent, 2)
+	tent.time = API.Text(tent, "small", "CENTER")
+	tent.time:SetPoint("BOTTOM", tent, "BOTTOM", 0, 3)
+	-- Both: the template itself acts on the one the game's "cast on key down" choice says.
+	tent:RegisterForClicks("AnyUp", "AnyDown")
+	tent:SetAttribute("type1", "macro")
+	tent:SetAttribute("macrotext1", "")
+	tent:HookScript("OnClick", function(_, which, down)
+		if down or InCombatLockdown() then return end
 		if GetCursorInfo and GetCursorInfo() then Drop() return end
-		if which == "RightButton" then P.Close() return end
-		if open then P.Close() else P.Open() end
+		if which == "RightButton" then
+			if open then P.Close() else P.Open() end
+		end
 	end)
 	tent:SetScript("OnReceiveDrag", Drop)
 	tent:SetScript("OnEnter", function(self)
 		GameTooltip:SetOwner(self, "ANCHOR_TOP")
 		GameTooltip:SetText("Gone Camping")
-		GameTooltip:AddLine("Click: your camp objects. Drag a spell or item here to add it.", 1, 1, 1, true)
-		-- What the camp gives: Camp Benefits' own lines, or how to get it.
-		local buffs = MyBuffs()
-		GameTooltip:AddLine(" ")
-		if buffs and buffs[CAMP_BUFF] then
-			local left = buffs[CAMP_BUFF]
-			GameTooltip:AddLine(CAMP_BUFF .. (left < math.huge and (" (" .. Minutes(left) .. " left)") or ""), 0.5, 0.82, 0.5)
+		local buffs = MyBuffs() or {}
+		local left = buffs[CAMP_BUFF]
+		if left then
+			local c = StateColor(left)
+			GameTooltip:AddLine(CAMP_BUFF .. (left < math.huge and (": " .. Minutes(left) .. " left") or ""), c[1], c[2], c[3])
 			for _, line in ipairs(BuffLines(CAMP_BUFF) or {}) do GameTooltip:AddLine(line, 1, 1, 1, true) end
-		elseif buffs and buffs[SITTING] then
-			GameTooltip:AddLine("Stay seated: " .. CAMP_BUFF .. " in " .. Seconds(buffs[SITTING]), 0.5, 0.82, 0.5)
-			GameTooltip:AddLine("It will hold every camp object at this fire in one buff.", 1, 1, 1, true)
+		elseif buffs[SITTING] then
+			GameTooltip:AddLine("Stay seated: " .. CAMP_BUFF .. " in " .. Seconds(buffs[SITTING]), YELLOW[1], YELLOW[2], YELLOW[3])
 		else
-			GameTooltip:AddLine("No " .. CAMP_BUFF, 1, 0.75, 0.3)
-			GameTooltip:AddLine("Sit by a lit campfire for about a minute: every camp object at that fire comes in one buff, for an hour.", 1, 1, 1, true)
+			GameTooltip:AddLine("No " .. CAMP_BUFF, RED[1], RED[2], RED[3])
+			GameTooltip:AddLine("Sit by a lit campfire for about a minute.", 0.8, 0.8, 0.8, true)
 		end
-		-- This camp: each object seen here and what it gives.
-		if buffs and buffs[NEARBY] then
+		if buffs[NEARBY] then
+			local head = camp.fire or "A campfire"
+			if camp.full then head = head .. ", full"
+			elseif camp.slots then head = head .. ", " .. #camp.list .. " of " .. camp.slots end
+			GameTooltip:AddLine(head, 0.8, 0.8, 0.8)
+		end
+		if buffs[VIOLET] then GameTooltip:AddLine(VIOLET .. ": camp buffs last 2 hours", 0.75, 0.55, 1) end
+		local notes = Notes()
+		if #notes > 0 then
 			GameTooltip:AddLine(" ")
-			local head = "This camp: " .. (camp.fire or "a campfire")
-			if camp.full then head = head .. " (full)"
-			elseif camp.slots then head = head .. " (" .. #camp.list .. " of " .. camp.slots .. ")" end
-			GameTooltip:AddLine(head, 0.5, 0.82, 0.5)
-			for _, e in ipairs(camp.list) do
-				GameTooltip:AddLine(e.name, 1, 1, 1)
-				for _, line in ipairs(e.lines or {}) do GameTooltip:AddLine("  " .. line, 0.75, 0.75, 0.75, true) end
-			end
-			if #camp.list == 0 or (camp.slots and #camp.list < camp.slots and not camp.full) then
-				GameTooltip:AddLine("Mouse over the fire and the camp's objects to add them here.", 0.6, 0.6, 0.6, true)
+			for _, n in ipairs(notes) do
+				if n[2] then GameTooltip:AddLine(n[1], 1, 0.75, 0.3) else GameTooltip:AddLine(n[1], 0.7, 0.7, 0.7) end
 			end
 		end
+		GameTooltip:AddLine(" ")
+		local _, words = TentAction()
+		GameTooltip:AddLine(words, 0.6, 0.6, 0.6, true)
+		GameTooltip:AddLine("Right-click: your camp objects. Drag a spell or item here to add it.", 0.6, 0.6, 0.6, true)
 		GameTooltip:Show()
 		if G("fadeIdle") then API.Fade(frame, 1, "FAST") end
 	end)
@@ -1037,11 +1124,35 @@ local function Build()
 		LookSoon()
 	end)
 
-	notesBox = CreateFrame("Frame", nil, frame)
-	notesBox:SetSize(10, 10)
-	notesText = API.Text(notesBox, "small", "LEFT")
-	notesText:SetPoint("TOPLEFT", notesBox, "TOPLEFT", PAD, -PAD)
-	notesBox:Hide()
+	-- Well Fed: a smaller box to the tent's left, its edge colored the same way.
+	fedBox = CreateFrame("Frame", nil, frame)
+	fedBox:SetSize(FED, FED)
+	fedBox:SetPoint("BOTTOMRIGHT", tent, "BOTTOMLEFT", -GAP, 0)
+	API.Skin(fedBox, { window = true })
+	fedBox.icon = fedBox:CreateTexture(nil, "ARTWORK")
+	fedBox.icon:SetPoint("TOPLEFT", 3, -3)
+	fedBox.icon:SetPoint("BOTTOMRIGHT", -3, 3)
+	fedBox.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+	fedBox.icon:SetTexture(SpellIcon(WELL_FED))
+	Edge(fedBox, 2)
+	fedBox.time = API.Text(fedBox, "tiny", "CENTER")
+	fedBox.time:SetPoint("BOTTOM", fedBox, "BOTTOM", 0, 2)
+	fedBox:EnableMouse(true)
+	fedBox:SetScript("OnEnter", function(self)
+		local buffs = MyBuffs() or {}
+		local name = SpellName(WELL_FED) or "Well Fed"
+		local left = buffs[name]
+		local c = StateColor(left)
+		GameTooltip:SetOwner(self, "ANCHOR_TOP")
+		if left then
+			GameTooltip:SetText(name .. (left < math.huge and (": " .. Minutes(left) .. " left") or ""), c[1], c[2], c[3])
+		else
+			GameTooltip:SetText("Not " .. name, c[1], c[2], c[3])
+		end
+		GameTooltip:Show()
+	end)
+	fedBox:SetScript("OnLeave", function() GameTooltip:Hide() end)
+	fedBox:Hide()
 
 	-- The secure fan: hidden in every fight by its state driver; filled and laid out out of one.
 	holder = CreateFrame("Frame", "DaylightEssentialsGoneCampingFan", UIParent, "SecureHandlerStateTemplate")
@@ -1076,7 +1187,7 @@ end
 
 -- The key binding's words (Key Bindings, AddOns).
 _G.BINDING_HEADER_DAYLIGHTESSENTIALS = _G.BINDING_HEADER_DAYLIGHTESSENTIALS or "Daylight Essentials"
-_G["BINDING_NAME_CLICK DaylightEssentialsGoneCampingTent:LeftButton"] = "Gone Camping: open or close the tent"
+_G["BINDING_NAME_CLICK DaylightEssentialsGoneCampingTent:LeftButton"] = "Gone Camping: sit by the fire, or put down a campfire"
 
 function P.Login()
 	ResolveNames()
