@@ -3,6 +3,7 @@
 ## Notes: A DaylightUI plugin of small combat aids: your healers' mana, a combat timer and alert, a pet reminder and your taunt and dispel cooldowns at the cursor. Each on its own switch.
 ## Author: Glowey
 ## X-License: All Rights Reserved
+## X-Curse-Project-ID: 1802092
 ## Version: @project-version@
 ## Dependencies: DaylightUI
 
