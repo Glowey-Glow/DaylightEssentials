@@ -26,7 +26,7 @@ P.page = { id = KEY, label = "Combat Timer",
 	groups = {
 		{ label = "Combat Timer", items = {
 			{ type = "toggle", key = KEY .. ".enabled", label = "On" },
-			{ type = "slider", key = KEY .. ".hold", label = "Keep the last fight's time", min = 0, max = 15, step = 1, unit = "s",
+			{ type = "slider", key = KEY .. ".hold", label = "Keep the last fight's time (seconds)", min = 0, max = 15, step = 1,
 			  desc = "Seconds the fight's length stays after it ends. 0 hides it at once." },
 			{ type = "toggle", key = KEY .. ".tenths", label = "Tenths of a second",
 			  desc = "1:23.4 instead of 1:23." },
