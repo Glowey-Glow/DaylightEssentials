@@ -27,13 +27,14 @@ local WORDS = {
 }
 
 P.page = { id = KEY, label = "Combat Alert",
-	desc = "A short line in the middle of the screen as a fight starts and ends. Move it with /dui unlock.",
+	desc = "A short line mid-screen as a fight starts and ends.",
 	groups = {
 		{ label = "Combat Alert", items = {
 			{ type = "toggle", key = KEY .. ".enabled", label = "On" },
 			{ type = "toggle", key = KEY .. ".onLeave", label = "Also when a fight ends" },
 			{ type = "dropdown", key = KEY .. ".words", label = "Words",
-			  values = { plus = "+ Combat / - Combat", words = "Entering combat / Leaving combat", short = "Combat / Safe" } },
+			  values = { plus = "+/- Combat", words = "Entering, leaving", short = "Combat, Safe" },
+			  desc = "+/- Combat: \"+ Combat\" and \"- Combat\". Entering, leaving: \"Entering combat\" and \"Leaving combat\". Combat, Safe: \"Combat\" and \"Safe\". Move it with /dui unlock." },
 			{ type = "slider", key = KEY .. ".hold", label = "Stays for (seconds)", min = 0.5, max = 3, step = 0.25 },
 			{ type = "toggle", key = KEY .. ".sound", label = "A sound as a fight starts" },
 			{ type = "slider", key = KEY .. ".scale", label = "Size", min = 0.7, max = 2, step = 0.05, unit = "%" },

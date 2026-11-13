@@ -41,7 +41,7 @@ P.defaults = {
 }
 
 P.page = { id = KEY, label = "Healer Mana",
-	desc = "A list of your group's healers and the mana each has left. Move it with /dui unlock.",
+	desc = "Your group's healers and the mana each has left.",
 	groups = {
 		{ label = "Healer Mana", items = {
 			{ type = "toggle", key = KEY .. ".enabled", label = "On" },
@@ -57,8 +57,8 @@ P.page = { id = KEY, label = "Healer Mana",
 		} },
 		{ label = "Who's a healer", items = {
 			{ type = "dropdown", key = KEY .. ".noRoles", label = "When the group has no roles",
-			  values = { classes = "Priests, druids, shamans and paladins", none = "Nobody (only players given the healer role)" },
-			  desc = "Players the group gave the healer role (the group finder or a role check) are always the healers. With no roles set, the classes that can heal are listed, or nobody." },
+			  values = { classes = "Healing classes", none = "Nobody" },
+			  desc = "Players the group gave the healer role (the group finder or a role check) are always the healers. With no roles set: Healing classes lists every priest, druid, shaman and paladin; Nobody lists only players given the healer role." },
 		} },
 		{ label = "Look", items = {
 			{ type = "toggle", key = KEY .. ".colorByMana", label = "Colour the mana by what's left",

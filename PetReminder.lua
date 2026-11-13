@@ -25,7 +25,7 @@ P.defaults = {
 }
 
 P.page = { id = KEY, label = "Pet Reminder",
-	desc = "For hunters and warlocks: a warning while your pet is missing or set to passive. Move it with /dui unlock.",
+	desc = "For hunters and warlocks: a warning while your pet is missing or passive.",
 	groups = {
 		{ label = "Pet Reminder", items = {
 			{ type = "toggle", key = KEY .. ".enabled", label = "On" },

@@ -176,12 +176,12 @@ end
 local function Off(get) return get(KEY .. ".enabled") == false end
 
 P.page = { id = KEY, label = "Enemy Nearby",
-	desc = "Enemy players seen near you lately; click a name to target them. It sees players through their nameplates, your target, focus and mouseover, so enemy nameplates have to be shown. Move it with /dui unlock.",
+	desc = "Enemy players seen near you lately; click a name to target them.",
 	groups = {
 		{ label = "Enemy Nearby", items = {
 			{ type = "toggle", key = KEY .. ".enabled", label = "On" },
 			{ type = "toggle", label = "Show enemy nameplates",
-			  desc = "The game's own setting (V by default): the list fills from the nameplates on screen. It can't be switched in a fight.",
+			  desc = "The game's own setting (V by default). The list sees players through their nameplates, your target, focus and mouseover, so enemy nameplates have to be shown. It can't be switched in a fight. Move the list with /dui unlock.",
 			  get = PlatesShown, set = ShowPlates },
 			{ type = "toggle", key = KEY .. ".inInstances", label = "Also in battlegrounds and dungeons",
 			  desc = "Off: the list rests while you're inside an instance.", disabled = Off },

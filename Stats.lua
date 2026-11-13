@@ -222,7 +222,7 @@ P.defaults = {
 
 local SLOT_VALUES, SLOT_ORDER = { none = "None" }, { "none" }
 for _, s in ipairs(CATALOG) do
-	SLOT_VALUES[s.id] = s.label
+	SLOT_VALUES[s.id] = s.tag or s.label
 	SLOT_ORDER[#SLOT_ORDER + 1] = s.id
 end
 
@@ -238,29 +238,31 @@ for i = 1, SLOTS do
 end
 
 P.page = { id = KEY, label = "Secondary Stats",
-	desc = "A small box of the stats that matter for how you play: by your role or class, or your own pick. Crit, haste, armor and the like stay live in a fight; stats the game gives in parts (attack power, hit, defense, mana regen) keep their numbers from before the fight. It sits under the minimap with a tab to fold it away, or anywhere you like. DaylightUI's info bar has small Crit, AP, SP and Hit texts too, if you'd rather have something smaller.",
+	desc = "The stats that matter for how you play, by role, class or your own pick.",
 	groups = {
-		{ label = "Secondary Stats", items = {
+		{ label = "Secondary Stats",
+		  desc = "Crit, haste, armor and the like stay live in a fight; stats the game gives in parts (attack power, hit, defense, mana regen) keep their numbers from before the fight. DaylightUI's info bar has small Crit, AP, SP and Hit texts too, if you'd rather have something smaller.",
+		  items = {
 			{ type = "toggle", key = KEY .. ".enabled", label = "On" },
 			{ type = "dropdown", key = KEY .. ".role", label = "Stats for", disabled = Off,
-			  values = { auto = "Auto (your role or class)", melee = "Melee", ranged = "Ranged", caster = "Caster",
-				healer = "Healer", tank = "Tank", custom = "Custom (pick them below)" },
+			  values = { auto = "Auto", melee = "Melee", ranged = "Ranged", caster = "Caster",
+				healer = "Healer", tank = "Tank", custom = "Custom" },
 			  order = { "auto", "melee", "ranged", "caster", "healer", "tank", "custom" },
-			  desc = "Auto: the healer or tank stats when the group gave you that role, else your class's: melee for warriors and rogues, ranged for hunters, caster for mages and warlocks, healer for priests, druids, shamans and paladins." },
+			  desc = "Auto: the healer or tank stats when the group gave you that role, else your class's: melee for warriors and rogues, ranged for hunters, caster for mages and warlocks, healer for priests, druids, shamans and paladins. Custom: the six stats you pick below." },
 			{ type = "toggle", key = KEY .. ".hideZero", label = "Hide stats at 0", disabled = Off,
 			  desc = "Haste, expertise, armor penetration and spell penetration leave the box while you have none. Decided out of a fight and kept through it." },
 			{ type = "dropdown", key = KEY .. ".shows", label = "Shows", disabled = Off,
-			  values = { always = "Always", combat = "In a fight only", calm = "Out of a fight only" },
+			  values = { always = "Always", combat = "In a fight", calm = "Out of a fight" },
 			  order = { "always", "combat", "calm" } },
 		} },
 		{ label = "Where", items = {
 			{ type = "dropdown", key = KEY .. ".dock", label = "Dock to", disabled = Off,
-			  values = { minimap = "The minimap", player = "Your player frame", target = "Your target frame",
-				free = "Nothing: free (move it with /dui unlock)" },
+			  values = { minimap = "Minimap", player = "Player frame", target = "Target frame", free = "Free" },
 			  order = { "minimap", "player", "target", "free" },
-			  desc = "Docked, it sits against that frame's side at a corner, level with it, and slides out of it and back in with a tab on its edge." },
+			  desc = "Docked, it sits against that frame's side at a corner, level with it, and slides out of it and back in with a tab on its edge. Free: move it anywhere with /dui unlock." },
 			{ type = "dropdown", key = KEY .. ".corner", label = "Corner", disabled = Free,
-			  values = { auto = "Auto (the one facing the middle of the screen)", BOTTOMLEFT = "Bottom-left",
+			  desc = "Auto: the corner facing the middle of the screen.",
+			  values = { auto = "Auto", BOTTOMLEFT = "Bottom-left",
 				BOTTOMRIGHT = "Bottom-right", TOPLEFT = "Top-left", TOPRIGHT = "Top-right" },
 			  order = { "auto", "BOTTOMLEFT", "BOTTOMRIGHT", "TOPLEFT", "TOPRIGHT" } },
 			{ type = "slider", key = KEY .. ".nudgeX", label = "Nudge sideways", min = -60, max = 60, step = 1, unit = "px",
@@ -276,9 +278,9 @@ P.page = { id = KEY, label = "Secondary Stats",
 			{ type = "dropdown", key = KEY .. ".layout", label = "Layout", disabled = Off,
 			  values = { list = "A list", line = "One line" }, order = { "list", "line" } },
 			{ type = "dropdown", key = KEY .. ".nameColors", label = "Name colours", disabled = Off,
-			  values = { stat = "Each stat its own", class = "Your class colour", plain = "Plain" },
+			  values = { stat = "Per stat", class = "Class colour", plain = "Plain" },
 			  order = { "stat", "class", "plain" },
-			  desc = "Each stat its own: crits gold, hit blue, haste green, attack power orange, spell power violet, and so on." },
+			  desc = "Per stat: crits gold, hit blue, haste green, attack power orange, spell power violet, and so on." },
 			{ type = "toggle", key = KEY .. ".colorValues", label = "Numbers in the same colour", disabled = Off },
 			{ type = "slider", key = KEY .. ".shadow", label = "Text shadow", min = 0, max = 4, step = 1, unit = "px", disabled = Off,
 			  desc = "How far the dark shadow under the text reaches. 0 for none." },

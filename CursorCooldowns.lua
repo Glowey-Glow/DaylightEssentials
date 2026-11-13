@@ -35,7 +35,7 @@ P.defaults = {
 }
 
 P.page = { id = KEY, label = "Cursor Cooldowns",
-	desc = "Your taunt's and dispels' cooldowns beside the mouse pointer while they cool down.",
+	desc = "Your taunt and dispel cooldowns beside the mouse pointer.",
 	groups = {
 		{ label = "Cursor Cooldowns", items = {
 			{ type = "toggle", key = KEY .. ".enabled", label = "On" },
