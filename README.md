@@ -8,7 +8,7 @@ A plugin for DaylightUI on WoW: Forever: small combat aids in the DaylightUI loo
 - **Pet Reminder:** for hunters and warlocks, a warning while your pet is missing or set to passive.
 - **Cursor Cooldowns:** your taunt's and dispels' cooldowns beside the mouse pointer while they cool down.
 - **Enemy Nearby:** the enemy players seen near you lately, click to target, with a Kill on Sight list and an alert when one of them shows up.
-- **Secondary Stats:** the stats that matter for how you play (melee, ranged, caster, healer, tank, or your own pick of six) in a small box under the minimap that folds away with a tab, live in a fight.
+- **Secondary Stats:** the stats that matter for how you play (melee, ranged, caster, healer, tank, or your own pick of six) in a small box off the minimap's corner that folds away with a tab, live in a fight.
 
 ## Requirements
 

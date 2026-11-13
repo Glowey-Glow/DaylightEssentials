@@ -1,8 +1,8 @@
 -- Secondary Stats: a small box of the stats that matter for how you play, in the DaylightUI look:
 -- a row per stat, its name on the left and its value on the right (or all of them on one line).
 -- Which stats: by your group role or your class (Auto), a fixed set for melee, ranged, casters,
--- healers or tanks, or a list of up to six you pick yourself (Custom). It hangs under the minimap
--- with a fold tab, or is set free (moved with /dui unlock, with or without its window).
+-- healers or tanks, or a list of up to six you pick yourself (Custom). It hangs off the minimap's
+-- corner with a fold tab, or is set free (moved with /dui unlock, windowless if you like).
 --
 -- Secret values: in a fight the game keeps your own stats secret from addons. A secret can't be
 -- compared, added or turned into text by an addon's own code, but the game's own text formatting
@@ -211,7 +211,7 @@ P.defaults = {
 	width = 170,
 	scale = 1,
 	dock = "minimap",
-	window = true,
+	windowless = false,
 	nameColors = "stat",
 	colorValues = false,
 }
@@ -250,11 +250,11 @@ P.page = { id = KEY, label = "Secondary Stats",
 		} },
 		{ label = "Where", items = {
 			{ type = "dropdown", key = KEY .. ".dock", label = "Place", disabled = Off,
-			  values = { minimap = "Under the minimap", free = "Free (move it with /dui unlock)" },
+			  values = { minimap = "By the minimap", free = "Free (move it with /dui unlock)" },
 			  order = { "minimap", "free" },
-			  desc = "Under the minimap it sits below the map's bottom-left corner, with a tab beside it to fold it away." },
-			{ type = "toggle", key = KEY .. ".window", label = "Window behind it", disabled = NotFree,
-			  desc = "Free, it can be just the text. Under the minimap it always has its window." },
+			  desc = "By the minimap it hangs off the map's corner nearest the middle of the screen (bottom-left for a map in the top-right) and grows away from the map, with a tab at the corner to fold it away." },
+			{ type = "toggle", key = KEY .. ".windowless", label = "Windowless", disabled = NotFree,
+			  desc = "Just the text, with no window behind it. Only when it's free: by the minimap it keeps its window." },
 		} },
 		{ label = "Custom", desc = "Your own list, in this order, when Stats for is Custom.",
 		  items = slotItems },
@@ -353,9 +353,9 @@ end
 -- The box
 -- ---------------------------------------------------------------------------------------------
 
-local ROW_H, PAD, TITLE_H, GAP, SLACK = 18, 6, 16, 14, 6
+local ROW_H, PAD, GAP, SLACK = 18, 6, 14, 6
 
-local frame, body, title, line   -- frame: what /dui unlock moves; body: the box, sized to its text
+local frame, body, line   -- frame: what /dui unlock moves; body: the box, sized to its text
 local shell, content             -- in body: the window (can be left off), and the text over it
 local tab                        -- the fold tab, beside the box while it's under the minimap
 local rows = {}
@@ -379,7 +379,7 @@ local function Row(i)
 end
 
 local function PlaceRow(row, i)
-	local y = -(PAD + TITLE_H + (i - 1) * ROW_H)
+	local y = -(PAD + (i - 1) * ROW_H)
 	row:ClearAllPoints()
 	row:SetPoint("TOPLEFT", body, "TOPLEFT", PAD, y)
 	row:SetPoint("TOPRIGHT", body, "TOPRIGHT", -PAD, y)
@@ -420,7 +420,7 @@ local function Size(n, oneLine)
 		w = math.ceil(lastLineW + SLACK) + PAD * 2
 		h = ROW_H + PAD * 2
 	else
-		local labelW, valueW, readable = Measure(title) or 0, 0, true
+		local labelW, valueW, readable = 0, 0, true
 		for i = 1, n do
 			local row = rows[i]
 			if row then   -- none yet when it's first built
@@ -433,7 +433,7 @@ local function Size(n, oneLine)
 		valueW = math.ceil(valueW + SLACK)
 		for i = 1, n do if rows[i] then rows[i].value:SetWidth(valueW) end end
 		w = math.ceil(labelW) + GAP + valueW + PAD * 2
-		h = PAD * 2 + TITLE_H + n * ROW_H
+		h = PAD * 2 + n * ROW_H
 	end
 	local scale = G("scale") or 1
 	body:SetSize(w, h)
@@ -483,13 +483,15 @@ local function Collect()
 end
 
 -- ---------------------------------------------------------------------------------------------
--- Under the minimap, with a fold tab
+-- By the minimap, with a fold tab
 -- ---------------------------------------------------------------------------------------------
--- Docked, the box hangs under the minimap's bottom-left corner (below the data texts DaylightUI
--- puts under the map) and /dui unlock leaves it alone. A small tab on its left edge folds it away
--- and brings it back; the tab stays put either way. Free, DaylightUI's mover places it as before.
+-- Docked, the box hangs off the minimap's corner nearest the middle of the screen (bottom-left
+-- for a map in the top-right) and grows away from the map, so it covers neither the map, the
+-- data texts under it nor what sits below it. A small tab at that corner folds it away and
+-- brings it back; the tab never moves. /dui unlock leaves a docked box alone. Free, DaylightUI's
+-- mover places it as before.
 
-local TAB_W, TAB_H, TUCK, DOCK_GAP = 14, 34, 3, 4
+local TAB_W, TAB_H, TUCK, DOCK_GAP = 14, 34, 3, 3
 
 local function DB()
 	local db = _G.DaylightEssentialsDB
@@ -502,7 +504,7 @@ end
 local function Folded() return DB().statsFolded == true end
 
 local function Docked()
-	return G("dock") ~= "free" and type(_G.Minimap) == "table" and _G.Minimap.GetBottom ~= nil
+	return G("dock") ~= "free" and type(_G.Minimap) == "table" and _G.Minimap.GetCenter ~= nil
 end
 
 local suspended = nil
@@ -516,21 +518,26 @@ local function Suspend(on)
 	end
 end
 
--- Under the map's left edge; below DaylightUI's panel (the map with its data texts) when that
--- reaches lower than the map. Positions are plain numbers, never secret.
+-- The tab on the map's corner facing the middle of the screen, the box beside the tab, both
+-- growing away from the map. Positions are plain numbers, never secret.
 local function PlaceDocked()
 	local mm = _G.Minimap
-	local dy = 0
-	local panel = ns.MoverFrame("infopanel")
-	if panel and panel:IsShown() then
-		local pb, mb = panel:GetBottom(), mm:GetBottom()
-		if pb and mb then
-			dy = (pb * panel:GetEffectiveScale() - mb * mm:GetEffectiveScale()) / frame:GetEffectiveScale()
-			if dy > 0 then dy = 0 end
-		end
+	local mx, my = mm:GetCenter()
+	local ux, uy = UIParent:GetCenter()
+	local right, top = true, true
+	if mx and ux then
+		local ms, us = mm:GetEffectiveScale(), UIParent:GetEffectiveScale()
+		right = mx * ms > ux * us   -- the map on the right: the box goes left
+		top = my * ms > uy * us     -- the map at the top: the box goes down
 	end
+	local near = right and "LEFT" or "RIGHT"    -- the map's side the box sits on
+	local far = right and "RIGHT" or "LEFT"     -- the box's side against the tab
+	local edge = top and "BOTTOM" or "TOP"      -- the map's edge it hangs from
+	local back = top and "TOP" or "BOTTOM"      -- the box's edge level with the map's
+	tab:ClearAllPoints()
+	tab:SetPoint(back .. far, mm, edge .. near, right and -DOCK_GAP or DOCK_GAP, top and -DOCK_GAP or DOCK_GAP)
 	frame:ClearAllPoints()
-	frame:SetPoint("TOPLEFT", mm, "BOTTOMLEFT", 0, dy - DOCK_GAP)
+	frame:SetPoint(back .. far, tab, back .. near, right and TUCK or -TUCK, 0)
 end
 
 local function PaintGrip(hover)
@@ -583,12 +590,12 @@ end
 local function Present(on)
 	local docked = Docked()
 	Suspend(docked)
-	if docked then PlaceDocked() end
-	shell:SetShown(docked or G("window") ~= false)
-	if docked and on then
+	if docked then
 		if not tab then BuildTab() end
-		tab:ClearAllPoints()
-		tab:SetPoint("TOPRIGHT", frame, "TOPLEFT", TUCK, -6)
+		PlaceDocked()
+	end
+	shell:SetShown(docked or G("windowless") ~= true)
+	if docked and on then
 		tab:SetFrameStrata(frame:GetFrameStrata())
 		tab:SetFrameLevel(math.max(0, frame:GetFrameLevel()))
 		tab:Show()
@@ -619,6 +626,23 @@ local function NameColor(stat)
 	return nil
 end
 
+-- The outline one step thicker than the player's (none to thin, thin to thick), so the coloured
+-- names read on any ground. Checked on every paint: DaylightUI sets the player's font back when
+-- it changes.
+local function Thicken(fs)
+	local font, size, flags = fs:GetFont()
+	if not font then return end
+	flags = flags or ""
+	if flags:find("THICK") then return end
+	local want
+	if flags:find("OUTLINE") then
+		want = (flags:gsub("OUTLINE", "THICKOUTLINE"))
+	else
+		want = flags == "" and "OUTLINE" or (flags .. ",OUTLINE")
+	end
+	fs:SetFont(font, size, want)
+end
+
 local function Ink(fs, color, role)
 	if color then fs:SetTextColor(color[1], color[2], color[3]) else ns.Ink(fs, role) end
 end
@@ -644,7 +668,6 @@ function Paint()
 	local oneLine = G("layout") == "line"
 	if oneLine then
 		-- One text, formatted by the game so live values may be secret: "|cLABEL|cAP |cVALUE1234|r · ..."
-		title:Hide()
 		for i = 1, #rows do rows[i]:Hide() end
 		local labelHex, valueHex, offHex = Hex("LABEL"), Hex("VALUE"), Hex("OFF")
 		local fmt = ""
@@ -664,18 +687,20 @@ function Paint()
 			end
 			args[#args + 1] = d.value
 		end
+		Thicken(line)
 		local ok = pcall(line.SetFormattedText, line, fmt, unpack(args, 1, n))
 		if not ok then line:SetText("--") end
 		line:Show()
 		Size(n, true)
 	else
 		line:Hide()
-		title:Show()
 		for i = 1, n do
 			local d = drawn[i]
 			local row = Row(i)
 			PlaceRow(row, i)
 			local c = NameColor(d.stat)
+			Thicken(row.label)
+			Thicken(row.value)
 			row.label:SetText(d.stat.tag or d.stat.label)
 			Ink(row.label, c, "LABEL")
 			if d.how == "live" then
@@ -796,10 +821,6 @@ local function Build()
 	content = CreateFrame("Frame", nil, body)
 	content:SetAllPoints()
 	content:SetFrameLevel(body:GetFrameLevel() + 5)
-	title = API.Text(content, "small", "CENTER")
-	title:SetPoint("TOP", body, "TOP", 0, -PAD)
-	title:SetText("Stats")
-	ns.Ink(title, "LABEL")
 	line = API.Text(content, "body", "LEFT")
 	line:SetPoint("LEFT", body, "LEFT", PAD, 0)
 	line:SetPoint("RIGHT", body, "RIGHT", -PAD, 0)
@@ -825,7 +846,6 @@ end
 
 function P.Style()
 	if not frame then return end
-	ns.Ink(title, "LABEL")
 	classColor = nil
 	if tab then
 		API.Skin(tab, { noBevel = true })
