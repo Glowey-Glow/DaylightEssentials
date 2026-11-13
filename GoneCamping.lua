@@ -81,6 +81,7 @@ local CAMP = {
 	"Camp Tent", "Tanning Rack", "Sewing Machine",
 	"Camp Chair", "Field Guide", "Trapper's Workbench",
 	"Faction Banner", "Spinning Wheel", "Loom",
+	"Cozy Sleeping Bag", "Pouch of Violet Dust",
 }
 local CAMP_SET = {}
 for _, n in ipairs(CAMP) do CAMP_SET[string.lower(n)] = true end
