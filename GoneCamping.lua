@@ -178,6 +178,7 @@ local function ToyIds()
 end
 
 -- Every known spell, name -> highest spell id (the spellbook, out of a fight).
+local lastBook = {}   -- your spellbook as last read (name -> id), for what an object does
 local function Spellbook()
 	local out = {}
 	local book = C_SpellBook
@@ -219,7 +220,8 @@ local function Gather()
 		seen[key] = true
 		objects[#objects + 1] = { key = key, kind = kind, id = id, name = name, icon = icon, fire = IsFire(name) }
 	end
-	for name, id in pairs(Spellbook()) do
+	lastBook = Spellbook()
+	for name, id in pairs(lastBook) do
 		if IsCampName(name) then Add("spell", id, name, SpellIcon(id)) end
 	end
 	local bags = NUM_BAG_SLOTS or 4
@@ -311,7 +313,77 @@ end
 -- The camp's buffs, as the game names them: sitting by a lit fire puts "Welcoming Campfire" on
 -- you with a countdown; when it ends, "Camp Benefits" holds the effects of every camp object at
 -- that fire. The objects on the ground can't be read by an addon, only these two buffs.
-local CAMP_BUFF, SITTING = "Camp Benefits", "Welcoming Campfire"
+-- The camp's buffs by the game's ids (their names then come from the game, in its language):
+-- Campfire Nearby while you're inside a camp, Welcoming Campfire while you sit (the countdown),
+-- Camp Benefits after, Violet Flames by a fire turned purple (Pouch of Violet Dust: camp buffs last
+-- two hours). English names until the game has the spells' data (ResolveNames at login).
+local AURA = { nearby = 1283391, sitting = 1289723, benefits = 1229741, violet = 1328375 }
+local CAMP_BUFF, SITTING, NEARBY, VIOLET = "Camp Benefits", "Welcoming Campfire", "Campfire Nearby", "Violet Flames"
+local function ResolveNames()
+	CAMP_BUFF = SpellName(AURA.benefits) or CAMP_BUFF
+	SITTING = SpellName(AURA.sitting) or SITTING
+	NEARBY = SpellName(AURA.nearby) or NEARBY
+	VIOLET = SpellName(AURA.violet) or VIOLET
+end
+
+-- ---------------------------------------------------------------------------------------------
+-- What's at this camp
+-- ---------------------------------------------------------------------------------------------
+-- The game doesn't list a camp's objects for addons, so it's pieced together while you're inside
+-- one (Campfire Nearby on you): each campfire and camp object you mouse over in the world (its
+-- tooltip names it, and its lines say what it gives), and each one you or your group put down.
+-- The fire's tier says how many objects the camp takes (Basic 3, Journeyman 5, Expert 10); the
+-- game's "no room" error says it's full. Walking away (or to another fire) starts over.
+
+local FIRES = { ["basic campfire"] = 3, ["journeyman campfire"] = 5, ["expert campfire"] = 10 }
+local WORLD_NAMES = { ["chair"] = "Camp Chair" }   -- objects named differently in the world
+local camp = { list = {}, byName = {}, fire = nil, slots = nil, full = false, aura = nil }
+
+local function NearbyAura()
+	if not (C_UnitAuras and C_UnitAuras.GetPlayerAuraBySpellID) then return nil end
+	local ok, a = pcall(C_UnitAuras.GetPlayerAuraBySpellID, AURA.nearby)
+	if not ok or not Safe(a) or type(a) ~= "table" then return nil end
+	local id = a.auraInstanceID
+	return Safe(id) and id or true
+end
+local function AtCamp() return NearbyAura() ~= nil end
+
+local function ResetCamp()
+	wipe(camp.list)
+	wipe(camp.byName)
+	camp.fire, camp.slots, camp.full = nil, nil, false
+end
+
+-- A world object or a cast seen at the camp. True if the camp's picture changed.
+local function NoteObject(name, lines, spellID)
+	if type(name) ~= "string" or name == "" then return false end
+	name = WORLD_NAMES[name:lower()] or name
+	local low = name:lower()
+	if FIRES[low] then
+		if camp.fire == name then return false end
+		camp.fire, camp.slots = name, FIRES[low]
+		return true
+	end
+	if not IsCampName(name) or IsFire(name) then return false end
+	local e, changed = camp.byName[low], false
+	if not e then
+		e = { name = name }
+		camp.byName[low] = e
+		camp.list[#camp.list + 1] = e
+		changed = true
+	end
+	if lines and #lines > 0 then
+		e.lines, changed = lines, true
+	elseif not e.lines then
+		-- Not moused over yet: what the spell says it does, if it's one you know (or was cast).
+		local id = spellID or lastBook[name]
+		if id and C_Spell and C_Spell.GetSpellDescription then
+			local ok, d = pcall(C_Spell.GetSpellDescription, id)
+			if ok and Safe(d) and type(d) == "string" and d ~= "" then e.lines, changed = { d }, true end
+		end
+	end
+	return changed
+end
 
 -- A buff's tooltip lines under its name (what it gives), or nil.
 local function BuffLines(name)
@@ -377,6 +449,16 @@ local function Notes()
 				notes[#notes + 1] = { fed .. ": " .. Minutes(left), true }
 				counting = true
 			elseif left < math.huge then counting = counting or left - warn < 600 end
+		end
+		-- At a camp: its fire and how full it is (hover the tent for what each object gives).
+		if buffs[NEARBY] then
+			local count = #camp.list
+			local of = camp.full and " (full)" or (camp.slots and (" (" .. count .. " of " .. camp.slots .. ")"))
+				or (count > 0 and (" (" .. count .. ")")) or ""
+			notes[#notes + 1] = { "At camp: " .. (camp.fire or "a campfire") .. of, false, true }
+		end
+		if buffs[VIOLET] then
+			notes[#notes + 1] = { VIOLET .. ": camp buffs last 2 hours", false, true }
 		end
 		-- Sitting by the fire: the countdown to Camp Benefits (a look every second meanwhile).
 		local sitting = buffs[SITTING]
@@ -797,10 +879,49 @@ end
 
 local EVENTS = { "PLAYER_ENTERING_WORLD", "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED", "BAG_UPDATE_DELAYED",
 	"SPELLS_CHANGED", "SPELL_UPDATE_COOLDOWN", "BAG_UPDATE_COOLDOWN", "GET_ITEM_INFO_RECEIVED",
-	"ZONE_CHANGED_NEW_AREA", "GROUP_ROSTER_UPDATE", "PLAYER_EQUIPMENT_CHANGED", "TOYS_UPDATED", "NEW_TOY_ADDED" }
+	"ZONE_CHANGED_NEW_AREA", "GROUP_ROSTER_UPDATE", "PLAYER_EQUIPMENT_CHANGED", "TOYS_UPDATED", "NEW_TOY_ADDED",
+	"UNIT_SPELLCAST_SUCCEEDED", "UI_ERROR_MESSAGE" }
 
-local function OnEvent(_, event, unit)
-	if event == "UNIT_AURA" or event == "UNIT_INVENTORY_CHANGED" then
+-- Mousing over something in the world while at a camp: a campfire or a camp object?
+local function OnObjectTooltip(_, data)
+	if not (frame and G("enabled")) or type(data) ~= "table" or type(data.lines) ~= "table" then return end
+	local first = data.lines[1] and data.lines[1].leftText
+	if not Safe(first) or type(first) ~= "string" or not AtCamp() then return end
+	local lines = {}
+	for i = 2, #data.lines do
+		local t = data.lines[i] and data.lines[i].leftText
+		if Safe(t) and type(t) == "string" and t ~= "" then lines[#lines + 1] = t end
+	end
+	if NoteObject(first, lines) then LookSoon() end
+end
+
+local function OnEvent(_, event, unit, b, c)
+	if event == "UNIT_AURA" then
+		if unit ~= "player" then return end
+		-- Out of the camp, or at another fire (a new Campfire Nearby): starts over.
+		local inst = NearbyAura()
+		if not inst or (camp.aura and inst ~= true and camp.aura ~= true and inst ~= camp.aura) then ResetCamp() end
+		camp.aura = inst
+		LookSoon()
+	elseif event == "UNIT_SPELLCAST_SUCCEEDED" then
+		-- Something put down by you or your group: one more object at the camp (or a new fire).
+		if not (Safe(unit) and type(unit) == "string" and Safe(c) and type(c) == "number") then return end
+		if not (unit == "player" or unit:match("^party%d$") or unit:match("^raid%d+$")) then return end
+		local name = SpellName(c)
+		if not name then return end
+		local low = name:lower()
+		if FIRES[low] and unit == "player" and not AtCamp() then ResetCamp() end
+		if (FIRES[low] or IsCampName(name)) and NoteObject(name, nil, c) then
+			if not FIRES[low] then camp.full = false end
+			LookSoon()
+		end
+	elseif event == "UI_ERROR_MESSAGE" then
+		local full = _G.SPELL_FAILED_CUSTOM_ERROR_6004   -- the game's "no room for more features" error
+		if full and Safe(b) and b == full and AtCamp() and not camp.full then
+			camp.full = true
+			LookSoon()
+		end
+	elseif event == "UNIT_INVENTORY_CHANGED" then
 		if unit == "player" then LookSoon() end
 	elseif event == "PLAYER_REGEN_DISABLED" then
 		if open then open = false end   -- (the state driver hides the fan; it stays shut after)
@@ -893,6 +1014,21 @@ local function Build()
 			GameTooltip:AddLine("No " .. CAMP_BUFF, 1, 0.75, 0.3)
 			GameTooltip:AddLine("Sit by a lit campfire for about a minute: every camp object at that fire comes in one buff, for an hour.", 1, 1, 1, true)
 		end
+		-- This camp: each object seen here and what it gives.
+		if buffs and buffs[NEARBY] then
+			GameTooltip:AddLine(" ")
+			local head = "This camp: " .. (camp.fire or "a campfire")
+			if camp.full then head = head .. " (full)"
+			elseif camp.slots then head = head .. " (" .. #camp.list .. " of " .. camp.slots .. ")" end
+			GameTooltip:AddLine(head, 0.5, 0.82, 0.5)
+			for _, e in ipairs(camp.list) do
+				GameTooltip:AddLine(e.name, 1, 1, 1)
+				for _, line in ipairs(e.lines or {}) do GameTooltip:AddLine("  " .. line, 0.75, 0.75, 0.75, true) end
+			end
+			if #camp.list == 0 or (camp.slots and #camp.list < camp.slots and not camp.full) then
+				GameTooltip:AddLine("Mouse over the fire and the camp's objects to add them here.", 0.6, 0.6, 0.6, true)
+			end
+		end
 		GameTooltip:Show()
 		if G("fadeIdle") then API.Fade(frame, 1, "FAST") end
 	end)
@@ -943,7 +1079,13 @@ _G.BINDING_HEADER_DAYLIGHTESSENTIALS = _G.BINDING_HEADER_DAYLIGHTESSENTIALS or "
 _G["BINDING_NAME_CLICK DaylightEssentialsGoneCampingTent:LeftButton"] = "Gone Camping: open or close the tent"
 
 function P.Login()
+	ResolveNames()
 	Build()
+	-- The world's tooltips: a campfire or camp object moused over while at a camp.
+	if TooltipDataProcessor and TooltipDataProcessor.AddTooltipPostCall and Enum and Enum.TooltipDataType
+		and Enum.TooltipDataType.Object then
+		TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Object, OnObjectTooltip)
+	end
 	Listen(G("enabled"))
 	BuildSoon()
 end
