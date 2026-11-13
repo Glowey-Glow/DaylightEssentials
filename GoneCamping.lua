@@ -8,7 +8,7 @@
 -- written from scratch, from the game's public camping rules.)
 --
 -- Finding your camp objects: by name (the campfires and every profession's camp pieces, as the
--- game names them in English; a "... Kit" item too), in your spellbook and your bags. Anything it
+-- game names them in English; a "... Kit" item too), in your spellbook, your bags and your toy box. Anything it
 -- misses: drag it onto the tent. Anything you don't want: right-click it in the fan (/dui camp
 -- reset brings everything back).
 --
@@ -62,6 +62,7 @@ local function DB()
 	if type(c.extra) ~= "table" then c.extra = {} end
 	if type(c.hidden) ~= "table" then c.hidden = {} end
 	if type(c.buffs) ~= "table" then c.buffs = {} end
+	if type(c.toys) ~= "table" then c.toys = {} end   -- camp toys found once (item id -> true)
 	return c
 end
 
@@ -139,6 +140,43 @@ local function ItemCount(id)
 	return (ok and type(n) == "number") and n or 0
 end
 
+-- A toy you own: its name and icon, or nil.
+local function ToyInfo(id)
+	if not (C_ToyBox and C_ToyBox.GetToyInfo) then return nil end
+	if PlayerHasToy then
+		local ok, has = pcall(PlayerHasToy, id)
+		if not ok or not has then return nil end
+	end
+	local ok, _, name, icon = pcall(C_ToyBox.GetToyInfo, id)
+	if ok and type(name) == "string" and name ~= "" then return name, icon end
+	return nil
+end
+
+-- The toys in the toy box (Pouch of Violet Dust and such live there, not in your bags): the ones
+-- its list shows now, plus every camp toy found before (the list follows the Toys tab's filters,
+-- so one hidden there later is still known).
+local function ToyIds()
+	local ids, seen = {}, {}
+	local box = C_ToyBox
+	if box and box.GetNumFilteredToys and box.GetToyFromIndex then
+		local okN, n = pcall(box.GetNumFilteredToys)
+		for i = 1, (okN and type(n) == "number") and n or 0 do
+			local ok, id = pcall(box.GetToyFromIndex, i)
+			if ok and type(id) == "number" and id > 0 and not seen[id] then
+				seen[id] = true
+				ids[#ids + 1] = id
+			end
+		end
+	end
+	for id in pairs(DB().toys) do
+		if type(id) == "number" and not seen[id] then
+			seen[id] = true
+			ids[#ids + 1] = id
+		end
+	end
+	return ids
+end
+
 -- Every known spell, name -> highest spell id (the spellbook, out of a fight).
 local function Spellbook()
 	local out = {}
@@ -198,6 +236,13 @@ local function Gather()
 			end
 		end
 	end
+	for _, id in ipairs(ToyIds()) do
+		local name, icon = ToyInfo(id)
+		if name and IsCampName(name) then
+			db.toys[id] = true
+			Add("toy", id, name, icon or ItemIcon(id))
+		end
+	end
 	-- Added by hand (drag onto the tent), while you still have it.
 	for _, key in ipairs(db.extra) do
 		local kind, id = key:match("^(%a+):(%d+)$")
@@ -206,6 +251,9 @@ local function Gather()
 			Add("spell", id, SpellName(id) or ("Spell " .. id), SpellIcon(id))
 		elseif kind == "item" and id and ItemCount(id) > 0 then
 			Add("item", id, ItemName(id) or ("Item " .. id), ItemIcon(id))
+		elseif kind == "toy" and id then
+			local name, icon = ToyInfo(id)
+			if name then Add("toy", id, name, icon or ItemIcon(id)) end
 		end
 	end
 	table.sort(objects, function(a, b)
@@ -220,7 +268,7 @@ local function CooldownLeft(o)
 	if o.kind == "spell" and C_Spell and C_Spell.GetSpellCooldown then
 		local ok, info = pcall(C_Spell.GetSpellCooldown, o.id)
 		if ok and type(info) == "table" then start, duration = info.startTime, info.duration end
-	elseif o.kind == "item" and C_Container and C_Container.GetItemCooldown then
+	elseif (o.kind == "item" or o.kind == "toy") and C_Container and C_Container.GetItemCooldown then
 		local ok, s, d = pcall(C_Container.GetItemCooldown, o.id)
 		if ok then start, duration = s, d end
 	end
@@ -374,7 +422,7 @@ local function Notes()
 	-- The camp pieces' shared cooldown: shown while every one of them is cooling down.
 	local soonest
 	for _, o in ipairs(objects) do
-		if not o.fire then
+		if not o.fire and o.kind ~= "toy" then
 			local left = CooldownLeft(o)
 			if left <= 0 then soonest = nil break end
 			soonest = soonest and math.min(soonest, left) or left
@@ -520,6 +568,8 @@ local function Slot(i)
 			GameTooltip:SetSpellByID(o.id)
 		elseif o and o.kind == "item" and GameTooltip.SetItemByID then
 			GameTooltip:SetItemByID(o.id)
+		elseif o and o.kind == "toy" and GameTooltip.SetToyByItemID then
+			GameTooltip:SetToyByItemID(o.id)
 		else
 			GameTooltip:SetText(o and o.name or "Sit")
 		end
@@ -575,6 +625,9 @@ function P.Build()
 		elseif o.kind == "item" then
 			btn:SetAttribute("type1", "item")
 			btn:SetAttribute("item1", "item:" .. o.id)
+		elseif o.kind == "toy" then
+			btn:SetAttribute("type1", "toy")
+			btn:SetAttribute("toy1", o.id)
 		else
 			btn:SetAttribute("type1", "macro")
 			btn:SetAttribute("macrotext1", "/sit")
@@ -624,7 +677,11 @@ local function Drop()
 		local id = (type(c) == "number" and c) or (type(b) == "number" and b > 100 and b) or nil
 		if id then key, name = "spell:" .. id, SpellName(id) end
 	elseif kind == "item" and type(a) == "number" then
-		key, name = "item:" .. a, ItemName(a)
+		-- (an item that's a toy you own goes in as the toy: it's used from the toy box)
+		local toyName = ToyInfo(a)
+		if toyName then key, name = "toy:" .. a, toyName else key, name = "item:" .. a, ItemName(a) end
+	elseif kind == "toy" and type(a) == "number" then
+		key, name = "toy:" .. a, ToyInfo(a)
 	end
 	if not key then return end
 	ClearCursor()
@@ -740,7 +797,7 @@ end
 
 local EVENTS = { "PLAYER_ENTERING_WORLD", "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED", "BAG_UPDATE_DELAYED",
 	"SPELLS_CHANGED", "SPELL_UPDATE_COOLDOWN", "BAG_UPDATE_COOLDOWN", "GET_ITEM_INFO_RECEIVED",
-	"ZONE_CHANGED_NEW_AREA", "GROUP_ROSTER_UPDATE", "PLAYER_EQUIPMENT_CHANGED" }
+	"ZONE_CHANGED_NEW_AREA", "GROUP_ROSTER_UPDATE", "PLAYER_EQUIPMENT_CHANGED", "TOYS_UPDATED", "NEW_TOY_ADDED" }
 
 local function OnEvent(_, event, unit)
 	if event == "UNIT_AURA" or event == "UNIT_INVENTORY_CHANGED" then
@@ -754,7 +811,8 @@ local function OnEvent(_, event, unit)
 		if pendingBuild then BuildSoon() else LookSoon() end
 	elseif event == "GET_ITEM_INFO_RECEIVED" then
 		if waitingNames then BuildSoon() end
-	elseif event == "BAG_UPDATE_DELAYED" or event == "SPELLS_CHANGED" or event == "PLAYER_ENTERING_WORLD" then
+	elseif event == "BAG_UPDATE_DELAYED" or event == "SPELLS_CHANGED" or event == "PLAYER_ENTERING_WORLD"
+		or event == "TOYS_UPDATED" or event == "NEW_TOY_ADDED" then
 		BuildSoon()
 	elseif event == "SPELL_UPDATE_COOLDOWN" or event == "BAG_UPDATE_COOLDOWN" then
 		if not InCombatLockdown() then
