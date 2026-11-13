@@ -63,7 +63,8 @@ P.page = { id = KEY, label = "Healer Mana",
 		{ label = "Look", items = {
 			{ type = "toggle", key = KEY .. ".colorByMana", label = "Colour the mana by what's left",
 			  desc = "Red when nearly out, yellow when low, bright above. Works in a fight too." },
-			{ type = "slider", key = KEY .. ".width", label = "Width", min = 130, max = 260, step = 5, unit = "px" },
+			{ type = "slider", key = KEY .. ".width", label = "Width", min = 130, max = 260, step = 5, unit = "px",
+			  desc = "At least this wide: it grows to fit a long name." },
 			{ type = "slider", key = KEY .. ".scale", label = "Size", min = 0.7, max = 1.6, step = 0.05, unit = "%" },
 		} },
 	} }
@@ -194,7 +195,7 @@ end
 -- The list
 -- ---------------------------------------------------------------------------------------------
 
-local ROW_H, PAD, ICON, GAP = 20, 6, 16, 6
+local ROW_H, PAD, ICON, GAP, MANA_W = 20, 6, 16, 6, 44
 local TITLE_H = 18
 local CLASS_ICONS = "Interface\\TargetingFrame\\UI-Classes-Circles"
 
@@ -222,7 +223,7 @@ local function Row(i)
 	row.icon:SetTexture(CLASS_ICONS)
 	row.mana = API.Text(row, "body", "RIGHT")
 	row.mana:SetPoint("RIGHT", row, "RIGHT", 0, 0)
-	row.mana:SetWidth(44)
+	row.mana:SetWidth(MANA_W)
 	row.name = API.Text(row, "body", "LEFT")
 	row.name:SetPoint("LEFT", row.icon, "RIGHT", GAP, 0)
 	row.name:SetPoint("RIGHT", row.mana, "LEFT", -GAP, 0)
@@ -278,8 +279,32 @@ end
 
 -- The list's size and its own scale go on the body; the moved frame only takes the size it covers
 -- on screen (DaylightUI's mover keeps the moved frame's scale its own).
+-- At least the Width setting, wider when a name or a word ("Offline") needs it: nothing is cut
+-- short. Names are plain text (a secret one shows as "Healer"); mana percents are kept to a
+-- column wide enough for "100%". Widths that can't be read keep the last ones measured.
+local lastNameW, lastManaW = 0, 0
 local function Size(n)
-	local w, h = math.floor(G("width") or 170), PAD * 2 + TITLE_H + n * ROW_H
+	local nameW, manaW = 0, 0
+	local nameOk, manaOk = true, true
+	for i = 1, n do
+		local row = rows[i]
+		if row and row:IsShown() then
+			local nw = ns.TextWidth(row.name)
+			if nw then nameW = math.max(nameW, nw) else nameOk = false end
+			if row.off or row.dead then
+				local mw = ns.TextWidth(row.mana)
+				if mw then manaW = math.max(manaW, mw) else manaOk = false end
+			end
+		end
+	end
+	if nameOk then lastNameW = nameW else nameW = math.max(nameW, lastNameW) end
+	if manaOk then lastManaW = manaW else manaW = math.max(manaW, lastManaW) end
+	local manaCol = math.max(MANA_W, math.ceil(manaW) + 2)
+	for i = 1, #rows do rows[i].mana:SetWidth(manaCol) end
+	local need = PAD * 2 + ICON + GAP + math.ceil(nameW) + 2 + GAP + manaCol
+	local titleW = ns.TextWidth(title) or 0
+	local w = math.max(math.floor(G("width") or 170), need, math.ceil(titleW) + PAD * 2 + 2)
+	local h = PAD * 2 + TITLE_H + n * ROW_H
 	local scale = G("scale") or 1
 	body:SetSize(w, h)
 	body:SetScale(scale)
@@ -348,6 +373,13 @@ local function RebuildSoon()
 	C_Timer.After(0.2, RebuildNow)
 end
 
+-- A healer's line changed its words ("Dead", "Offline"): the box fits them again.
+local function Refit()
+	local n = 0
+	for i = 1, #rows do if rows[i]:IsShown() then n = i end end
+	if n > 0 then Size(n) end
+end
+
 local function OnEvent(_, event, unit, kind)
 	if event == "UNIT_POWER_UPDATE" or event == "UNIT_MAXPOWER" then
 		local row = rowOf[unit]
@@ -357,11 +389,17 @@ local function OnEvent(_, event, unit, kind)
 		local row = rowOf[unit]
 		if not row then return end
 		local dead = UnitIsDeadOrGhost(unit)
-		if Safe(dead) and (dead == true) ~= (row.dead == true) then FillRow(row, unit) end
+		if Safe(dead) and (dead == true) ~= (row.dead == true) then
+			FillRow(row, unit)
+			Refit()
+		end
 	elseif event == "UNIT_CONNECTION" or event == "UNIT_FLAGS" then
 		-- Offline (or back): its line only.
 		local row = rowOf[unit]
-		if row then FillRow(row, unit) end
+		if row then
+			FillRow(row, unit)
+			Refit()
+		end
 	else
 		RebuildSoon()
 	end

@@ -123,6 +123,18 @@ function ns.SuspendMover(partKey, suspended)
 	return (pcall(movers.Suspend, "plugin." .. ADDON .. "." .. partKey, suspended and true or false))
 end
 
+-- A text's natural width (not cut to its box), or nil while it can't be read: a text holding a
+-- secret value has a secret width. Boxes that fit their text keep the last width they measured.
+function ns.TextWidth(fs)
+	if type(fs) ~= "table" then return nil end
+	local ok, w = pcall(fs.GetUnboundedStringWidth, fs)
+	if not ok or not ns.Safe(w) or type(w) ~= "number" then
+		ok, w = pcall(fs.GetStringWidth, fs)
+		if not ok or not ns.Safe(w) or type(w) ~= "number" then return nil end
+	end
+	return w
+end
+
 -- Whether the player lets DaylightUI animate (its "motion" choice). True when it can't be asked.
 function ns.MotionOn()
 	local motion = DUI.Motion

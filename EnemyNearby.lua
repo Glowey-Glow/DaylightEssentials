@@ -192,7 +192,8 @@ P.page = { id = KEY, label = "Enemy Nearby",
 			  disabled = Off },
 			{ type = "slider", key = KEY .. ".maxRows", label = "Names listed", min = 3, max = 15, step = 1, disabled = Off },
 			{ type = "toggle", key = KEY .. ".alwaysShow", label = "Show it when nobody's listed", disabled = Off },
-			{ type = "slider", key = KEY .. ".width", label = "Width", min = 160, max = 320, step = 5, unit = "px", disabled = Off },
+			{ type = "slider", key = KEY .. ".width", label = "Width", min = 160, max = 320, step = 5, unit = "px", disabled = Off,
+			  desc = "At least this wide: it grows to fit a long name and guild." },
 			{ type = "slider", key = KEY .. ".scale", label = "Size", min = 0.7, max = 1.6, step = 0.05, unit = "%", disabled = Off },
 		} },
 		{ label = "Alerts", items = {
@@ -388,7 +389,7 @@ local function FillRow(row, name, class, level, guild, kos, age)
 	row.level:SetTextColor(LevelColor(level))
 	row.guild:SetText(guild and ("<" .. guild .. ">") or "")
 	ns.Ink(row.guild, "LABEL")
-	row.guild:SetWidth(guild and min(row.guild:GetStringWidth() + 2, (G("width") or 210) * 0.45) or 1)
+	row.guild:SetWidth(guild and ((ns.TextWidth(row.guild) or 0) + 2) or 1)
 	if kos then
 		local c = ns.Colors().BAD or { 1, 0.3, 0.3 }
 		row.mark:SetVertexColor(c[1], c[2], c[3])
@@ -415,17 +416,34 @@ end
 -- The list's size and its own scale go on the body; the moved frame only takes the size it covers
 -- on screen. In a fight only the body grows (downward from the frame's top left), so the rows
 -- already listed, and the secure buttons over them, stay where they are.
+-- The width: at least the Width setting, wider when a name and its guild need it (and for the
+-- title and the "Nobody seen lately" line), so nothing is cut short. Names and guilds here are
+-- always plain text: a player whose name was secret is never listed.
+local function NeedWidth(n)
+	local need = max((ns.TextWidth(title) or 0), empty:IsShown() and (ns.TextWidth(empty) or 0) or 0) + 2
+	for i = 1, n do
+		local row = rows[i]
+		if row and row:IsShown() then
+			local guildW = row.guild:GetText() ~= "" and ((ns.TextWidth(row.guild) or 0) + 2 + GAP) or 0
+			need = max(need, 4 + LVL_W + GAP + (ns.TextWidth(row.name) or 0) + 2 + guildW)
+		end
+	end
+	return math.ceil(need) + PAD * 2
+end
+
 local sizedAs
 local function Size(n, force)
 	local h = PAD * 2 + TITLE_H + max(n, 1) * ROW_H
 	local fight = InCombatLockdown()
-	local sig = h .. ":" .. (G("width") or 210) .. ":" .. (G("scale") or 1) .. (fight and ":f" or "")
+	local w = max(floor(G("width") or 210), NeedWidth(n))
+	local sig = h .. ":" .. w .. ":" .. (G("scale") or 1) .. (fight and ":f" or "")
 	if sig == sizedAs and not force then return false end
 	sizedAs = sig
 	if fight then
-		body:SetHeight(h)
+		-- Grows from its top left only, so the rows listed (and the buttons over them) stay put.
+		body:SetSize(w, h)
 	else
-		local w, scale = floor(G("width") or 210), G("scale") or 1
+		local scale = G("scale") or 1
 		body:SetSize(w, h)
 		body:SetScale(scale)
 		frame:SetSize(w * scale, h * scale)
