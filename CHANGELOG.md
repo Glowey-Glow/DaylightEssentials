@@ -8,7 +8,9 @@
 - Rests in battlegrounds and dungeons unless you ask otherwise. /dui unlock shows sample names and a sample alert to place them.
 - New: Secondary Stats, a small box of the stats that matter for how you play: attack power, crit, hit and haste for melee, their ranged ones for hunters, spell power, spell crit and mana regen for casters and healers, armor, defense, dodge, parry and block for tanks. Auto picks by your group role or your class.
 - Custom: pick up to six stats of your own, resistances included, in the order you like.
-- Crit, haste, armor, dodge and the like stay live in a fight; attack power, hit, defense and mana regen keep their numbers from before it, dimmed (a choice). As a list or on one line, always or only in or out of a fight; stats at 0 can hide. /dui unlock shows samples to place it.
+- Crit, haste, armor, dodge and the like stay live in a fight; attack power, hit, defense and mana regen keep their numbers from before it, dimmed (a choice). As a list or on one line, always or only in or out of a fight; stats at 0 can hide.
+- It sits under the minimap's bottom-left corner, with a small tab beside it to fold it away and bring it back. Set it free to place it anywhere with /dui unlock, with or without its window.
+- Each stat's name in its own colour (crits gold, hit blue, haste green, attack power orange, spell power violet...), your class colour, or plain; the numbers can take the same colour. The box fits its text.
 - Fixed: no more "unknown unit" lines in chat about Combat Alert's "Stays for" and Combat Timer's "Keep the last fight's time" sliders.
 
 ## 1.0.0

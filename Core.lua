@@ -114,6 +114,15 @@ function ns.MoverFrame(key)
 	return nil
 end
 
+-- Stops (or restarts) DaylightUI placing one of our part's frames: while suspended its spot stays
+-- saved, /dui unlock shows no handle for it, and we place it ourselves (a box docked to another
+-- frame). Asked carefully, like ns.MoverFrame.
+function ns.SuspendMover(partKey, suspended)
+	local movers = DUI.Movers
+	if type(movers) ~= "table" or type(movers.Suspend) ~= "function" then return false end
+	return (pcall(movers.Suspend, "plugin." .. ADDON .. "." .. partKey, suspended and true or false))
+end
+
 -- Runs fn for every part that has it.
 function ns.Each(name, ...)
 	for _, part in ipairs(ns.parts) do

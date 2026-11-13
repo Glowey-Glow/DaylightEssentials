@@ -8,7 +8,7 @@ A plugin for DaylightUI on WoW: Forever: small combat aids in the DaylightUI loo
 - **Pet Reminder:** for hunters and warlocks, a warning while your pet is missing or set to passive.
 - **Cursor Cooldowns:** your taunt's and dispels' cooldowns beside the mouse pointer while they cool down.
 - **Enemy Nearby:** the enemy players seen near you lately, click to target, with a Kill on Sight list and an alert when one of them shows up.
-- **Secondary Stats:** the stats that matter for how you play (melee, ranged, caster, healer, tank, or your own pick of six) in a small box, live in a fight.
+- **Secondary Stats:** the stats that matter for how you play (melee, ranged, caster, healer, tank, or your own pick of six) in a small box under the minimap that folds away with a tab, live in a fight.
 
 ## Requirements
 
@@ -22,7 +22,7 @@ Install it from CurseForge (or WowUp), or unzip it into `World of Warcraft\_fore
 
 Everything is on from the start and shows by itself when it's needed: the healer list in a group with a healer, the timer and alert in a fight, the pet warning when your pet is missing or passive, and a cooldown icon at your pointer after you taunt or dispel.
 
-**Moving things:** type `/dui unlock`. Samples of the healer list, timer, alerts, pet warning, enemy list and stats box show so you can place them; `/dui lock` when you're done. The cursor icons follow your pointer.
+**Moving things:** type `/dui unlock`. Samples of the healer list, timer, alerts, pet warning, enemy list and stats box (when it's set free) show so you can place them; `/dui lock` when you're done. The cursor icons follow your pointer.
 
 **Enemies nearby:** the list fills from enemy nameplates, so keep them shown (the switch on its page, or V). Click a name to target; right-click it to add it to your Kill on Sight list, or type `/dui kos add Name`, `/dui kos remove Name`, `/dui kos list`.
 

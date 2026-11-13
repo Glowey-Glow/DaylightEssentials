@@ -1,7 +1,8 @@
 -- Secondary Stats: a small box of the stats that matter for how you play, in the DaylightUI look:
 -- a row per stat, its name on the left and its value on the right (or all of them on one line).
 -- Which stats: by your group role or your class (Auto), a fixed set for melee, ranged, casters,
--- healers or tanks, or a list of up to six you pick yourself (Custom). Move it with /dui unlock.
+-- healers or tanks, or a list of up to six you pick yourself (Custom). It hangs under the minimap
+-- with a fold tab, or is set free (moved with /dui unlock, with or without its window).
 --
 -- Secret values: in a fight the game keeps your own stats secret from addons. A secret can't be
 -- compared, added or turned into text by an addon's own code, but the game's own text formatting
@@ -12,8 +13,8 @@
 -- and is worked out again as the fight ends. Spell power and spell crit come per school: the best
 -- school is found out of a fight and remembered, and in a fight that school's number is read live.
 -- Nothing secret is ever compared, added or measured here: every sum and every check is made only
--- on values ns.Safe says can be read, and the box takes its size from its settings, never from
--- the width of its text.
+-- on values ns.Safe says can be read. The box fits its text, measured only while the widths can
+-- be read; in a fight the last measured widths stay.
 --
 -- What it costs: nothing while it's off. On, it listens to the game's stat events for you alone;
 -- a burst of them paints the box once at once and once more 0.3 s later. No timers otherwise.
@@ -169,6 +170,20 @@ end
 local BY_ID = {}
 for _, s in ipairs(CATALOG) do BY_ID[s.id] = s end
 
+-- Each stat's own colour for its name (a family shares one: every crit is gold, every hit blue).
+local AP, CRIT, HIT, HASTE, SPEED = { 1, 0.55, 0.3 }, { 1, 0.82, 0.2 }, { 0.45, 0.78, 1 }, { 0.35, 0.9, 0.4 }, { 0.65, 0.95, 0.5 }
+local PEN, BLOCK = { 0.75, 0.55, 1 }, { 0.8, 0.8, 0.92 }
+local STAT_COLOR = {
+	ap = AP, rap = AP, crit = CRIT, rcrit = CRIT, scrit = CRIT, hit = HIT, rhit = HIT, shit = HIT,
+	haste = HASTE, rhaste = HASTE, shaste = HASTE, speed = SPEED, rspeed = SPEED,
+	expertise = PEN, armorpen = PEN, spen = PEN,
+	sp = { 0.62, 0.6, 1 }, heal = { 0.4, 1, 0.78 }, regen = { 0.35, 0.62, 1 },
+	armor = { 0.86, 0.78, 0.6 }, defense = { 0.65, 0.8, 0.95 }, dodge = { 0.95, 0.75, 0.45 },
+	parry = { 1, 0.6, 0.4 }, block = BLOCK, blockvalue = BLOCK,
+	res_fire = { 1, 0.45, 0.25 }, res_nature = { 0.45, 0.9, 0.35 }, res_frost = { 0.55, 0.85, 1 },
+	res_shadow = { 0.7, 0.45, 0.95 }, res_arcane = { 0.95, 0.65, 1 },
+}
+
 local ROLE_LISTS = {
 	melee = { "ap", "crit", "hit", "speed", "haste", "expertise" },
 	ranged = { "rap", "rcrit", "rhit", "rspeed", "rhaste" },
@@ -195,6 +210,10 @@ P.defaults = {
 	dim = true,
 	width = 170,
 	scale = 1,
+	dock = "minimap",
+	window = true,
+	nameColors = "stat",
+	colorValues = false,
 }
 
 local SLOT_VALUES, SLOT_ORDER = { none = "None" }, { "none" }
@@ -204,6 +223,7 @@ for _, s in ipairs(CATALOG) do
 end
 
 local function Off(get) return get(KEY .. ".enabled") == false end
+local function NotFree(get) return Off(get) or get(KEY .. ".dock") ~= "free" end
 local function NotCustom(get) return Off(get) or get(KEY .. ".role") ~= "custom" end
 
 local slotItems = {}
@@ -213,7 +233,7 @@ for i = 1, SLOTS do
 end
 
 P.page = { id = KEY, label = "Secondary Stats",
-	desc = "A small box of the stats that matter for how you play: by your role or class, or your own pick. Crit, haste, armor and the like stay live in a fight; stats the game gives in parts (attack power, hit, defense, mana regen) keep their numbers from before the fight. Move it with /dui unlock. DaylightUI's info bar has small Crit, AP, SP and Hit texts too, if you'd rather have something smaller.",
+	desc = "A small box of the stats that matter for how you play: by your role or class, or your own pick. Crit, haste, armor and the like stay live in a fight; stats the game gives in parts (attack power, hit, defense, mana regen) keep their numbers from before the fight. It sits under the minimap with a tab to fold it away, or anywhere you like. DaylightUI's info bar has small Crit, AP, SP and Hit texts too, if you'd rather have something smaller.",
 	groups = {
 		{ label = "Secondary Stats", items = {
 			{ type = "toggle", key = KEY .. ".enabled", label = "On" },
@@ -228,11 +248,24 @@ P.page = { id = KEY, label = "Secondary Stats",
 			  values = { always = "Always", combat = "In a fight only", calm = "Out of a fight only" },
 			  order = { "always", "combat", "calm" } },
 		} },
+		{ label = "Where", items = {
+			{ type = "dropdown", key = KEY .. ".dock", label = "Place", disabled = Off,
+			  values = { minimap = "Under the minimap", free = "Free (move it with /dui unlock)" },
+			  order = { "minimap", "free" },
+			  desc = "Under the minimap it sits below the map's bottom-left corner, with a tab beside it to fold it away." },
+			{ type = "toggle", key = KEY .. ".window", label = "Window behind it", disabled = NotFree,
+			  desc = "Free, it can be just the text. Under the minimap it always has its window." },
+		} },
 		{ label = "Custom", desc = "Your own list, in this order, when Stats for is Custom.",
 		  items = slotItems },
 		{ label = "Look", items = {
 			{ type = "dropdown", key = KEY .. ".layout", label = "Layout", disabled = Off,
 			  values = { list = "A list", line = "One line" }, order = { "list", "line" } },
+			{ type = "dropdown", key = KEY .. ".nameColors", label = "Name colours", disabled = Off,
+			  values = { stat = "Each stat its own", class = "Your class colour", plain = "Plain" },
+			  order = { "stat", "class", "plain" },
+			  desc = "Each stat its own: crits gold, hit blue, haste green, attack power orange, spell power violet, and so on." },
+			{ type = "toggle", key = KEY .. ".colorValues", label = "Numbers in the same colour", disabled = Off },
 			{ type = "slider", key = KEY .. ".decimals", label = "Decimals on percents", min = 0, max = 2, step = 1, disabled = Off },
 			{ type = "toggle", key = KEY .. ".dim", label = "Dim numbers from before the fight", disabled = Off,
 			  desc = "Attack power, hit, defense and mana regen can't be worked out in a fight; their last numbers stay, dimmed." },
@@ -322,7 +355,9 @@ end
 
 local ROW_H, PAD, TITLE_H, GAP, SLACK = 18, 6, 16, 14, 6
 
-local frame, body, title, line   -- frame: what /dui unlock moves; body: the box, sized by its settings
+local frame, body, title, line   -- frame: what /dui unlock moves; body: the box, sized to its text
+local shell, content             -- in body: the window (can be left off), and the text over it
+local tab                        -- the fold tab, beside the box while it's under the minimap
 local rows = {}
 local previewing = false
 local inFight = false
@@ -330,7 +365,7 @@ local inFight = false
 local function Row(i)
 	local row = rows[i]
 	if row then return row end
-	row = CreateFrame("Frame", nil, body)
+	row = CreateFrame("Frame", nil, content)
 	row:SetHeight(ROW_H)
 	row.value = API.Text(row, "body", "RIGHT")
 	row.value:SetPoint("RIGHT", row, "RIGHT", 0, 0)
@@ -351,7 +386,7 @@ local function PlaceRow(row, i)
 end
 
 local function Hex(role)
-	local c = ns.Colors()[role] or { 1, 1, 1 }
+	local c = type(role) == "table" and role or ns.Colors()[role] or { 1, 1, 1 }
 	return string.format("|cff%02x%02x%02x", math.floor(c[1] * 255 + 0.5), math.floor(c[2] * 255 + 0.5),
 		math.floor(c[3] * 255 + 0.5))
 end
@@ -404,7 +439,7 @@ local function Size(n, oneLine)
 	body:SetSize(w, h)
 	body:SetScale(scale)
 	frame:SetSize(w * scale, h * scale)
-	API.Skin(body, { window = true })
+	API.Skin(shell, { window = true })
 end
 
 -- Whether the box shows now (outside unlock).
@@ -447,19 +482,165 @@ local function Collect()
 	return n
 end
 
+-- ---------------------------------------------------------------------------------------------
+-- Under the minimap, with a fold tab
+-- ---------------------------------------------------------------------------------------------
+-- Docked, the box hangs under the minimap's bottom-left corner (below the data texts DaylightUI
+-- puts under the map) and /dui unlock leaves it alone. A small tab on its left edge folds it away
+-- and brings it back; the tab stays put either way. Free, DaylightUI's mover places it as before.
+
+local TAB_W, TAB_H, TUCK, DOCK_GAP = 14, 34, 3, 4
+
+local function DB()
+	local db = _G.DaylightEssentialsDB
+	if type(db) ~= "table" then
+		db = {}
+		_G.DaylightEssentialsDB = db
+	end
+	return db
+end
+local function Folded() return DB().statsFolded == true end
+
+local function Docked()
+	return G("dock") ~= "free" and type(_G.Minimap) == "table" and _G.Minimap.GetBottom ~= nil
+end
+
+local suspended = nil
+local function Suspend(on)
+	if suspended == on then return end
+	suspended = on
+	-- Released, DaylightUI places it again (its saved spot or Home); without that, Home here.
+	if not ns.SuspendMover(KEY, on) and not on and frame then
+		frame:ClearAllPoints()
+		frame:SetPoint(unpack(Home()))
+	end
+end
+
+-- Under the map's left edge; below DaylightUI's panel (the map with its data texts) when that
+-- reaches lower than the map. Positions are plain numbers, never secret.
+local function PlaceDocked()
+	local mm = _G.Minimap
+	local dy = 0
+	local panel = ns.MoverFrame("infopanel")
+	if panel and panel:IsShown() then
+		local pb, mb = panel:GetBottom(), mm:GetBottom()
+		if pb and mb then
+			dy = (pb * panel:GetEffectiveScale() - mb * mm:GetEffectiveScale()) / frame:GetEffectiveScale()
+			if dy > 0 then dy = 0 end
+		end
+	end
+	frame:ClearAllPoints()
+	frame:SetPoint("TOPLEFT", mm, "BOTTOMLEFT", 0, dy - DOCK_GAP)
+end
+
+local function PaintGrip(hover)
+	if not tab then return end
+	local r, g, b
+	if hover then
+		r, g, b = API.Accent()
+	else
+		local c = ns.Colors().LABEL or { 0.7, 0.7, 0.7 }
+		r, g, b = c[1], c[2], c[3]
+	end
+	for _, bar in ipairs(tab.bars) do bar:SetColorTexture(r, g, b, 1) end
+end
+
+local Paint
+local function BuildTab()
+	tab = CreateFrame("Button", "DaylightEssentialsStatsTab", UIParent)
+	tab:SetSize(TAB_W, TAB_H)
+	API.Skin(tab, { noBevel = true })
+	tab.bars = {}
+	for i = 1, 3 do
+		local bar = tab:CreateTexture(nil, "OVERLAY")
+		bar:SetSize(6, 2)
+		bar:SetPoint("CENTER", tab, "CENTER", 0, (2 - i) * 4)
+		tab.bars[i] = bar
+	end
+	PaintGrip(false)
+	tab:SetScript("OnClick", function()
+		local open = Folded()
+		DB().statsFolded = (not open) or nil
+		GameTooltip:Hide()
+		if open then frame:SetAlpha(0) end
+		Paint()
+		if open then API.Fade(frame, 1, "FAST") end
+	end)
+	tab:SetScript("OnEnter", function(self)
+		PaintGrip(true)
+		GameTooltip:SetOwner(self, "ANCHOR_LEFT")
+		GameTooltip:SetText(Folded() and "Show your stats" or "Fold your stats away")
+		GameTooltip:Show()
+	end)
+	tab:SetScript("OnLeave", function()
+		PaintGrip(false)
+		GameTooltip:Hide()
+	end)
+	tab:Hide()
+end
+
+-- Shows or hides the box (and its tab), docked or free.
+local function Present(on)
+	local docked = Docked()
+	Suspend(docked)
+	if docked then PlaceDocked() end
+	shell:SetShown(docked or G("window") ~= false)
+	if docked and on then
+		if not tab then BuildTab() end
+		tab:ClearAllPoints()
+		tab:SetPoint("TOPRIGHT", frame, "TOPLEFT", TUCK, -6)
+		tab:SetFrameStrata(frame:GetFrameStrata())
+		tab:SetFrameLevel(math.max(0, frame:GetFrameLevel()))
+		tab:Show()
+	elseif tab then
+		tab:Hide()
+	end
+	frame:SetShown(on and not (docked and Folded()))
+end
+
+-- ---------------------------------------------------------------------------------------------
+-- Colours
+-- ---------------------------------------------------------------------------------------------
+
+local classColor
+local function NameColor(stat)
+	local mode = G("nameColors") or "stat"
+	if mode == "stat" then return STAT_COLOR[stat.id] end
+	if mode == "class" then
+		if not classColor then
+			local ok, _, token = pcall(UnitClass, "player")
+			if ok and Safe(token) and token then
+				local r, g, b = API.ClassColor(token)
+				if r then classColor = { r, g, b } end
+			end
+		end
+		return classColor
+	end
+	return nil
+end
+
+local function Ink(fs, color, role)
+	if color then fs:SetTextColor(color[1], color[2], color[3]) else ns.Ink(fs, role) end
+end
+
+-- ---------------------------------------------------------------------------------------------
+-- Drawing
+-- ---------------------------------------------------------------------------------------------
+
 local args = {}
-local function Paint()
+function Paint()
 	if not frame then return end
 	if not previewing and not Wanted() then
-		frame:Hide()
+		Present(false)
 		return
 	end
 	local n = Collect()
 	if n == 0 then
-		frame:Hide()
+		Present(false)
 		return
 	end
 	local dim = G("dim") ~= false
+	local colorValues = G("colorValues") == true
 	local oneLine = G("layout") == "line"
 	if oneLine then
 		-- One text, formatted by the game so live values may be secret: "|cLABEL|cAP |cVALUE1234|r · ..."
@@ -471,12 +652,15 @@ local function Paint()
 		for i = 1, n do
 			local d = drawn[i]
 			local s = d.stat
+			local c = NameColor(s)
+			local nameHex = c and Hex(c) or labelHex
 			if i > 1 then fmt = fmt .. labelHex .. "  \194\183  |r" end
-			fmt = fmt .. labelHex .. s.short .. "|r "
+			fmt = fmt .. nameHex .. s.short .. "|r "
+			local vHex = (d.stale and dim) and offHex or ((colorValues and c) and nameHex or valueHex)
 			if d.how == "live" then
-				fmt = fmt .. valueHex .. FormatOf(s) .. "|r"
+				fmt = fmt .. vHex .. FormatOf(s) .. "|r"
 			else
-				fmt = fmt .. ((d.stale and dim) and offHex or valueHex) .. "%s|r"
+				fmt = fmt .. vHex .. "%s|r"
 			end
 			args[#args + 1] = d.value
 		end
@@ -491,22 +675,26 @@ local function Paint()
 			local d = drawn[i]
 			local row = Row(i)
 			PlaceRow(row, i)
+			local c = NameColor(d.stat)
 			row.label:SetText(d.stat.tag or d.stat.label)
-			ns.Ink(row.label, "LABEL")
+			Ink(row.label, c, "LABEL")
 			if d.how == "live" then
 				local ok = pcall(row.value.SetFormattedText, row.value, FormatOf(d.stat), d.value)
 				if not ok then row.value:SetText("--") end
-				ns.Ink(row.value, "VALUE")
 			else
 				row.value:SetText(d.value)
-				ns.Ink(row.value, (d.stale and dim) and "OFF" or "VALUE")
+			end
+			if d.stale and dim then
+				ns.Ink(row.value, "OFF")
+			else
+				Ink(row.value, colorValues and c or nil, "VALUE")
 			end
 			row:Show()
 		end
 		for i = n + 1, #rows do rows[i]:Hide() end
 		Size(n, false)
 	end
-	frame:Show()
+	Present(true)
 end
 
 -- A burst of events: paint at once, then once more 0.3 s later for whatever came after.
@@ -586,6 +774,7 @@ local function Refresh()
 	Listen(on, (G("role") or "auto") == "auto")
 	if not on then
 		frame:Hide()
+		if tab then tab:Hide() end
 		return
 	end
 	Choose()
@@ -600,11 +789,18 @@ local function Build()
 	frame:Hide()
 	body = CreateFrame("Frame", nil, frame)
 	body:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
-	title = API.Text(body, "small", "CENTER")
+	-- The window on its own layer so it can be left off; the text on a layer over it.
+	shell = CreateFrame("Frame", nil, body)
+	shell:SetAllPoints()
+	shell:SetFrameLevel(body:GetFrameLevel())
+	content = CreateFrame("Frame", nil, body)
+	content:SetAllPoints()
+	content:SetFrameLevel(body:GetFrameLevel() + 5)
+	title = API.Text(content, "small", "CENTER")
 	title:SetPoint("TOP", body, "TOP", 0, -PAD)
 	title:SetText("Stats")
 	ns.Ink(title, "LABEL")
-	line = API.Text(body, "body", "LEFT")
+	line = API.Text(content, "body", "LEFT")
 	line:SetPoint("LEFT", body, "LEFT", PAD, 0)
 	line:SetPoint("RIGHT", body, "RIGHT", -PAD, 0)
 	line:SetWordWrap(false)
@@ -630,6 +826,11 @@ end
 function P.Style()
 	if not frame then return end
 	ns.Ink(title, "LABEL")
+	classColor = nil
+	if tab then
+		API.Skin(tab, { noBevel = true })
+		PaintGrip(false)
+	end
 	Paint()
 end
 
