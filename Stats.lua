@@ -102,7 +102,7 @@ local CATALOG = {
 	  sum = function() return Sum(Call("UnitAttackPower", "player")) end },
 	{ id = "crit", label = "Crit", short = "Crit", kind = "pct", sample = 12.4,
 	  live = function() return First("GetCritChance") end },
-	{ id = "hit", label = "Hit", short = "Hit", kind = "pct", sample = 5,
+	{ id = "hit", label = "Hit", short = "Hit", kind = "pct", sample = 5, cap = "melee",
 	  sum = function() return Sum(First("GetCombatRatingBonus", CR_MELEE), First("GetHitModifier")) end },
 	{ id = "speed", label = "Attack speed", tag = "Atk Speed", short = "Speed", kind = "sec", sample = 2.6,
 	  live = function() return First("UnitAttackSpeed", "player") end },
@@ -117,7 +117,7 @@ local CATALOG = {
 	  sum = function() return Sum(Call("UnitRangedAttackPower", "player")) end },
 	{ id = "rcrit", label = "Ranged crit", tag = "Rng Crit", short = "RCrit", kind = "pct", sample = 14.25,
 	  live = function() return First("GetRangedCritChance") end },
-	{ id = "rhit", label = "Ranged hit", tag = "Rng Hit", short = "RHit", kind = "pct", sample = 6,
+	{ id = "rhit", label = "Ranged hit", tag = "Rng Hit", short = "RHit", kind = "pct", sample = 6, cap = "ranged",
 	  sum = function() return Sum(First("GetCombatRatingBonus", CR_RANGED), First("GetRangedHitModifier")) end },
 	{ id = "rspeed", label = "Ranged speed", tag = "Rng Speed", short = "RSpeed", kind = "sec", sample = 2.9,
 	  live = function() return First("UnitRangedDamage", "player") end },
@@ -131,7 +131,7 @@ local CATALOG = {
 	  live = function() return First("GetSpellBonusHealing") end },
 	{ id = "scrit", label = "Spell crit", tag = "Spell Crit", short = "SCrit", kind = "pct", sample = 9.8,
 	  live = function() return First("GetSpellCritChance", BestSchool("GetSpellCritChance")) end },
-	{ id = "shit", label = "Spell hit", tag = "Spell Hit", short = "SHit", kind = "pct", sample = 7,
+	{ id = "shit", label = "Spell hit", tag = "Spell Hit", short = "SHit", kind = "pct", sample = 7, cap = "spell",
 	  sum = function() return Sum(First("GetCombatRatingBonus", CR_SPELL), First("GetSpellHitModifier")) end },
 	{ id = "shaste", label = "Spell haste", tag = "Spell Haste", short = "SHaste", kind = "pct", sample = 4.2, zero = true,
 	  live = function() return First("UnitSpellHaste", "player") end },
@@ -220,6 +220,7 @@ P.defaults = {
 	windowless = false,
 	nameColors = "stat",
 	colorValues = false,
+	hitCap = true,
 	shadow = 1,
 }
 
@@ -294,6 +295,8 @@ P.page = { id = KEY, label = "Secondary Stats",
 			  order = { "stat", "class", "plain" },
 			  desc = "Per stat: crits gold, hit blue, haste green, attack power orange, spell power violet, and so on." },
 			{ type = "toggle", key = KEY .. ".colorValues", label = "Numbers in the same color", disabled = Off },
+			{ type = "toggle", key = KEY .. ".hitCap", label = "Hit in green when it's enough", disabled = Off,
+			  desc = "Melee, ranged and spell hit turn green when you have enough to never miss your current target, by its level: the same numbers as the game's Hit Chance tooltip (5% melee and 4% spells at your level, 8% and 17% against raid bosses)." },
 			{ type = "slider", key = KEY .. ".shadow", label = "Text shadow", min = 0, max = 4, step = 1, unit = "px", disabled = Off,
 			  desc = "How far the dark shadow under the text reaches. 0 for none." },
 			{ type = "slider", key = KEY .. ".decimals", label = "Decimals on percents", min = 0, max = 2, step = 1, disabled = Off },
@@ -350,6 +353,38 @@ local function FormatOf(s)
 end
 
 local lastText = {}   -- id -> the last readable text of a summed stat
+local lastNum = {}   -- the last readable number of each added-up stat (hit's cap check uses it)
+
+-- The hit you need to never miss your current enemy target (percent), or nil (no such target).
+-- The game's own rule, as its Hit Chance tooltip gives it: melee and ranged miss 5% at your
+-- level, +0.1% per point of defense over your weapon skill (5 a level) up to 10 points, 0.2% a
+-- point for the whole gap past that (8% against a raid boss, 3 levels up), 0.04% less a point below you. Spells
+-- miss 4% at your level, 1% more a level up to 2 levels, then 11% a level against creatures (17%
+-- for a raid boss) or 7% against players; never under 1%.
+local function HitNeed(kind)
+	if not (UnitExists("target") and UnitCanAttack("player", "target")) then return nil end
+	local ok, dead = pcall(UnitIsDeadOrGhost, "target")
+	if ok and Safe(dead) and dead then return nil end
+	local mine, theirs = UnitLevel("player"), UnitLevel("target")
+	if not (Safe(mine) and Safe(theirs)) or type(mine) ~= "number" or type(theirs) ~= "number" then return nil end
+	local okC, kind2 = pcall(UnitClassification, "target")
+	if theirs <= 0 or (okC and Safe(kind2) and kind2 == "worldboss") then theirs = mine + 3 end
+	local d = theirs - mine
+	if kind == "spell" then
+		local okP, player = pcall(UnitIsPlayer, "target")
+		player = okP and Safe(player) and player
+		local miss
+		if d <= 2 then miss = 4 + d else miss = 6 + (player and 7 or 11) * (d - 2) end
+		return math.max(1, miss)
+	end
+	local skill = 5 * d
+	local miss
+	if skill > 10 then miss = 5 + skill * 0.2
+	elseif skill >= 0 then miss = 5 + skill * 0.1
+	else miss = 5 + skill * 0.04 end
+	return math.max(0, miss)
+end
+
 local zeroed = {}     -- id -> true when hidden at 0 at the last readable read
 local shieldOn = false
 
@@ -374,6 +409,7 @@ local function Value(s)
 		return "text", lastText[s.id] or "--", true
 	end
 	if s.zero then zeroed[s.id] = v == 0 end
+	lastNum[s.id] = v
 	local text = string.format(FormatOf(s), v)
 	lastText[s.id] = text
 	return "text", text, false
@@ -878,6 +914,15 @@ local function Shadow(fs)
 	fs:SetShadowOffset(px, -px)
 end
 
+-- Whether a hit line has enough for the current target (always with the samples).
+local function HitEnough(s)
+	if not s.cap or G("hitCap") == false then return false end
+	local v = previewing and s.sample or lastNum[s.id]
+	local need = HitNeed(s.cap)
+	if previewing and not need then need = s.cap == "spell" and 4 or 5 end
+	return type(v) == "number" and need ~= nil and v + 0.005 >= need
+end
+
 local function Ink(fs, color, role)
 	if color then fs:SetTextColor(color[1], color[2], color[3]) else ns.Ink(fs, role) end
 end
@@ -915,6 +960,7 @@ function Paint()
 			if i > 1 then fmt = fmt .. labelHex .. "  \194\183  |r" end
 			fmt = fmt .. nameHex .. s.short .. "|r "
 			local vHex = (d.stale and dim) and offHex or ((colorValues and c) and nameHex or valueHex)
+			if HitEnough(s) then vHex = Hex("GOOD") end
 			if d.how == "live" then
 				fmt = fmt .. vHex .. FormatOf(s) .. "|r"
 			else
@@ -947,7 +993,9 @@ function Paint()
 			else
 				row.value:SetText(d.value)
 			end
-			if d.stale and dim then
+			if HitEnough(d.stat) then
+				ns.Ink(row.value, "GOOD")   -- enough hit for the target (its last number, in a fight)
+			elseif d.stale and dim then
 				ns.Ink(row.value, "OFF")
 			else
 				Ink(row.value, colorValues and c or nil, "VALUE")
@@ -980,7 +1028,7 @@ end
 local UNIT_EVENTS = { "UNIT_STATS", "UNIT_ATTACK_POWER", "UNIT_RANGED_ATTACK_POWER", "UNIT_ATTACK_SPEED",
 	"UNIT_DAMAGE", "UNIT_RANGEDDAMAGE", "UNIT_SPELL_HASTE", "UNIT_RESISTANCES", "UNIT_DEFENSE",
 	"PLAYER_DAMAGE_DONE_MODS", "UNIT_MAXPOWER" }
-local EVENTS = { "COMBAT_RATING_UPDATE", "SPELL_POWER_CHANGED", "PLAYER_EQUIPMENT_CHANGED", "PLAYER_LEVEL_UP",
+local EVENTS = { "PLAYER_TARGET_CHANGED", "COMBAT_RATING_UPDATE", "SPELL_POWER_CHANGED", "PLAYER_EQUIPMENT_CHANGED", "PLAYER_LEVEL_UP",
 	"PLAYER_ENTERING_WORLD", "PLAYER_REGEN_ENABLED", "PLAYER_REGEN_DISABLED" }
 local ROLE_EVENTS = { "GROUP_ROSTER_UPDATE", "PLAYER_ROLES_ASSIGNED" }
 
