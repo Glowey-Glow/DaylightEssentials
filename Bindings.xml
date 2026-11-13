@@ -3,4 +3,6 @@
 	</Binding>
 	<Binding name="CLICK DaylightEssentialsHaloButton:LeftButton" header="DAYLIGHTESSENTIALS" category="ADDONS">
 	</Binding>
+	<Binding name="CLICK DaylightEssentialsGoneCampingTent:LeftButton" header="DAYLIGHTESSENTIALS" category="ADDONS">
+	</Binding>
 </Bindings>

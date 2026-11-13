@@ -15,7 +15,7 @@ local ok, err = pcall(function()
 		needs = { 1, 1 },
 		short = "Essentials",
 		color = { 0.45, 0.6, 1 },
-		blurb = "Healer mana, a combat timer and alert, a pet reminder, cursor cooldowns, enemies nearby, your secondary stats, Buff Manners and Halo.",
+		blurb = "Healer mana, a combat timer and alert, a pet reminder, cursor cooldowns, enemies nearby, your secondary stats, Buff Manners, Halo and Gone Camping.",
 	})
 	ns.DUI:RegisterModule(ADDON, { plugin = ADDON, label = "Essentials", defaults = ns.defaults,
 		options = { pages = pages } })
