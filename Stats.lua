@@ -96,52 +96,52 @@ local function Second(name, ...) local _, b = Call(name, ...) return b end
 local function Third(name, ...) local _, _, c = Call(name, ...) return c end
 
 local CATALOG = {
-	{ id = "ap", label = "Attack power", short = "AP", kind = "int", sample = 1234,
+	{ id = "ap", label = "Attack power", tag = "Atk Pwr", short = "AP", kind = "int", sample = 1234,
 	  sum = function() return Sum(Call("UnitAttackPower", "player")) end },
 	{ id = "crit", label = "Crit", short = "Crit", kind = "pct", sample = 12.4,
 	  live = function() return First("GetCritChance") end },
 	{ id = "hit", label = "Hit", short = "Hit", kind = "pct", sample = 5,
 	  sum = function() return Sum(First("GetCombatRatingBonus", CR_MELEE), First("GetHitModifier")) end },
-	{ id = "speed", label = "Attack speed", short = "Speed", kind = "sec", sample = 2.6,
+	{ id = "speed", label = "Attack speed", tag = "Atk Speed", short = "Speed", kind = "sec", sample = 2.6,
 	  live = function() return First("UnitAttackSpeed", "player") end },
 	{ id = "haste", label = "Haste", short = "Haste", kind = "pct", sample = 3.15, zero = true,
 	  live = function() return First("GetMeleeHaste") end },
 	{ id = "expertise", label = "Expertise", short = "Exp", kind = "pct", sample = 1.5, zero = true,
 	  live = function() return First("GetExpertise") end },
-	{ id = "armorpen", label = "Armor penetration", short = "ArP", kind = "int", sample = 140, zero = true,
+	{ id = "armorpen", label = "Armor penetration", tag = "Armor Pen", short = "ArP", kind = "int", sample = 140, zero = true,
 	  live = function() return First("GetArmorPenetration") end },
 
-	{ id = "rap", label = "Ranged AP", short = "RAP", kind = "int", sample = 1480,
+	{ id = "rap", label = "Ranged AP", tag = "Rng Atk Pwr", short = "RAP", kind = "int", sample = 1480,
 	  sum = function() return Sum(Call("UnitRangedAttackPower", "player")) end },
-	{ id = "rcrit", label = "Ranged crit", short = "RCrit", kind = "pct", sample = 14.25,
+	{ id = "rcrit", label = "Ranged crit", tag = "Rng Crit", short = "RCrit", kind = "pct", sample = 14.25,
 	  live = function() return First("GetRangedCritChance") end },
-	{ id = "rhit", label = "Ranged hit", short = "RHit", kind = "pct", sample = 6,
+	{ id = "rhit", label = "Ranged hit", tag = "Rng Hit", short = "RHit", kind = "pct", sample = 6,
 	  sum = function() return Sum(First("GetCombatRatingBonus", CR_RANGED), First("GetRangedHitModifier")) end },
-	{ id = "rspeed", label = "Ranged speed", short = "RSpeed", kind = "sec", sample = 2.9,
+	{ id = "rspeed", label = "Ranged speed", tag = "Rng Speed", short = "RSpeed", kind = "sec", sample = 2.9,
 	  live = function() return First("UnitRangedDamage", "player") end },
 	-- The weapon's haste plus the quiver's.
-	{ id = "rhaste", label = "Ranged haste", short = "RHaste", kind = "pct", sample = 15, zero = true,
+	{ id = "rhaste", label = "Ranged haste", tag = "Rng Haste", short = "RHaste", kind = "pct", sample = 15, zero = true,
 	  sum = function() return Sum(Call("GetRangedHaste")) end },
 
-	{ id = "sp", label = "Spell power", short = "SP", kind = "int", sample = 612,
+	{ id = "sp", label = "Spell power", tag = "Spell Pwr", short = "SP", kind = "int", sample = 612,
 	  live = function() return First("GetSpellBonusDamage", BestSchool("GetSpellBonusDamage")) end },
 	{ id = "heal", label = "Healing", short = "Heal", kind = "int", sample = 1105,
 	  live = function() return First("GetSpellBonusHealing") end },
-	{ id = "scrit", label = "Spell crit", short = "SCrit", kind = "pct", sample = 9.8,
+	{ id = "scrit", label = "Spell crit", tag = "Spell Crit", short = "SCrit", kind = "pct", sample = 9.8,
 	  live = function() return First("GetSpellCritChance", BestSchool("GetSpellCritChance")) end },
-	{ id = "shit", label = "Spell hit", short = "SHit", kind = "pct", sample = 7,
+	{ id = "shit", label = "Spell hit", tag = "Spell Hit", short = "SHit", kind = "pct", sample = 7,
 	  sum = function() return Sum(First("GetCombatRatingBonus", CR_SPELL), First("GetSpellHitModifier")) end },
-	{ id = "shaste", label = "Spell haste", short = "SHaste", kind = "pct", sample = 4.2, zero = true,
+	{ id = "shaste", label = "Spell haste", tag = "Spell Haste", short = "SHaste", kind = "pct", sample = 4.2, zero = true,
 	  live = function() return First("UnitSpellHaste", "player") end },
 	-- While casting (the regen that counts in a fight), per second, so times five.
-	{ id = "regen", label = "Mana regen", short = "MP5", kind = "mp5", sample = 48,
+	{ id = "regen", label = "Mana regen", tag = "Regen", short = "MP5", kind = "mp5", sample = 48,
 	  sum = function()
 		local _, casting = Call("GetManaRegen")
 		local v = Sum(casting)
 		if v then v = math.floor(v * 5 + 0.5) end
 		return v
 	  end },
-	{ id = "spen", label = "Spell penetration", short = "SPen", kind = "int", sample = 10, zero = true,
+	{ id = "spen", label = "Spell penetration", tag = "Spell Pen", short = "SPen", kind = "int", sample = 10, zero = true,
 	  live = function() return First("GetSpellPenetration") end },
 
 	{ id = "armor", label = "Armor", short = "Armor", kind = "int", sample = 7320,
@@ -154,7 +154,7 @@ local CATALOG = {
 	  live = function() return First("GetParryChance") end },
 	{ id = "block", label = "Block", short = "Block", kind = "pct", sample = 14.8, shield = true,
 	  live = function() return First("GetBlockChance") end },
-	{ id = "blockvalue", label = "Block value", short = "BV", kind = "int", sample = 162, shield = true,
+	{ id = "blockvalue", label = "Block value", tag = "Block Value", short = "BV", kind = "int", sample = 162, shield = true,
 	  live = function() return First("GetShieldBlock") end },
 }
 
@@ -162,7 +162,7 @@ local CATALOG = {
 for _, r in ipairs({ { 2, "fire", "Fire" }, { 3, "nature", "Nature" }, { 4, "frost", "Frost" },
 	{ 5, "shadow", "Shadow" }, { 6, "arcane", "Arcane" } }) do
 	local school = r[1]
-	CATALOG[#CATALOG + 1] = { id = "res_" .. r[2], label = r[3] .. " resistance", short = r[3], kind = "int", sample = 35,
+	CATALOG[#CATALOG + 1] = { id = "res_" .. r[2], label = r[3] .. " resistance", tag = r[3] .. " Res", short = r[3], kind = "int", sample = 35,
 		live = function() return Third("UnitResistance", "player", school) end }
 end
 
@@ -468,7 +468,7 @@ local function Paint()
 			local d = drawn[i]
 			local row = Row(i)
 			PlaceRow(row, i)
-			row.label:SetText(d.stat.label)
+			row.label:SetText(d.stat.tag or d.stat.label)
 			ns.Ink(row.label, "LABEL")
 			if d.how == "live" then
 				local ok = pcall(row.value.SetFormattedText, row.value, FormatOf(d.stat), d.value)
