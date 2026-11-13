@@ -211,6 +211,9 @@ P.defaults = {
 	width = 170,
 	scale = 1,
 	dock = "minimap",
+	corner = "auto",
+	nudgeX = 0,
+	nudgeY = 0,
 	windowless = false,
 	nameColors = "stat",
 	colorValues = false,
@@ -224,6 +227,7 @@ end
 
 local function Off(get) return get(KEY .. ".enabled") == false end
 local function NotFree(get) return Off(get) or get(KEY .. ".dock") ~= "free" end
+local function Free(get) return Off(get) or get(KEY .. ".dock") == "free" end
 local function NotCustom(get) return Off(get) or get(KEY .. ".role") ~= "custom" end
 
 local slotItems = {}
@@ -249,10 +253,19 @@ P.page = { id = KEY, label = "Secondary Stats",
 			  order = { "always", "combat", "calm" } },
 		} },
 		{ label = "Where", items = {
-			{ type = "dropdown", key = KEY .. ".dock", label = "Place", disabled = Off,
-			  values = { minimap = "By the minimap", free = "Free (move it with /dui unlock)" },
-			  order = { "minimap", "free" },
-			  desc = "By the minimap it hangs off the map's corner nearest the middle of the screen (bottom-left for a map in the top-right) and grows away from the map, with a tab at the corner to fold it away." },
+			{ type = "dropdown", key = KEY .. ".dock", label = "Dock to", disabled = Off,
+			  values = { minimap = "The minimap", player = "Your player frame", target = "Your target frame",
+				free = "Nothing: free (move it with /dui unlock)" },
+			  order = { "minimap", "player", "target", "free" },
+			  desc = "Docked, it hangs off a corner of that frame and grows away from it, with a tab at the corner to fold it away." },
+			{ type = "dropdown", key = KEY .. ".corner", label = "Corner", disabled = Free,
+			  values = { auto = "Auto (the one facing the middle of the screen)", BOTTOMLEFT = "Bottom-left",
+				BOTTOMRIGHT = "Bottom-right", TOPLEFT = "Top-left", TOPRIGHT = "Top-right" },
+			  order = { "auto", "BOTTOMLEFT", "BOTTOMRIGHT", "TOPLEFT", "TOPRIGHT" } },
+			{ type = "slider", key = KEY .. ".nudgeX", label = "Nudge sideways", min = -60, max = 60, step = 1, unit = "px",
+			  disabled = Free, desc = "Fine-tunes the docked spot: right is more." },
+			{ type = "slider", key = KEY .. ".nudgeY", label = "Nudge up or down", min = -60, max = 60, step = 1, unit = "px",
+			  disabled = Free, desc = "Up is more." },
 			{ type = "toggle", key = KEY .. ".windowless", label = "Windowless", disabled = NotFree,
 			  desc = "Just the text, with no window behind it. Only when it's free: by the minimap it keeps its window." },
 		} },
@@ -485,9 +498,9 @@ end
 -- ---------------------------------------------------------------------------------------------
 -- By the minimap, with a fold tab
 -- ---------------------------------------------------------------------------------------------
--- Docked, the box hangs off the minimap's corner nearest the middle of the screen (bottom-left
--- for a map in the top-right) and grows away from the map, so it covers neither the map, the
--- data texts under it nor what sits below it. A small tab at that corner folds it away and
+-- Docked to the minimap (DaylightUI's panel round it), the player frame or the target frame, the
+-- box hangs off a corner of that frame (the one facing the middle of the screen, or one picked)
+-- and grows away from it, nudged by the player's sliders if they like. A small tab at that corner folds it away and
 -- brings it back; the tab never moves. /dui unlock leaves a docked box alone. Free, DaylightUI's
 -- mover places it as before.
 
@@ -503,9 +516,23 @@ local function DB()
 end
 local function Folded() return DB().statsFolded == true end
 
-local function Docked()
-	return G("dock") ~= "free" and type(_G.Minimap) == "table" and _G.Minimap.GetCenter ~= nil
+-- The frame it docks to, or nil (free, or that frame isn't there). For the minimap that's
+-- DaylightUI's panel round it (its border and the data texts under the map), else the map itself.
+local function DockFrame()
+	local to = G("dock") or "minimap"
+	local f
+	if to == "minimap" then
+		f = _G.DaylightUIInfoPanelBody
+		if not (type(f) == "table" and f.IsShown and f:IsShown()) then f = _G.Minimap end
+	elseif to == "player" then
+		f = ns.MoverFrame("unitframes.player")
+	elseif to == "target" then
+		f = ns.MoverFrame("unitframes.target")
+	end
+	if type(f) == "table" and f.GetCenter and f:GetCenter() then return f end
+	return nil
 end
+local function Docked() return DockFrame() ~= nil end
 
 local suspended = nil
 local function Suspend(on)
@@ -521,21 +548,28 @@ end
 -- The tab on the map's corner facing the middle of the screen, the box beside the tab, both
 -- growing away from the map. Positions are plain numbers, never secret.
 local function PlaceDocked()
-	local mm = _G.Minimap
-	local mx, my = mm:GetCenter()
-	local ux, uy = UIParent:GetCenter()
-	local right, top = true, true
-	if mx and ux then
-		local ms, us = mm:GetEffectiveScale(), UIParent:GetEffectiveScale()
-		right = mx * ms > ux * us   -- the map on the right: the box goes left
-		top = my * ms > uy * us     -- the map at the top: the box goes down
+	local mm = DockFrame()
+	local corner = G("corner") or "auto"
+	local right, top = true, true   -- right: the box goes left; top: the box goes down
+	if corner == "auto" then
+		local mx, my = mm:GetCenter()
+		local ux, uy = UIParent:GetCenter()
+		if mx and ux then
+			local ms, us = mm:GetEffectiveScale(), UIParent:GetEffectiveScale()
+			right = mx * ms > ux * us
+			top = my * ms > uy * us
+		end
+	else
+		right = corner:find("LEFT") ~= nil
+		top = corner:find("BOTTOM") ~= nil
 	end
 	local near = right and "LEFT" or "RIGHT"    -- the map's side the box sits on
 	local far = right and "RIGHT" or "LEFT"     -- the box's side against the tab
 	local edge = top and "BOTTOM" or "TOP"      -- the map's edge it hangs from
 	local back = top and "TOP" or "BOTTOM"      -- the box's edge level with the map's
 	tab:ClearAllPoints()
-	tab:SetPoint(back .. far, mm, edge .. near, right and -DOCK_GAP or DOCK_GAP, top and -DOCK_GAP or DOCK_GAP)
+	local nx, ny = G("nudgeX") or 0, G("nudgeY") or 0
+	tab:SetPoint(back .. far, mm, edge .. near, (right and -DOCK_GAP or DOCK_GAP) + nx, (top and -DOCK_GAP or DOCK_GAP) + ny)
 	frame:ClearAllPoints()
 	frame:SetPoint(back .. far, tab, back .. near, right and TUCK or -TUCK, 0)
 end
