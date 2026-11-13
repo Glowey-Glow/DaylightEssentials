@@ -258,7 +258,7 @@ P.page = { id = KEY, label = "Secondary Stats",
 			  values = { minimap = "The minimap", player = "Your player frame", target = "Your target frame",
 				free = "Nothing: free (move it with /dui unlock)" },
 			  order = { "minimap", "player", "target", "free" },
-			  desc = "Docked, it hangs off a corner of that frame and grows away from it, with a tab at the corner to fold it away." },
+			  desc = "Docked, it sits against that frame's side at a corner, level with it, and slides out of it and back in with a tab on its edge." },
 			{ type = "dropdown", key = KEY .. ".corner", label = "Corner", disabled = Free,
 			  values = { auto = "Auto (the one facing the middle of the screen)", BOTTOMLEFT = "Bottom-left",
 				BOTTOMRIGHT = "Bottom-right", TOPLEFT = "Top-left", TOPRIGHT = "Top-right" },
@@ -504,12 +504,12 @@ end
 -- By the minimap, with a fold tab
 -- ---------------------------------------------------------------------------------------------
 -- Docked to the minimap (DaylightUI's panel round it), the player frame or the target frame, the
--- box hangs off a corner of that frame (the one facing the middle of the screen, or one picked)
--- and grows away from it, nudged by the player's sliders if they like. A small tab at that corner folds it away and
+-- box sits flush against that frame's side at a corner (the one facing the middle of the screen,
+-- or one picked), level with it, and grows away from it, nudged by the player's sliders. A small tab at that corner folds it away and
 -- brings it back; the tab never moves. /dui unlock leaves a docked box alone. Free, DaylightUI's
 -- mover places it as before.
 
-local TAB_W, TAB_H, TUCK, DOCK_GAP, SLIDE = 14, 34, 3, 3, 0.3
+local TAB_W, TAB_H, TUCK, DOCK_GAP, SLIDE = 14, 34, 3, 2, 0.3
 local TAB_GREY = { 0.55, 0.55, 0.58 }
 
 local function DB()
@@ -694,21 +694,21 @@ local function BuildTab()
 	tab:Hide()
 end
 
--- Docked: the clip's inner edge on the frame's corner, the box on the clip's outer edge, and the
--- tab on that outer edge too, vertically centred and tucked behind the box's border. Positions
--- are plain numbers, never secret.
+-- Docked: flush against the frame's side, level with its corner (for a top-right minimap: against
+-- the panel's left edge, bottoms together), so it grows up and outward and slides out of that
+-- edge as DaylightUI's meter slides out of the panel. The box rides the clip's outer edge, and the
+-- tab that edge too, vertically centred and tucked behind the box's border. Positions are plain
+-- numbers, never secret.
 local function PlaceDocked(dock)
 	PickCorner(dock)
-	local back = goesDown and "TOP" or "BOTTOM"       -- the box's edge level with the frame's
-	local edge = goesDown and "BOTTOM" or "TOP"       -- the frame's edge it hangs from
-	local inner = goesLeft and "RIGHT" or "LEFT"      -- the box's side at the corner
+	local level = goesDown and "BOTTOM" or "TOP"      -- the corner's edge, shared with the frame
+	local inner = goesLeft and "RIGHT" or "LEFT"      -- the box's side against the frame
 	local outer = goesLeft and "LEFT" or "RIGHT"      -- the side it grows to
 	local nx, ny = G("nudgeX") or 0, G("nudgeY") or 0
 	frame:ClearAllPoints()
-	frame:SetPoint(back .. inner, dock, edge .. outer,
-		(goesLeft and -DOCK_GAP or DOCK_GAP) + nx, (goesDown and -DOCK_GAP or DOCK_GAP) + ny)
+	frame:SetPoint(level .. inner, dock, level .. outer, (goesLeft and -DOCK_GAP or DOCK_GAP) + nx, ny)
 	body:ClearAllPoints()
-	body:SetPoint(back .. outer, frame, back .. outer)
+	body:SetPoint(level .. outer, frame, level .. outer)
 	tab:ClearAllPoints()
 	tab:SetPoint(inner, frame, outer, goesLeft and TUCK or -TUCK, 0)
 	if tab.icon then
