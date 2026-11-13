@@ -1,8 +1,9 @@
 -- Secondary Stats: a small box of the stats that matter for how you play, in the DaylightUI look:
 -- a row per stat, its name on the left and its value on the right (or all of them on one line).
 -- Which stats: by your group role or your class (Auto), a fixed set for melee, ranged, casters,
--- healers or tanks, or a list of up to six you pick yourself (Custom). It hangs off the minimap's
--- corner with a fold tab, or is set free (moved with /dui unlock, windowless if you like).
+-- healers or tanks, or a list of up to six you pick yourself (Custom). It docks against the side
+-- of the minimap, the damage meter or the chat with a fold tab, or is set free (moved with /dui
+-- unlock). Windowless (just the text) works docked or free.
 --
 -- Secret values: in a fight the game keeps your own stats secret from addons. A secret can't be
 -- compared, added or turned into text by an addon's own code, but the game's own text formatting
@@ -227,7 +228,6 @@ for _, s in ipairs(CATALOG) do
 end
 
 local function Off(get) return get(KEY .. ".enabled") == false end
-local function NotFree(get) return Off(get) or get(KEY .. ".dock") ~= "free" end
 local function Free(get) return Off(get) or get(KEY .. ".dock") == "free" end
 local function NotCustom(get) return Off(get) or get(KEY .. ".role") ~= "custom" end
 
@@ -257,9 +257,9 @@ P.page = { id = KEY, label = "Secondary Stats",
 		} },
 		{ label = "Where", items = {
 			{ type = "dropdown", key = KEY .. ".dock", label = "Dock to", disabled = Off,
-			  values = { minimap = "Minimap", player = "Player frame", target = "Target frame", free = "Free" },
-			  order = { "minimap", "player", "target", "free" },
-			  desc = "Docked, it sits against that frame's side at a corner, level with it, and slides out of it and back in with a tab on its edge. Free: move it anywhere with /dui unlock." },
+			  values = { minimap = "Minimap", meters = "Damage meters", chat = "Chat", free = "Free" },
+			  order = { "minimap", "meters", "chat", "free" },
+			  desc = "Docked, it sits against that frame's side at a corner, level with it, and slides out of it and back in with a tab on its edge. Damage meters: their own window when detached, else the minimap panel they sit in. Chat: DaylightUI's chat window. Free: move it anywhere with /dui unlock." },
 			{ type = "dropdown", key = KEY .. ".corner", label = "Corner", disabled = Free,
 			  desc = "Auto: the corner facing the middle of the screen.",
 			  values = { auto = "Auto", BOTTOMLEFT = "Bottom-left",
@@ -269,8 +269,8 @@ P.page = { id = KEY, label = "Secondary Stats",
 			  disabled = Free, desc = "Fine-tunes the docked spot: right is more." },
 			{ type = "slider", key = KEY .. ".nudgeY", label = "Nudge up or down", min = -60, max = 60, step = 1, unit = "px",
 			  disabled = Free, desc = "Up is more." },
-			{ type = "toggle", key = KEY .. ".windowless", label = "Windowless", disabled = NotFree,
-			  desc = "Just the text, with no window behind it. Only when it's free: by the minimap it keeps its window." },
+			{ type = "toggle", key = KEY .. ".windowless", label = "Windowless", disabled = Off,
+			  desc = "Just the text, with no window behind it, docked or free. Docked, the fold tab stays." },
 		} },
 		{ label = "Custom", desc = "Your own list, in this order, when Stats for is Custom.",
 		  items = slotItems },
@@ -505,7 +505,7 @@ end
 -- ---------------------------------------------------------------------------------------------
 -- By the minimap, with a fold tab
 -- ---------------------------------------------------------------------------------------------
--- Docked to the minimap (DaylightUI's panel round it), the player frame or the target frame, the
+-- Docked to the minimap (DaylightUI's panel round it), the damage meter or the chat window, the
 -- box sits flush against that frame's side at a corner (the one facing the middle of the screen,
 -- or one picked), level with it, and grows away from it, nudged by the player's sliders. A small tab at that corner folds it away and
 -- brings it back; the tab never moves. /dui unlock leaves a docked box alone. Free, DaylightUI's
@@ -529,13 +529,19 @@ local function Folded() return DB().statsFolded == true end
 local function DockFrame()
 	local to = G("dock") or "minimap"
 	local f
-	if to == "minimap" then
+	if to == "minimap" or to == "player" or to == "target" then   -- (the last two: retired choices)
 		f = _G.DaylightUIInfoPanelBody
 		if not (type(f) == "table" and f.IsShown and f:IsShown()) then f = _G.Minimap end
-	elseif to == "player" then
-		f = ns.MoverFrame("unitframes.player")
-	elseif to == "target" then
-		f = ns.MoverFrame("unitframes.target")
+	elseif to == "meters" then
+		-- The meter's own window while it's detached; in the minimap's panel, that panel.
+		f = _G.DaylightUIDamageMeter
+		if not (type(f) == "table" and f.IsShown and f:IsShown()) then
+			f = _G.DaylightUIInfoPanelBody
+			if not (type(f) == "table" and f.IsShown and f:IsShown()) then f = nil end
+		end
+	elseif to == "chat" then
+		f = _G.DaylightUIChatPanel
+		if not (type(f) == "table" and f.IsShown and f:IsShown()) then f = nil end
 	end
 	if type(f) == "table" and f.GetCenter and f:GetCenter() then return f end
 	return nil
@@ -743,7 +749,7 @@ local function Present(on)
 		frame:SetClipsChildren(false)
 		frame:SetSize(fullW, fullH)
 	end
-	shell:SetShown(docked or G("windowless") ~= true)
+	shell:SetShown(G("windowless") ~= true)
 	if docked and on then
 		tab:SetFrameStrata(frame:GetFrameStrata())
 		tab:SetFrameLevel(math.max(0, frame:GetFrameLevel()))
@@ -995,7 +1001,21 @@ local function Build()
 end
 
 function P.Login()
+	-- (Before 1.1.0's release it could dock to the player and target frames: those go to the minimap.)
+	local was = G("dock")
+	if was == "player" or was == "target" then
+		pcall(ns.DUI.Set, ns.DUI, ns.ADDON, KEY .. ".dock", "minimap")
+		ns.Forget()
+	end
 	Build()
+	-- The meter detached or put back, the chat or the panel shown or hidden: docked again.
+	for _, name in ipairs({ "DaylightUIDamageMeter", "DaylightUIChatPanel", "DaylightUIInfoPanelBody" }) do
+		local f = _G[name]
+		if type(f) == "table" and f.HookScript then
+			f:HookScript("OnShow", function() C_Timer.After(0, Refresh) end)
+			f:HookScript("OnHide", function() C_Timer.After(0, Refresh) end)
+		end
+	end
 	Refresh()
 end
 
