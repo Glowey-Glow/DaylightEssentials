@@ -123,6 +123,19 @@ function ns.SuspendMover(partKey, suspended)
 	return (pcall(movers.Suspend, "plugin." .. ADDON .. "." .. partKey, suspended and true or false))
 end
 
+-- Whether the player lets DaylightUI animate (its "motion" choice). True when it can't be asked.
+function ns.MotionOn()
+	local motion = DUI.Motion
+	if type(motion) ~= "table" or type(motion.On) ~= "function" then return true end
+	local ok, on = pcall(motion.On)
+	return not ok or on ~= false
+end
+
+-- A file in DaylightUI's media folder (its art, used where it is, never copied), or nil.
+function ns.DaylightMedia(file)
+	return type(DUI.MEDIA) == "string" and (DUI.MEDIA .. file) or nil
+end
+
 -- Runs fn for every part that has it.
 function ns.Each(name, ...)
 	for _, part in ipairs(ns.parts) do

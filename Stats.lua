@@ -217,6 +217,7 @@ P.defaults = {
 	windowless = false,
 	nameColors = "stat",
 	colorValues = false,
+	shadow = 1,
 }
 
 local SLOT_VALUES, SLOT_ORDER = { none = "None" }, { "none" }
@@ -279,6 +280,8 @@ P.page = { id = KEY, label = "Secondary Stats",
 			  order = { "stat", "class", "plain" },
 			  desc = "Each stat its own: crits gold, hit blue, haste green, attack power orange, spell power violet, and so on." },
 			{ type = "toggle", key = KEY .. ".colorValues", label = "Numbers in the same colour", disabled = Off },
+			{ type = "slider", key = KEY .. ".shadow", label = "Text shadow", min = 0, max = 4, step = 1, unit = "px", disabled = Off,
+			  desc = "How far the dark shadow under the text reaches. 0 for none." },
 			{ type = "slider", key = KEY .. ".decimals", label = "Decimals on percents", min = 0, max = 2, step = 1, disabled = Off },
 			{ type = "toggle", key = KEY .. ".dim", label = "Dim numbers from before the fight", disabled = Off,
 			  desc = "Attack power, hit, defense and mana regen can't be worked out in a fight; their last numbers stay, dimmed." },
@@ -425,6 +428,7 @@ end
 -- The box fits its text. Values are measured whenever they can be read; in a fight, when some
 -- can't, the widths measured last stay (a little slack covers a number growing by a digit).
 local lastValueW, lastLineW = 40, 120
+local fullW, fullH = 1, 1   -- the box's whole size on screen, for the slide
 local function Size(n, oneLine)
 	local w, h
 	if oneLine then
@@ -451,7 +455,8 @@ local function Size(n, oneLine)
 	local scale = G("scale") or 1
 	body:SetSize(w, h)
 	body:SetScale(scale)
-	frame:SetSize(w * scale, h * scale)
+	fullW, fullH = w * scale, h * scale
+	frame:SetSize(fullW, fullH)   -- docked, the slide narrows it again (Present)
 	API.Skin(shell, { window = true })
 end
 
@@ -504,7 +509,8 @@ end
 -- brings it back; the tab never moves. /dui unlock leaves a docked box alone. Free, DaylightUI's
 -- mover places it as before.
 
-local TAB_W, TAB_H, TUCK, DOCK_GAP = 14, 34, 3, 3
+local TAB_W, TAB_H, TUCK, DOCK_GAP, SLIDE = 14, 34, 3, 3, 0.3
+local TAB_GREY = { 0.55, 0.55, 0.58 }
 
 local function DB()
 	local db = _G.DaylightEssentialsDB
@@ -532,7 +538,6 @@ local function DockFrame()
 	if type(f) == "table" and f.GetCenter and f:GetCenter() then return f end
 	return nil
 end
-local function Docked() return DockFrame() ~= nil end
 
 local suspended = nil
 local function Suspend(on)
@@ -545,71 +550,134 @@ local function Suspend(on)
 	end
 end
 
--- The tab on the map's corner facing the middle of the screen, the box beside the tab, both
--- growing away from the map. Positions are plain numbers, never secret.
-local function PlaceDocked()
-	local mm = DockFrame()
+-- Which way the box goes from the corner: goesLeft (the frame is on the screen's right), goesDown
+-- (it's in the top half). Auto picks the corner facing the middle of the screen.
+local goesLeft, goesDown = true, true
+local function PickCorner(dock)
 	local corner = G("corner") or "auto"
-	local right, top = true, true   -- right: the box goes left; top: the box goes down
-	if corner == "auto" then
-		local mx, my = mm:GetCenter()
-		local ux, uy = UIParent:GetCenter()
-		if mx and ux then
-			local ms, us = mm:GetEffectiveScale(), UIParent:GetEffectiveScale()
-			right = mx * ms > ux * us
-			top = my * ms > uy * us
-		end
-	else
-		right = corner:find("LEFT") ~= nil
-		top = corner:find("BOTTOM") ~= nil
+	if corner ~= "auto" then
+		goesLeft = corner:find("LEFT") ~= nil
+		goesDown = corner:find("BOTTOM") ~= nil
+		return
 	end
-	local near = right and "LEFT" or "RIGHT"    -- the map's side the box sits on
-	local far = right and "RIGHT" or "LEFT"     -- the box's side against the tab
-	local edge = top and "BOTTOM" or "TOP"      -- the map's edge it hangs from
-	local back = top and "TOP" or "BOTTOM"      -- the box's edge level with the map's
-	tab:ClearAllPoints()
-	local nx, ny = G("nudgeX") or 0, G("nudgeY") or 0
-	tab:SetPoint(back .. far, mm, edge .. near, (right and -DOCK_GAP or DOCK_GAP) + nx, (top and -DOCK_GAP or DOCK_GAP) + ny)
-	frame:ClearAllPoints()
-	frame:SetPoint(back .. far, tab, back .. near, right and TUCK or -TUCK, 0)
+	local mx, my = dock:GetCenter()
+	local ux, uy = UIParent:GetCenter()
+	if mx and ux then
+		local ms, us = dock:GetEffectiveScale(), UIParent:GetEffectiveScale()
+		goesLeft = mx * ms > ux * us
+		goesDown = my * ms > uy * us
+	end
+end
+
+-- The slide: 0 folded away, 1 out. Docked, the outer frame is a clip as wide as p times the box;
+-- the box rides its outer edge, so it comes out from the corner (fading in) rather than popping
+-- up, and the tab rides that edge too. Eased in and out over 0.3 s, as DaylightUI's own panels
+-- slide; straight there when the player has DaylightUI's motion off.
+local slideP, slideFrom, slideGoal, slideT
+local slider
+local function ApplySlide()
+	if not frame then return end
+	local p = slideP or 1
+	-- Clipped only while it's partly out: fully out, its window's edge and shadow show whole.
+	frame:SetClipsChildren(p < 1)
+	frame:SetWidth(math.max(0.01, p * fullW))
+	frame:SetHeight(fullH)
+	body:SetAlpha(p)
+	body:SetShown(p > 0)
+end
+local function Smooth(t) return t * t * (3 - 2 * t) end
+local function SlideTo(goal)
+	if not ns.MotionOn() or slideP == nil then
+		slideP, slideT = goal, nil
+		if slider then slider:Hide() end
+		ApplySlide()
+		return
+	end
+	slideFrom, slideGoal, slideT = slideP, goal, 0
+	if not slider then
+		slider = CreateFrame("Frame")
+		slider:SetScript("OnUpdate", function(self, dt)
+			if not slideT then
+				self:Hide()
+				return
+			end
+			slideT = math.min(1, slideT + (dt or 0) / SLIDE)
+			slideP = slideFrom + (slideGoal - slideFrom) * Smooth(slideT)
+			if slideT >= 1 then
+				slideP, slideT = slideGoal, nil
+				self:Hide()
+			end
+			ApplySlide()
+		end)
+	end
+	slider:Show()
+end
+
+-- The tab's chevron points down as drawn: turned a quarter toward the frame it's docked to while
+-- the box is out (click to fold it in), away from it while folded (click to bring it out).
+local function TurnChevron()
+	if not (tab and tab.icon) then return end
+	local towardDock = not Folded()
+	local pointRight = (goesLeft and towardDock) or (not goesLeft and not towardDock)
+	tab.icon:SetRotation(pointRight and math.pi / 2 or -math.pi / 2)
 end
 
 local function PaintGrip(hover)
 	if not tab then return end
 	local r, g, b
-	if hover then
-		r, g, b = API.Accent()
+	if hover then r, g, b = API.Accent() else r, g, b = TAB_GREY[1], TAB_GREY[2], TAB_GREY[3] end
+	if tab.icon then
+		tab.icon:SetVertexColor(r, g, b)
 	else
-		local c = ns.Colors().LABEL or { 0.7, 0.7, 0.7 }
-		r, g, b = c[1], c[2], c[3]
+		for _, bar in ipairs(tab.bars) do bar:SetColorTexture(r, g, b, 1) end
 	end
-	for _, bar in ipairs(tab.bars) do bar:SetColorTexture(r, g, b, 1) end
+end
+
+-- The tab shows while the mouse is near: over the box, the tab or the frame it's docked to.
+local tabNear, hoverWait = nil, 0
+local function WatchHover(self, dt)
+	hoverWait = hoverWait + (dt or 0)
+	if hoverWait < 0.05 and tabNear ~= nil then return end
+	hoverWait = 0
+	local dock = DockFrame()
+	local near = self:IsMouseOver() or (body:IsVisible() and body:IsMouseOver())
+		or (dock and dock:IsMouseOver()) or false
+	if near ~= tabNear then
+		tabNear = near
+		API.Fade(self, near and 1 or 0, "FAST")
+	end
 end
 
 local Paint
 local function BuildTab()
 	tab = CreateFrame("Button", "DaylightEssentialsStatsTab", UIParent)
-	tab:SetSize(TAB_W, TAB_H)
-	API.Skin(tab, { noBevel = true })
-	tab.bars = {}
-	for i = 1, 3 do
-		local bar = tab:CreateTexture(nil, "OVERLAY")
-		bar:SetSize(6, 2)
-		bar:SetPoint("CENTER", tab, "CENTER", 0, (2 - i) * 4)
-		tab.bars[i] = bar
+	tab:SetSize(TAB_W + TUCK, TAB_H)
+	API.Skin(tab, { borderPx = 3 })
+	local chevron = ns.DaylightMedia("ui-chevron.png")
+	if chevron then
+		tab.icon = tab:CreateTexture(nil, "OVERLAY")
+		tab.icon:SetTexture(chevron)
+		tab.icon:SetSize(12, 12)
+	else
+		tab.bars = {}
+		for i = 1, 3 do
+			local bar = tab:CreateTexture(nil, "OVERLAY")
+			bar:SetSize(6, 2)
+			bar:SetPoint("CENTER", tab, "CENTER", 0, (2 - i) * 4)
+			tab.bars[i] = bar
+		end
 	end
 	PaintGrip(false)
 	tab:SetScript("OnClick", function()
 		local open = Folded()
 		DB().statsFolded = (not open) or nil
 		GameTooltip:Hide()
-		if open then frame:SetAlpha(0) end
-		Paint()
-		if open then API.Fade(frame, 1, "FAST") end
+		TurnChevron()
+		SlideTo(open and 1 or 0)
 	end)
 	tab:SetScript("OnEnter", function(self)
 		PaintGrip(true)
-		GameTooltip:SetOwner(self, "ANCHOR_LEFT")
+		GameTooltip:SetOwner(self, goesLeft and "ANCHOR_LEFT" or "ANCHOR_RIGHT")
 		GameTooltip:SetText(Folded() and "Show your stats" or "Fold your stats away")
 		GameTooltip:Show()
 	end)
@@ -617,16 +685,56 @@ local function BuildTab()
 		PaintGrip(false)
 		GameTooltip:Hide()
 	end)
+	tab:SetScript("OnUpdate", WatchHover)
+	tab:SetScript("OnShow", function(self)
+		tabNear = nil
+		WatchHover(self, 0)
+	end)
+	tab:SetAlpha(0)
 	tab:Hide()
+end
+
+-- Docked: the clip's inner edge on the frame's corner, the box on the clip's outer edge, and the
+-- tab on that outer edge too, vertically centred and tucked behind the box's border. Positions
+-- are plain numbers, never secret.
+local function PlaceDocked(dock)
+	PickCorner(dock)
+	local back = goesDown and "TOP" or "BOTTOM"       -- the box's edge level with the frame's
+	local edge = goesDown and "BOTTOM" or "TOP"       -- the frame's edge it hangs from
+	local inner = goesLeft and "RIGHT" or "LEFT"      -- the box's side at the corner
+	local outer = goesLeft and "LEFT" or "RIGHT"      -- the side it grows to
+	local nx, ny = G("nudgeX") or 0, G("nudgeY") or 0
+	frame:ClearAllPoints()
+	frame:SetPoint(back .. inner, dock, edge .. outer,
+		(goesLeft and -DOCK_GAP or DOCK_GAP) + nx, (goesDown and -DOCK_GAP or DOCK_GAP) + ny)
+	body:ClearAllPoints()
+	body:SetPoint(back .. outer, frame, back .. outer)
+	tab:ClearAllPoints()
+	tab:SetPoint(inner, frame, outer, goesLeft and TUCK or -TUCK, 0)
+	if tab.icon then
+		tab.icon:ClearAllPoints()
+		tab.icon:SetPoint("CENTER", tab, "CENTER", (goesLeft and -TUCK or TUCK) / 2, 0)
+	end
+	TurnChevron()
 end
 
 -- Shows or hides the box (and its tab), docked or free.
 local function Present(on)
-	local docked = Docked()
+	local dock = DockFrame()
+	local docked = dock ~= nil
 	Suspend(docked)
 	if docked then
 		if not tab then BuildTab() end
-		PlaceDocked()
+		PlaceDocked(dock)
+		if slideP == nil then slideP = Folded() and 0 or 1 end
+		if not slideT then ApplySlide() end
+	else
+		body:ClearAllPoints()
+		body:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
+		body:SetAlpha(1)
+		body:Show()
+		frame:SetClipsChildren(false)
+		frame:SetSize(fullW, fullH)
 	end
 	shell:SetShown(docked or G("windowless") ~= true)
 	if docked and on then
@@ -636,7 +744,7 @@ local function Present(on)
 	elseif tab then
 		tab:Hide()
 	end
-	frame:SetShown(on and not (docked and Folded()))
+	frame:SetShown(on)
 end
 
 -- ---------------------------------------------------------------------------------------------
@@ -675,6 +783,13 @@ local function Thicken(fs)
 		want = flags == "" and "OUTLINE" or (flags .. ",OUTLINE")
 	end
 	fs:SetFont(font, size, want)
+end
+
+-- The text shadow the player picked (in px, down and to the right), on every paint as well.
+local function Shadow(fs)
+	local px = G("shadow") or 1
+	fs:SetShadowColor(0, 0, 0, px > 0 and 1 or 0)
+	fs:SetShadowOffset(px, -px)
 end
 
 local function Ink(fs, color, role)
@@ -722,6 +837,7 @@ function Paint()
 			args[#args + 1] = d.value
 		end
 		Thicken(line)
+		Shadow(line)
 		local ok = pcall(line.SetFormattedText, line, fmt, unpack(args, 1, n))
 		if not ok then line:SetText("--") end
 		line:Show()
@@ -735,6 +851,8 @@ function Paint()
 			local c = NameColor(d.stat)
 			Thicken(row.label)
 			Thicken(row.value)
+			Shadow(row.label)
+			Shadow(row.value)
 			row.label:SetText(d.stat.tag or d.stat.label)
 			Ink(row.label, c, "LABEL")
 			if d.how == "live" then
