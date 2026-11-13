@@ -729,6 +729,7 @@ end
 -- the panel's left edge, bottoms together), so it grows up and outward and slides out of that
 -- edge as DaylightUI's meter slides out of the panel. The box rides the clip's outer edge, and the
 -- tab that edge too, level with the corner (ApplySlide). Positions are plain numbers, never secret.
+local makeWay = 0   -- docked by the meters: how far down it stepped to clear the threat meter
 local function PlaceDocked(dock)
 	PickCorner(dock)
 	local level = goesDown and "BOTTOM" or "TOP"      -- the corner's edge, shared with the frame
@@ -736,7 +737,7 @@ local function PlaceDocked(dock)
 	local outer = goesLeft and "LEFT" or "RIGHT"      -- the side it grows to
 	local nx, ny = G("nudgeX") or 0, G("nudgeY") or 0
 	frame:ClearAllPoints()
-	frame:SetPoint(level .. inner, dock, level .. outer, (goesLeft and -DOCK_GAP or DOCK_GAP) + nx, ny)
+	frame:SetPoint(level .. inner, dock, level .. outer, (goesLeft and -DOCK_GAP or DOCK_GAP) + nx, ny - makeWay)
 	body:ClearAllPoints()
 	body:SetPoint(level .. outer, frame, level .. outer)
 	tabAt = { level .. inner, level .. outer }
@@ -745,6 +746,49 @@ local function PlaceDocked(dock)
 		tab.icon:SetPoint("CENTER", tab, "CENTER", (goesLeft and -TUCK or TUCK) / 2, 0)
 	end
 	TurnChevron()
+end
+
+-- Docked to the damage meters, the threat meter slides out of the same edge from the top and
+-- grows down a row per group member, while the box grows up from the bottom. When the threat
+-- meter's bottom reaches the box, the box steps down just enough to sit under it (still flush
+-- against the meter's side), and back up as it shrinks or slides away. Nothing of DaylightUI's is
+-- changed or covered. Screen positions are plain numbers, never secret.
+local THREAT_GAP = 2
+function P.MakeWay()
+	local want = 0
+	local dock = suspended and G("dock") == "meters" and DockFrame() or nil
+	local threat = _G.DaylightUIThreatMeter
+	local clip = dock and type(threat) == "table" and threat.IsVisible and threat:IsVisible() and threat:GetParent()
+	if clip and clip.GetRect then
+		-- Everything in screen pixels. The threat window's bottom (not its clip's, which has room
+		-- for a shadow), and its clip's sides (how far it has slid out). The box's spot worked out
+		-- from the meter, as if it hadn't stepped down: the same every time, whatever the screen
+		-- edge does to it.
+		local fs, ds = frame:GetEffectiveScale(), dock:GetEffectiveScale()
+		local cs, ts = clip:GetEffectiveScale(), threat:GetEffectiveScale()
+		local cl, cr, tb = clip:GetLeft(), clip:GetRight(), threat:GetBottom()
+		local dl, dr, db = dock:GetLeft(), dock:GetRight(), dock:GetBottom()
+		if cl and cr and tb and dl and dr and db and cr > cl then
+			cl, cr, tb = cl * cs, cr * cs, tb * ts
+			local nx, ny = G("nudgeX") or 0, G("nudgeY") or 0
+			local bw, bh = (fullW or 0) * fs, (fullH or 0) * fs
+			local left
+			if goesLeft then
+				left = dl * ds + (nx - DOCK_GAP) * fs - bw
+			else
+				left = dr * ds + (nx + DOCK_GAP) * fs
+			end
+			local top = db * ds + ny * fs + bh
+			if cl < left + bw and cr > left and tb < top then
+				want = math.ceil((top - tb) / fs + THREAT_GAP)
+			end
+		end
+	end
+	if want ~= makeWay then
+		makeWay = want
+		local to = suspended and DockFrame()
+		if to then PlaceDocked(to) end
+	end
 end
 
 -- Shows or hides the box (and its tab), docked or free.
@@ -994,11 +1038,13 @@ local function Build()
 	frame:SetClampedToScreen(true)
 	frame:Hide()
 	-- Docked to the chat with "Fade with the chat": as see-through as the chat window is now.
+	-- Docked to the damage meters: making way for the threat meter (MakeWay).
 	local fadeWait = 0
 	frame:HookScript("OnUpdate", function(self, dt)
 		fadeWait = fadeWait + (dt or 0)
 		if fadeWait < 0.03 then return end
 		fadeWait = 0
+		P.MakeWay()
 		local a = 1
 		if G("chatFade") and G("dock") == "chat" then
 			local chat = _G.DaylightUIChatPanel
