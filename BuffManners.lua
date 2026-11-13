@@ -92,9 +92,10 @@ P.page = { id = KEY, label = "Buff Manners",
 			  desc = "Kings first: Kings when you know it, else Wisdom or Might. Wisdom or Might: Might for warriors and rogues, Wisdom for the rest. Never over a blessing of yours already on them." },
 		} },
 		{ label = "Thanks",
-		  desc = "Only for players who buffed you: sent with the buff you give back, or offered on its own when they already have all you can give. Never in a dungeon or raid, except a whisper.",
+		  desc = "For players who buffed you. When they already have all you can give, or your class has no buffs to give, the prompt shows who buffed you and offers a thank-you on its own: a /thank even with these off. Sent with the buff you give back only when switched on. Never in a dungeon or raid, except a whisper.",
 		  items = {
-			{ type = "toggle", key = KEY .. ".emote", label = "Thank them with /thank" },
+			{ type = "toggle", key = KEY .. ".emote", label = "Thank them with /thank",
+			  desc = "Also with the buff you give back. A thank-you on its own is always a /thank (plus your line)." },
 			{ type = "dropdown", key = KEY .. ".say", label = "Say a line",
 			  values = { off = "Off", say = "Say", whisper = "Whisper" } },
 			{ type = "dropdown", key = KEY .. ".line", label = "The line",
@@ -387,18 +388,23 @@ local function Line(short)
 	return (text:gsub("{name}", short or ""))
 end
 
-local function ThanksWanted(inInstance)
+-- How to thank them: emote (true or false) and a line's channel (or nil). onlyThanks: the prompt
+-- is a thank-you on its own (nothing of yours they're missing), so it's at least a /thank even with
+-- both switched off (never in a dungeon or raid, where a whisper is the only way).
+local function ThanksWanted(inInstance, onlyThanks)
 	local emote = G("emote") and not inInstance
 	local say = G("say")
 	if say == "say" and inInstance then say = "off" end
-	return emote, say ~= "off" and say or nil
+	if say == "off" then say = nil end
+	if onlyThanks and not emote and not say and not inInstance then emote = true end
+	return emote, say
 end
 
 local function Macro(o)
 	local lines = {}
 	local inInstance = IsInInstance and IsInInstance() or false
 	local emote, say = nil, nil
-	if o.thanks then emote, say = ThanksWanted(inInstance) end
+	if o.thanks then emote, say = ThanksWanted(inInstance, o.spell == nil) end
 	local isTarget = Read(UnitIsUnit, o.unit, "target")
 	local swap = not isTarget and (emote or not o.unit:match("^party%d") and not o.unit:match("^raid%d"))
 	if swap then lines[#lines + 1] = "/targetexact " .. o.name end
@@ -511,9 +517,10 @@ local function Try(unit, reason, seen, thanksFor)
 		if reason == "nearby" and G("nearby") == "beside" and not Beside(unit) then return nil end
 	elseif thanks then
 		local inInstance = IsInInstance and IsInInstance() or false
-		local emote, say = ThanksWanted(inInstance)
+		local emote, say = ThanksWanted(inInstance, true)
 		if not (emote or say) then return nil end
-		if not Beside(unit) and say ~= "whisper" then return nil end
+		-- (An emote or a line in say: only to someone close enough to see it, about 28 yards.)
+		if say ~= "whisper" and CheckInteractDistance and Read(CheckInteractDistance, unit, 4) ~= true then return nil end
 	else
 		return nil
 	end
@@ -584,10 +591,11 @@ local function Look()
 	if not frame or InCombatLockdown() then return end
 	previewing = G("enabled") and ns.Previewing(KEY) or false
 	if previewing then
-		local sample = BUFFS[class] and BUFFS[class][1] or KINGS
-		Prepare(sample)
+		-- A buff of yours to give, or for a class with none, the thank-you on its own.
+		local sample = (BUFFS[class] and BUFFS[class][1]) or (class == "PALADIN" and KINGS) or nil
+		if sample and not Prepare(sample) then sample = nil end
 		ShowOffer({ unit = "player", name = "Glowey", short = "Glowey", class = "PRIEST", reason = "buffed",
-			spell = sample.name and sample or nil, icon = 136243 })
+			spell = sample, icon = 135987, thanks = true })
 		return
 	end
 	if Quiet() or not class then
