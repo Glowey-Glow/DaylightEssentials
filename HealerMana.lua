@@ -1,0 +1,417 @@
+-- Healer Mana: a small list of your group's healers with the mana each has left, in the DaylightUI
+-- look: their class icon, their name in their class colour and their mana as a percent, coloured
+-- by how much is left. It shows while you're in a group with a healer in it; move it with
+-- /dui unlock.
+--
+-- Who's a healer: the role the group gave them (the group finder, or a leader's role check). WoW:
+-- Forever has no specs, and groups often set no roles; then, by your choice, the classes that can
+-- heal (priest, druid, shaman, paladin), or nobody.
+--
+-- The mana: the game can keep other players' mana secret from addons (in a fight, in some places).
+-- A secret value can't be compared, added up or turned into text by an addon's own code, but the
+-- game's own functions take it: the game is asked for the mana as a percent (UnitPowerPercent),
+-- and that percent goes straight into the text's own formatting (SetFormattedText), so the text
+-- works in a fight as well as out of one. Its colour comes the same way, from a colour curve the
+-- game reads the secret through. Nothing secret is ever looked at here.
+--
+-- What it costs: nothing while you're alone or no healer is listed. In a group it listens to the
+-- game's mana updates and redraws only the healer whose mana changed; the list itself is made
+-- again only when the group changes. No timers.
+
+local _, ns = ...
+if ns.off then return end
+
+local API = ns.API
+local KEY = "healerMana"
+local G = ns.Reader(KEY)
+local Safe = ns.Safe
+
+local P = ns.Part({ key = KEY, label = "Healer Mana" })
+
+P.defaults = {
+	enabled = true,
+	inParty = true,
+	inRaid = true,
+	noRoles = "classes",      -- "classes" or "none": who counts when the group set no roles
+	includeSelf = false,
+	maxRaid = 5,
+	colorByMana = true,
+	scale = 1,
+	width = 170,
+}
+
+P.page = { id = KEY, label = "Healer Mana",
+	desc = "A list of your group's healers and the mana each has left. Move it with /dui unlock.",
+	groups = {
+		{ label = "Healer Mana", items = {
+			{ type = "toggle", key = KEY .. ".enabled", label = "On" },
+		} },
+		{ label = "When it shows", items = {
+			{ type = "toggle", key = KEY .. ".inParty", label = "In a party" },
+			{ type = "toggle", key = KEY .. ".inRaid", label = "In a raid" },
+			{ type = "slider", key = KEY .. ".maxRaid", label = "Healers listed in a raid", min = 1, max = 10, step = 1,
+			  desc = "The first healers of the raid, in its order.",
+			  disabled = function(get) return get(KEY .. ".inRaid") == false end },
+			{ type = "toggle", key = KEY .. ".includeSelf", label = "List me too",
+			  desc = "Your own mana in the list when you're one of the healers." },
+		} },
+		{ label = "Who's a healer", items = {
+			{ type = "dropdown", key = KEY .. ".noRoles", label = "When the group has no roles",
+			  values = { classes = "Priests, druids, shamans and paladins", none = "Nobody (only players given the healer role)" },
+			  desc = "Players the group gave the healer role (the group finder or a role check) are always the healers. With no roles set, the classes that can heal are listed, or nobody." },
+		} },
+		{ label = "Look", items = {
+			{ type = "toggle", key = KEY .. ".colorByMana", label = "Colour the mana by what's left",
+			  desc = "Red when nearly out, yellow when low, bright above. Works in a fight too." },
+			{ type = "slider", key = KEY .. ".width", label = "Width", min = 130, max = 260, step = 5, unit = "px" },
+			{ type = "slider", key = KEY .. ".scale", label = "Size", min = 0.7, max = 1.6, step = 0.05, unit = "%" },
+		} },
+	} }
+
+-- ---------------------------------------------------------------------------------------------
+-- Who's a healer
+-- ---------------------------------------------------------------------------------------------
+
+local HEALING_CLASS = { PRIEST = true, DRUID = true, SHAMAN = true, PALADIN = true }
+
+local function RoleOf(unit)
+	if not UnitGroupRolesAssigned then return "NONE" end
+	local ok, role = pcall(UnitGroupRolesAssigned, unit)
+	if not ok or not Safe(role) then return "NONE" end
+	return role or "NONE"
+end
+
+local function ClassOf(unit)
+	local _, class = UnitClass(unit)
+	if not Safe(class) then return nil end
+	return class
+end
+
+-- The group's units, in order (raid1..n, or you then party1..4).
+local units = {}
+local function GroupUnits()
+	wipe(units)
+	if IsInRaid() then
+		for i = 1, GetNumGroupMembers() do units[#units + 1] = "raid" .. i end
+	else
+		units[1] = "player"
+		for i = 1, 4 do units[#units + 1] = "party" .. i end
+	end
+	return units
+end
+
+-- The healers to list, as units (reused).
+local healers = {}
+local function FindHealers()
+	wipe(healers)
+	local raid = IsInRaid()
+	if not G("enabled") or not IsInGroup() or (raid and not G("inRaid")) or (not raid and not G("inParty")) then
+		return healers
+	end
+	local max = raid and math.max(1, math.floor(G("maxRaid") or 5)) or 5
+	local withSelf = G("includeSelf")
+	local any = false
+	for _, unit in ipairs(GroupUnits()) do
+		if UnitExists(unit) and RoleOf(unit) ~= "NONE" then
+			any = true
+			break
+		end
+	end
+	local byClass = not any and G("noRoles") == "classes"
+	for _, unit in ipairs(units) do
+		if #healers >= max then break end
+		if UnitExists(unit) and (withSelf or not UnitIsUnit(unit, "player")) then
+			local healer
+			if any then
+				healer = RoleOf(unit) == "HEALER"
+			elseif byClass then
+				healer = HEALING_CLASS[ClassOf(unit) or ""] == true
+			end
+			if healer then healers[#healers + 1] = unit end
+		end
+	end
+	return healers
+end
+
+-- ---------------------------------------------------------------------------------------------
+-- The mana, secret or not
+-- ---------------------------------------------------------------------------------------------
+
+local MANA = Enum and Enum.PowerType and Enum.PowerType.Mana or 0
+local LOW = { 0.95, 0.35, 0.35 }
+local WARN = { 1, 0.8, 0.3 }
+
+-- The colour the mana text takes: soft red when nearly out, warm yellow when low, the bright ink
+-- above. A curve the game reads the (maybe secret) percent through; built once per style.
+local STOPS = { { 0, LOW }, { 0.2, LOW }, { 0.35, WARN }, { 0.5, WARN }, { 0.65, nil }, { 1, nil } }
+local manaCurve
+local function ManaCurve()
+	if manaCurve ~= nil then return manaCurve or nil end
+	manaCurve = false
+	if not (C_CurveUtil and C_CurveUtil.CreateColorCurve and CreateColor) then return nil end
+	local ok, c = pcall(C_CurveUtil.CreateColorCurve)
+	if not ok or not c then return nil end
+	if c.SetType and Enum and Enum.LuaCurveType and Enum.LuaCurveType.Linear then
+		pcall(c.SetType, c, Enum.LuaCurveType.Linear)
+	end
+	local value = ns.Colors().VALUE
+	for _, stop in ipairs(STOPS) do
+		local rgb = stop[2] or value
+		c:AddPoint(stop[1], CreateColor(rgb[1], rgb[2], rgb[3], 1))
+	end
+	manaCurve = c
+	return c
+end
+
+local function PaintMana(fs, unit)
+	if UnitPowerPercent and CurveConstants then
+		-- Formatted by the game itself: a secret percent is fine here.
+		local ok = pcall(function()
+			fs:SetFormattedText("%.0f%%", UnitPowerPercent(unit, MANA, false, CurveConstants.ScaleTo100))
+		end)
+		if not ok then fs:SetText("?") end
+	else
+		-- An older client: the plain numbers, while they can be read.
+		local cur, max = UnitPower(unit, MANA), UnitPowerMax(unit, MANA)
+		if Safe(cur) and Safe(max) and type(max) == "number" and max > 0 then
+			fs:SetFormattedText("%.0f%%", cur / max * 100)
+		else
+			fs:SetText("?")
+		end
+	end
+	local curve = G("colorByMana") and UnitPowerPercent and ManaCurve()
+	if curve then
+		local ok, col = pcall(UnitPowerPercent, unit, MANA, false, curve)
+		if ok and type(col) == "table" and col.GetRGB then
+			pcall(fs.SetTextColor, fs, col:GetRGB())
+			return
+		end
+	end
+	ns.Ink(fs, "VALUE")
+end
+
+-- ---------------------------------------------------------------------------------------------
+-- The list
+-- ---------------------------------------------------------------------------------------------
+
+local ROW_H, PAD, ICON, GAP = 20, 6, 16, 6
+local TITLE_H = 18
+local CLASS_ICONS = "Interface\\TargetingFrame\\UI-Classes-Circles"
+
+local frame, body, title   -- frame: what /dui unlock moves; body: the list, sized by its setting
+local rows = {}
+local rowOf = {}            -- unit -> its row, for the units listed now
+local previewing = false
+
+local PREVIEW = {
+	{ name = "Lightwell", class = "PRIEST", pct = 82 },
+	{ name = "Barkskin", class = "DRUID", pct = 41 },
+	{ name = "Tidecaller", class = "SHAMAN", pct = 14 },
+}
+
+local function Row(i)
+	local row = rows[i]
+	if row then return row end
+	row = CreateFrame("Frame", nil, body)
+	row:SetHeight(ROW_H)
+	row:SetPoint("TOPLEFT", body, "TOPLEFT", PAD, -(PAD + TITLE_H + (i - 1) * ROW_H))
+	row:SetPoint("TOPRIGHT", body, "TOPRIGHT", -PAD, -(PAD + TITLE_H + (i - 1) * ROW_H))
+	row.icon = row:CreateTexture(nil, "ARTWORK")
+	row.icon:SetSize(ICON, ICON)
+	row.icon:SetPoint("LEFT", row, "LEFT", 0, 0)
+	row.icon:SetTexture(CLASS_ICONS)
+	row.mana = API.Text(row, "body", "RIGHT")
+	row.mana:SetPoint("RIGHT", row, "RIGHT", 0, 0)
+	row.mana:SetWidth(44)
+	row.name = API.Text(row, "body", "LEFT")
+	row.name:SetPoint("LEFT", row.icon, "RIGHT", GAP, 0)
+	row.name:SetPoint("RIGHT", row.mana, "LEFT", -GAP, 0)
+	row.name:SetWordWrap(false)
+	rows[i] = row
+	return row
+end
+
+local function PaintClass(row, class)
+	local coords = class and CLASS_ICON_TCOORDS and CLASS_ICON_TCOORDS[class]
+	if coords then
+		row.icon:SetTexCoord(coords[1], coords[2], coords[3], coords[4])
+		row.icon:Show()
+	else
+		row.icon:Hide()
+	end
+	local r, g, b = 1, 1, 1
+	if class then r, g, b = API.ClassColor(class) end
+	row.name:SetTextColor(r or 1, g or 1, b or 1)
+end
+
+-- One healer's line: its name, class and state, then its mana.
+local function FillRow(row, unit)
+	local name = UnitName(unit)
+	if not Safe(name) or not name then name = "Healer" end
+	row.name:SetText(name)
+	PaintClass(row, ClassOf(unit))
+	local connected = UnitIsConnected(unit)
+	row.off = Safe(connected) and connected == false
+	if row.off then
+		row.dead = false
+		row.mana:SetText("Offline")
+		ns.Ink(row.mana, "OFF")
+		return
+	end
+	local dead = UnitIsDeadOrGhost(unit)
+	row.dead = Safe(dead) and dead == true
+	if row.dead then
+		row.mana:SetText("Dead")
+		ns.Ink(row.mana, "LABEL")
+		return
+	end
+	PaintMana(row.mana, unit)
+end
+
+-- Where it starts (until it's moved): snapped under the party frames, centred on them, edge to edge
+-- (as /dui unlock's magnet snaps them); the left of the screen without them.
+local function Home()
+	local party = ns.MoverFrame("unitframes.party")
+	if party then return { "TOP", party, "BOTTOM", 0, 0 } end
+	return { "LEFT", UIParent, "LEFT", 40, 120 }
+end
+
+-- The list's size and its own scale go on the body; the moved frame only takes the size it covers
+-- on screen (DaylightUI's mover keeps the moved frame's scale its own).
+local function Size(n)
+	local w, h = math.floor(G("width") or 170), PAD * 2 + TITLE_H + n * ROW_H
+	local scale = G("scale") or 1
+	body:SetSize(w, h)
+	body:SetScale(scale)
+	frame:SetSize(w * scale, h * scale)
+	API.Skin(body, { window = true })
+end
+
+-- The per-unit events, heard only while healers are listed.
+local LISTEN = { "UNIT_POWER_UPDATE", "UNIT_MAXPOWER", "UNIT_HEALTH" }
+local function Listen()
+	for _, e in ipairs(LISTEN) do frame:RegisterEvent(e) end
+end
+local function Unlisten()
+	if not frame then return end
+	for _, e in ipairs(LISTEN) do frame:UnregisterEvent(e) end
+end
+
+-- The list made again from the group.
+local function Rebuild()
+	if not frame then return end
+	wipe(rowOf)
+	if previewing then
+		for i, p in ipairs(PREVIEW) do
+			local row = Row(i)
+			row.name:SetText(p.name)
+			PaintClass(row, p.class)
+			row.mana:SetFormattedText("%d%%", p.pct)
+			local c = p.pct <= 20 and LOW or p.pct <= 50 and WARN or ns.Colors().VALUE
+			row.mana:SetTextColor(c[1], c[2], c[3])
+			row:Show()
+		end
+		for i = #PREVIEW + 1, #rows do rows[i]:Hide() end
+		Size(#PREVIEW)
+		Unlisten()
+		frame:Show()
+		return
+	end
+	local list = FindHealers()
+	for i, unit in ipairs(list) do
+		local row = Row(i)
+		rowOf[unit] = row
+		-- Your own row in a raid: the game may speak of you as "player" rather than "raidN".
+		if UnitIsUnit(unit, "player") then rowOf.player = row end
+		FillRow(row, unit)
+		row:Show()
+	end
+	for i = #list + 1, #rows do rows[i]:Hide() end
+	if #list == 0 then
+		Unlisten()
+		frame:Hide()
+		return
+	end
+	Size(#list)
+	Listen()
+	frame:Show()
+end
+
+local rebuildQueued = false
+local function RebuildNow()
+	rebuildQueued = false
+	Rebuild()
+end
+local function RebuildSoon()
+	if rebuildQueued then return end
+	rebuildQueued = true
+	C_Timer.After(0.2, RebuildNow)
+end
+
+local function OnEvent(_, event, unit, kind)
+	if event == "UNIT_POWER_UPDATE" or event == "UNIT_MAXPOWER" then
+		local row = rowOf[unit]
+		if row and not row.dead and not row.off and (kind == nil or kind == "MANA") then PaintMana(row.mana, unit) end
+	elseif event == "UNIT_HEALTH" then
+		-- Health ticks often: the line is only redrawn when the healer dies or comes back.
+		local row = rowOf[unit]
+		if not row then return end
+		local dead = UnitIsDeadOrGhost(unit)
+		if Safe(dead) and (dead == true) ~= (row.dead == true) then FillRow(row, unit) end
+	elseif event == "UNIT_CONNECTION" or event == "UNIT_FLAGS" then
+		-- Offline (or back): its line only.
+		local row = rowOf[unit]
+		if row then FillRow(row, unit) end
+	else
+		RebuildSoon()
+	end
+end
+
+local function Build()
+	if frame then return end
+	frame = CreateFrame("Frame", "DaylightEssentialsHealerMana", UIParent)
+	frame:SetFrameStrata("MEDIUM")
+	frame:SetClampedToScreen(true)
+	frame:Hide()
+	body = CreateFrame("Frame", nil, frame)
+	body:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
+	title = API.Text(body, "small", "LEFT")
+	title:SetPoint("TOPLEFT", body, "TOPLEFT", PAD + 1, -PAD)
+	title:SetText("Healer mana")
+	ns.Ink(title, "LABEL")
+	frame:SetScript("OnEvent", OnEvent)
+	for _, e in ipairs({ "GROUP_ROSTER_UPDATE", "PLAYER_ROLES_ASSIGNED", "PLAYER_ENTERING_WORLD",
+		"UNIT_CONNECTION", "UNIT_FLAGS" }) do
+		frame:RegisterEvent(e)
+	end
+	Size(1)
+	-- Placed now: after a /reload in a fight, the mover only places it once the fight ends.
+	frame:SetPoint(unpack(Home()))
+	ns.me.RegisterMover(frame, KEY, "Healer mana", Home)
+	ns.me.RegisterTestPart(KEY, "Healer mana")
+end
+
+function P.Login()
+	Build()
+	previewing = G("enabled") and ns.Previewing(KEY)
+	Rebuild()
+end
+
+function P.Setting()
+	if not frame then return end
+	previewing = G("enabled") and ns.Previewing(KEY)
+	RebuildSoon()
+end
+
+function P.Style()
+	manaCurve = nil
+	if not frame then return end
+	ns.Ink(title, "LABEL")
+	RebuildSoon()
+end
+
+function P.Preview()
+	if not frame then return end
+	previewing = G("enabled") and ns.Previewing(KEY)
+	Rebuild()
+end
