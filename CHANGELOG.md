@@ -6,7 +6,7 @@
 - Kill on Sight: right-click a name, or type /dui kos add Name, /dui kos remove Name or /dui kos list. Shared by all your characters; its names are marked in red.
 - Alerts: a line in the middle of the screen and a sound when someone on your Kill on Sight list shows up, and if you like when any new enemy does. The same player alerts again only after two minutes (a choice).
 - Rests in battlegrounds and dungeons unless you ask otherwise. /dui unlock shows sample names and a sample alert to place them.
-- Fixed: Combat Alert's "Stays for" and Combat Timer's "Keep the last fight's time" sliders were left off their pages; they're back.
+- Fixed: no more "unknown unit" lines in chat about Combat Alert's "Stays for" and Combat Timer's "Keep the last fight's time" sliders.
 
 ## 1.0.0
 - New: Daylight Essentials, small combat aids in the DaylightUI look, each with its own switch and page in DaylightUI's options (Plugins, Essentials).
