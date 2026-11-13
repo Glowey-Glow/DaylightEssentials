@@ -1089,25 +1089,6 @@ local function Build()
 	frame:SetPoint(unpack(Home()))
 	ns.me.RegisterMover(frame, KEY, "Secondary stats", Home)
 	ns.me.RegisterTestPart(KEY, "Secondary stats")
-	-- /dui statsdock: what the threat meter check sees (to sort out a placement by the meters).
-	ns.me.RegisterCommand("statsdock", function()
-		local function f(v) return type(v) == "number" and string.format("%.1f", v) or tostring(v) end
-		local dock = DockFrame()
-		local threat = _G.DaylightUIThreatMeter
-		local clip = type(threat) == "table" and threat.GetParent and threat:GetParent()
-		print("Stats dock:", G("dock"), "suspended", tostring(suspended), "dock frame", dock and (dock:GetName() or "?") or "none",
-			"goesLeft", tostring(goesLeft), "makeWay", f(makeWay), "full", f(fullW), f(fullH))
-		print("Threat:", type(threat) == "table" and "found" or "missing", "visible", threat and tostring(threat:IsVisible()),
-			"bottom", threat and f(threat:GetBottom()), "scale", threat and f(threat:GetEffectiveScale()),
-			"clip", clip and (f(clip:GetLeft()) .. " - " .. f(clip:GetRight())), clip and f(clip:GetEffectiveScale()))
-		if dock then
-			print("Meter:", f(dock:GetLeft()), f(dock:GetRight()), "bottom", f(dock:GetBottom()), "scale", f(dock:GetEffectiveScale()))
-		end
-		print("Box:", f(frame:GetLeft()), f(frame:GetRight()), "bottom", f(frame:GetBottom()), "top", f(frame:GetTop()),
-			"scale", f(frame:GetEffectiveScale()), "shown", tostring(frame:IsVisible()))
-		local ok, err = pcall(P.MakeWay)
-		print("Check:", ok and "ran" or ("error: " .. tostring(err)), "makeWay now", f(makeWay))
-	end, "statsdock: what Secondary Stats sees of the threat meter")
 end
 
 function P.Login()
