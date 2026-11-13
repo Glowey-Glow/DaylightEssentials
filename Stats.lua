@@ -236,8 +236,6 @@ P.page = { id = KEY, label = "Secondary Stats",
 			{ type = "slider", key = KEY .. ".decimals", label = "Decimals on percents", min = 0, max = 2, step = 1, disabled = Off },
 			{ type = "toggle", key = KEY .. ".dim", label = "Dim numbers from before the fight", disabled = Off,
 			  desc = "Attack power, hit, defense and mana regen can't be worked out in a fight; their last numbers stay, dimmed." },
-			{ type = "slider", key = KEY .. ".width", label = "Width", min = 120, max = 320, step = 5, unit = "px", disabled = Off,
-			  desc = "On one line the box grows with the number of stats." },
 			{ type = "slider", key = KEY .. ".scale", label = "Size", min = 0.7, max = 1.6, step = 0.05, unit = "%", disabled = Off },
 		} },
 	} }
@@ -322,7 +320,7 @@ end
 -- The box
 -- ---------------------------------------------------------------------------------------------
 
-local ROW_H, PAD, TITLE_H, VALUE_W, LINE_STAT_W = 18, 6, 16, 84, 92
+local ROW_H, PAD, TITLE_H, GAP, SLACK = 18, 6, 16, 14, 6
 
 local frame, body, title, line   -- frame: what /dui unlock moves; body: the box, sized by its settings
 local rows = {}
@@ -336,7 +334,6 @@ local function Row(i)
 	row:SetHeight(ROW_H)
 	row.value = API.Text(row, "body", "RIGHT")
 	row.value:SetPoint("RIGHT", row, "RIGHT", 0, 0)
-	row.value:SetWidth(VALUE_W)
 	row.value:SetWordWrap(false)
 	row.label = API.Text(row, "body", "LEFT")
 	row.label:SetPoint("LEFT", row, "LEFT", 0, 0)
@@ -367,14 +364,38 @@ local function Home()
 	return { "LEFT", UIParent, "LEFT", 40, -40 }
 end
 
--- The size comes from the settings and the number of rows only (a secret text can't be measured).
+-- A text's width, or nil while it can't be read (a text holding a secret number has a secret width).
+local function Measure(fs)
+	local ok, w = pcall(fs.GetUnboundedStringWidth, fs)
+	if not ok or not Safe(w) or type(w) ~= "number" then
+		ok, w = pcall(fs.GetStringWidth, fs)
+		if not ok or not Safe(w) or type(w) ~= "number" then return nil end
+	end
+	return w
+end
+
+-- The box fits its text. Values are measured whenever they can be read; in a fight, when some
+-- can't, the widths measured last stay (a little slack covers a number growing by a digit).
+local lastValueW, lastLineW = 40, 120
 local function Size(n, oneLine)
 	local w, h
 	if oneLine then
-		w = math.max(math.floor(G("width") or 170), n * LINE_STAT_W) + PAD * 2
+		local lw = Measure(line)
+		if lw then lastLineW = lw end
+		w = math.ceil(lastLineW + SLACK) + PAD * 2
 		h = ROW_H + PAD * 2
 	else
-		w = math.floor(G("width") or 170)
+		local labelW, valueW, readable = Measure(title) or 0, 0, true
+		for i = 1, n do
+			local row = rows[i]
+			labelW = math.max(labelW, Measure(row.label) or 0)
+			local vw = Measure(row.value)
+			if vw then valueW = math.max(valueW, vw) else readable = false end
+		end
+		if readable then lastValueW = valueW else valueW = math.max(valueW, lastValueW) end
+		valueW = math.ceil(valueW + SLACK)
+		for i = 1, n do rows[i].value:SetWidth(valueW) end
+		w = math.ceil(labelW) + GAP + valueW + PAD * 2
 		h = PAD * 2 + TITLE_H + n * ROW_H
 	end
 	local scale = G("scale") or 1
@@ -577,8 +598,8 @@ local function Build()
 	frame:Hide()
 	body = CreateFrame("Frame", nil, frame)
 	body:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
-	title = API.Text(body, "small", "LEFT")
-	title:SetPoint("TOPLEFT", body, "TOPLEFT", PAD + 1, -PAD)
+	title = API.Text(body, "small", "CENTER")
+	title:SetPoint("TOP", body, "TOP", 0, -PAD)
 	title:SetText("Stats")
 	ns.Ink(title, "LABEL")
 	line = API.Text(body, "body", "LEFT")
