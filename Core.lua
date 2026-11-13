@@ -8,6 +8,7 @@
 --   * Enemy Nearby: enemy players seen near you lately, and your Kill on Sight list.
 --   * Secondary Stats: the stats that matter for your role (or your own pick) in a small box.
 --   * Buff Manners: one click to buff players who buffed you, your target, group or passers-by.
+--   * Halo: hold a key for a ring of your actions at the mouse; point, let go, and it fires.
 -- This file is what the parts share: their settings, DaylightUI's look, and the game's and
 -- DaylightUI's events handed to each part. Options.lua (loaded last) registers the plugin.
 -- Built on DaylightUI.API only.

@@ -1,6 +1,6 @@
 ## Interface: 16001
 ## Title: Daylight |cff73a0ffEssentials|r
-## Notes: A DaylightUI plugin of small combat aids: your healers' mana, a combat timer and alert, a pet reminder, your taunt and dispel cooldowns at the cursor, a list of enemy players nearby with a Kill on Sight list, your secondary stats, and one-click buffs for players who buffed you. Each on its own switch.
+## Notes: A DaylightUI plugin of small combat aids: your healers' mana, a combat timer and alert, a pet reminder, your taunt and dispel cooldowns at the cursor, a list of enemy players nearby with a Kill on Sight list, your secondary stats, one-click buffs for players who buffed you, and Halo, a ring of your actions at the mouse. Each on its own switch.
 ## Author: Glowey
 ## X-License: All Rights Reserved
 ## X-Curse-Project-ID: 1802092
@@ -17,4 +17,5 @@ CursorCooldowns.lua
 EnemyNearby.lua
 Stats.lua
 BuffManners.lua
+Halo.lua
 Options.lua
