@@ -170,7 +170,7 @@ end
 local BY_ID = {}
 for _, s in ipairs(CATALOG) do BY_ID[s.id] = s end
 
--- Each stat's own colour for its name (a family shares one: every crit is gold, every hit blue).
+-- Each stat's own color for its name (a family shares one: every crit is gold, every hit blue).
 local AP, CRIT, HIT, HASTE, SPEED = { 1, 0.55, 0.3 }, { 1, 0.82, 0.2 }, { 0.45, 0.78, 1 }, { 0.35, 0.9, 0.4 }, { 0.65, 0.95, 0.5 }
 local PEN, BLOCK = { 0.75, 0.55, 1 }, { 0.8, 0.8, 0.92 }
 local STAT_COLOR = {
@@ -277,11 +277,11 @@ P.page = { id = KEY, label = "Secondary Stats",
 		{ label = "Look", items = {
 			{ type = "dropdown", key = KEY .. ".layout", label = "Layout", disabled = Off,
 			  values = { list = "A list", line = "One line" }, order = { "list", "line" } },
-			{ type = "dropdown", key = KEY .. ".nameColors", label = "Name colours", disabled = Off,
-			  values = { stat = "Per stat", class = "Class colour", plain = "Plain" },
+			{ type = "dropdown", key = KEY .. ".nameColors", label = "Name colors", disabled = Off,
+			  values = { stat = "Per stat", class = "Class color", plain = "Plain" },
 			  order = { "stat", "class", "plain" },
 			  desc = "Per stat: crits gold, hit blue, haste green, attack power orange, spell power violet, and so on." },
-			{ type = "toggle", key = KEY .. ".colorValues", label = "Numbers in the same colour", disabled = Off },
+			{ type = "toggle", key = KEY .. ".colorValues", label = "Numbers in the same color", disabled = Off },
 			{ type = "slider", key = KEY .. ".shadow", label = "Text shadow", min = 0, max = 4, step = 1, unit = "px", disabled = Off,
 			  desc = "How far the dark shadow under the text reaches. 0 for none." },
 			{ type = "slider", key = KEY .. ".decimals", label = "Decimals on percents", min = 0, max = 2, step = 1, disabled = Off },
@@ -755,7 +755,7 @@ local function Present(on)
 end
 
 -- ---------------------------------------------------------------------------------------------
--- Colours
+-- Colors
 -- ---------------------------------------------------------------------------------------------
 
 local classColor
@@ -775,7 +775,7 @@ local function NameColor(stat)
 	return nil
 end
 
--- The outline one step thicker than the player's (none to thin, thin to thick), so the coloured
+-- The outline one step thicker than the player's (none to thin, thin to thick), so the colored
 -- names read on any ground. Checked on every paint: DaylightUI sets the player's font back when
 -- it changes.
 local function Thicken(fs)

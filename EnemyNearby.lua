@@ -1,5 +1,5 @@
 -- Enemy Nearby: a small list of the enemy players seen near you lately, in the DaylightUI look:
--- their level, their name in their class colour and their guild, the newest at the top. A name
+-- their level, their name in their class color and their guild, the newest at the top. A name
 -- fades as time passes without seeing them again, and leaves the list after a while (a choice).
 -- Click a name to target that player; right-click it to put them on (or take them off) your Kill
 -- on Sight list, which is shared by all your characters. A line in the middle of the screen (and,

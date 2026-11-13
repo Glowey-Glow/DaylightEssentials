@@ -1,5 +1,5 @@
 -- Healer Mana: a small list of your group's healers with the mana each has left, in the DaylightUI
--- look: their class icon, their name in their class colour and their mana as a percent, coloured
+-- look: their class icon, their name in their class color and their mana as a percent, colored
 -- by how much is left. It shows while you're in a group with a healer in it; move it with
 -- /dui unlock.
 --
@@ -11,7 +11,7 @@
 -- A secret value can't be compared, added up or turned into text by an addon's own code, but the
 -- game's own functions take it: the game is asked for the mana as a percent (UnitPowerPercent),
 -- and that percent goes straight into the text's own formatting (SetFormattedText), so the text
--- works in a fight as well as out of one. Its colour comes the same way, from a colour curve the
+-- works in a fight as well as out of one. Its color comes the same way, from a color curve the
 -- game reads the secret through. Nothing secret is ever looked at here.
 --
 -- What it costs: nothing while you're alone or no healer is listed. In a group it listens to the
@@ -61,7 +61,7 @@ P.page = { id = KEY, label = "Healer Mana",
 			  desc = "Players the group gave the healer role (the group finder or a role check) are always the healers. With no roles set: Healing classes lists every priest, druid, shaman and paladin; Nobody lists only players given the healer role." },
 		} },
 		{ label = "Look", items = {
-			{ type = "toggle", key = KEY .. ".colorByMana", label = "Colour the mana by what's left",
+			{ type = "toggle", key = KEY .. ".colorByMana", label = "Color the mana by what's left",
 			  desc = "Red when nearly out, yellow when low, bright above. Works in a fight too." },
 			{ type = "slider", key = KEY .. ".width", label = "Width", min = 130, max = 260, step = 5, unit = "px",
 			  desc = "At least this wide: it grows to fit a long name." },
@@ -142,7 +142,7 @@ local MANA = Enum and Enum.PowerType and Enum.PowerType.Mana or 0
 local LOW = { 0.95, 0.35, 0.35 }
 local WARN = { 1, 0.8, 0.3 }
 
--- The colour the mana text takes: soft red when nearly out, warm yellow when low, the bright ink
+-- The color the mana text takes: soft red when nearly out, warm yellow when low, the bright ink
 -- above. A curve the game reads the (maybe secret) percent through; built once per style.
 local STOPS = { { 0, LOW }, { 0.2, LOW }, { 0.35, WARN }, { 0.5, WARN }, { 0.65, nil }, { 1, nil } }
 local manaCurve
@@ -269,7 +269,7 @@ local function FillRow(row, unit)
 	PaintMana(row.mana, unit)
 end
 
--- Where it starts (until it's moved): snapped under the party frames, centred on them, edge to edge
+-- Where it starts (until it's moved): snapped under the party frames, centered on them, edge to edge
 -- (as /dui unlock's magnet snaps them); the left of the screen without them.
 local function Home()
 	local party = ns.MoverFrame("unitframes.party")
