@@ -83,7 +83,38 @@ local CAMP = {
 	"Camp Chair", "Field Guide", "Trapper's Workbench",
 	"Faction Banner", "Spinning Wheel", "Loom",
 	"Cozy Sleeping Bag", "Pouch of Violet Dust",
+	"Toxin Study", "Plague Doctor's Laboratory", "Lodestone", "Rock Garden", "Molten Foundry", "Scarlet Banner",
 }
+-- Each camp object's kit item (its icon, and what it gives, come from the game by this id) and a
+-- short word on its bonus for when the game hasn't the item's data yet. From the public camping
+-- databases (classicwowforever.com, bindonforever.com); two ids where they disagree.
+local KIT = {
+	["basic campfire"] = { 279981 }, ["journeyman campfire"] = { 279961 }, ["expert campfire"] = { 279974 },
+	["cookie's feast"] = { 279957, "Stamina food" }, ["iron oven"] = { 279982, "A cooking station" },
+	["mana well"] = { 279956, "Mana every 5 seconds" }, ["fermenter"] = { 279970, "Mana every 5 seconds" },
+	["alchemy laboratory"] = { 279990, "Mana every 5 seconds" },
+	["sharpening wheel"] = { 279944, "Strength" }, ["anvil"] = { 279988, "Strength" }, ["master forge"] = { 279955, "Strength" },
+	["enchanted lute"] = { 279976, "Armor, all stats and all resistances" },
+	["arcane salvager"] = { 279985, "Armor, all stats and all resistances" },
+	["arcane forge"] = { 279987, "Armor, all stats and all resistances" },
+	["reagent bot"] = { 279950, "A reagent vendor" }, ["repair bot"] = { 279949, "A reagent vendor and repairs" },
+	["anarchist's workbench"] = { 279989, "A workstation" },
+	["first aid kit"] = { 279968, "Stamina" }, ["toxin study"] = { 279940, "Stamina" },
+	["plague doctor's laboratory"] = { 279951, "Stamina" },
+	["fish bowl"] = { 279967, "+8% all stats" }, ["fishing bowl"] = { 279967, "+8% all stats" },
+	["fishing rack"] = { 279965, "+8% all stats" }, ["fishing hut"] = { 279966, "+8% all stats" },
+	["incense candle"] = { 279962, "Intellect" }, ["greenhouse"] = { 279964, "Intellect" },
+	["seed hybridizer"] = { 279947, "Intellect" },
+	["camp tent"] = { 279978, "Rested experience" }, ["tanning rack"] = { 279941, "Rested experience" },
+	["sewing machine"] = { 279945, "Rested experience" },
+	["lodestone"] = { 279960, "Melee attack power" }, ["rock garden"] = { 279948, "Melee attack power" },
+	["molten foundry"] = { 279952, "Melee attack power" },
+	["camp chair"] = { 279979, "+2% crit with spells and attacks" }, ["field guide"] = { 279969, "+2% crit with spells and attacks" },
+	["trapper's workbench"] = { 279938, "+2% crit with spells and attacks" },
+	["faction banner"] = { 279973, "Spirit", 279972 }, ["spinning wheel"] = { 279943, "Spirit" }, ["loom"] = { 279959, "Spirit" },
+	["scarlet banner"] = { 278030 }, ["cozy sleeping bag"] = { 211527, "Well-Rested" },
+}
+
 local CAMP_SET = {}
 for _, n in ipairs(CAMP) do CAMP_SET[string.lower(n)] = true end
 
@@ -806,11 +837,37 @@ local function CampIcon(e)
 	for _, o in ipairs(objects) do
 		if o.name == e.name then e.icon = o.icon return e.icon end
 	end
+	local kit = KIT[string.lower(e.name)]
+	if kit then
+		for _, id in ipairs({ kit[1], kit[3] }) do
+			local t = ItemIcon(id)
+			if t and t ~= 134400 then e.icon = t return t end
+		end
+	end
 	if C_Spell and C_Spell.GetSpellTexture then
 		local ok, t = pcall(C_Spell.GetSpellTexture, e.name)
 		if ok and t then e.icon = t return t end
 	end
 	return 134400
+end
+
+-- What an object gives: its tooltip lines from the camp, else what its kit item's spell says,
+-- else the short word from the list.
+local function CampLines(e)
+	if e.lines then return e.lines end
+	local kit = KIT[string.lower(e.name)]
+	if not kit then return nil end
+	if C_Item and C_Item.GetItemSpell and C_Spell and C_Spell.GetSpellDescription then
+		local ok, _, spellID = pcall(C_Item.GetItemSpell, kit[1])
+		if ok and Safe(spellID) and type(spellID) == "number" then
+			local okD, d = pcall(C_Spell.GetSpellDescription, spellID)
+			if okD and Safe(d) and type(d) == "string" and d ~= "" then return { d } end
+		elseif C_Item.RequestLoadItemDataByID then
+			pcall(C_Item.RequestLoadItemDataByID, kit[1])
+		end
+	end
+	if kit[2] then return { kit[2] } end
+	return nil
 end
 
 local function CampIconFrame(i)
@@ -831,8 +888,9 @@ local function CampIconFrame(i)
 		if not e then return end
 		GameTooltip:SetOwner(self, "ANCHOR_TOP")
 		GameTooltip:SetText(e.name)
-		for _, line in ipairs(e.lines or {}) do GameTooltip:AddLine(line, 1, 1, 1, true) end
-		if not e.lines then GameTooltip:AddLine("Mouse over it at the camp to see what it gives.", 0.6, 0.6, 0.6, true) end
+		local lines = CampLines(e)
+		for _, line in ipairs(lines or {}) do GameTooltip:AddLine(line, 1, 1, 1, true) end
+		if not lines then GameTooltip:AddLine("Mouse over it at the camp to see what it gives.", 0.6, 0.6, 0.6, true) end
 		GameTooltip:Show()
 	end)
 	f:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -862,7 +920,18 @@ end
 -- What the tent's left click does now: "/sit" at a camp, else your best campfire (Expert, then
 -- Journeyman, then Basic), or nothing if you have none. Also its words for the tooltip.
 local function TentAction()
-	if AtCamp() then return "/sit", "Left-click: sit by the fire" end
+	if AtCamp() then
+		for _, o in ipairs(objects) do
+			if o.kind == "item" and ItemCount(o.id) > 0 and C_Item and C_Item.GetItemInfoInstant then
+				local ok, _, _, _, _, _, classID, subClassID = pcall(C_Item.GetItemInfoInstant, o.id)
+				-- (consumables, food and drink)
+				if ok and classID == 0 and subClassID == 5 then
+					return "/use item:" .. o.id, "Left-click: sit by the fire eating your " .. o.name
+				end
+			end
+		end
+		return "/sit", "Left-click: sit by the fire"
+	end
 	local best, rank
 	for _, o in ipairs(objects) do
 		local r = FIRES[string.lower(o.name or "")]
