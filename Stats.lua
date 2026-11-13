@@ -511,7 +511,7 @@ end
 -- brings it back; the tab never moves. /dui unlock leaves a docked box alone. Free, DaylightUI's
 -- mover places it as before.
 
-local TAB_W, TAB_H, TUCK, DOCK_GAP, SLIDE = 14, 34, 3, 2, 0.3
+local TAB_W, TAB_H, TUCK, DOCK_GAP, SLIDE = 14, 34, 3, 1, 0.3
 local TAB_GREY = { 0.55, 0.55, 0.58 }
 
 local function DB()
@@ -577,9 +577,16 @@ end
 -- slide; straight there when the player has DaylightUI's motion off.
 local slideP, slideFrom, slideGoal, slideT
 local slider
+local tabAt   -- docked: { the tab's point, the box's point } at the shared corner (PlaceDocked)
 local function ApplySlide()
 	if not frame then return end
 	local p = slideP or 1
+	-- The tab sits on the box's outer edge, level with the corner: tucked behind the box's border
+	-- while it's out, flush against the box's edge (so against the frame's corner) once folded.
+	if tab and tabAt then
+		tab:ClearAllPoints()
+		tab:SetPoint(tabAt[1], frame, tabAt[2], (goesLeft and TUCK or -TUCK) * p, 0)
+	end
 	-- Clipped only while it's partly out: fully out, its window's edge and shadow show whole.
 	frame:SetClipsChildren(p < 1)
 	frame:SetWidth(math.max(0.01, p * fullW))
@@ -699,8 +706,7 @@ end
 -- Docked: flush against the frame's side, level with its corner (for a top-right minimap: against
 -- the panel's left edge, bottoms together), so it grows up and outward and slides out of that
 -- edge as DaylightUI's meter slides out of the panel. The box rides the clip's outer edge, and the
--- tab that edge too, vertically centred and tucked behind the box's border. Positions are plain
--- numbers, never secret.
+-- tab that edge too, level with the corner (ApplySlide). Positions are plain numbers, never secret.
 local function PlaceDocked(dock)
 	PickCorner(dock)
 	local level = goesDown and "BOTTOM" or "TOP"      -- the corner's edge, shared with the frame
@@ -711,8 +717,7 @@ local function PlaceDocked(dock)
 	frame:SetPoint(level .. inner, dock, level .. outer, (goesLeft and -DOCK_GAP or DOCK_GAP) + nx, ny)
 	body:ClearAllPoints()
 	body:SetPoint(level .. outer, frame, level .. outer)
-	tab:ClearAllPoints()
-	tab:SetPoint(inner, frame, outer, goesLeft and TUCK or -TUCK, 0)
+	tabAt = { level .. inner, level .. outer }
 	if tab.icon then
 		tab.icon:ClearAllPoints()
 		tab.icon:SetPoint("CENTER", tab, "CENTER", (goesLeft and -TUCK or TUCK) / 2, 0)
