@@ -42,6 +42,7 @@ P.defaults = {
 	keep = 60,
 	maxRows = 8,
 	alwaysShow = false,
+	windowless = false,
 	alertNew = false,
 	soundNew = false,
 	alertKos = true,
@@ -192,6 +193,8 @@ P.page = { id = KEY, label = "Enemy Nearby",
 			  disabled = Off },
 			{ type = "slider", key = KEY .. ".maxRows", label = "Names listed", min = 3, max = 15, step = 1, disabled = Off },
 			{ type = "toggle", key = KEY .. ".alwaysShow", label = "Show it when nobody's listed", disabled = Off },
+			{ type = "toggle", key = KEY .. ".windowless", label = "Windowless", disabled = Off,
+			  desc = "Just the names, with no window behind them. Click and right-click work the same." },
 			{ type = "slider", key = KEY .. ".width", label = "Width", min = 160, max = 320, step = 5, unit = "px", disabled = Off,
 			  desc = "At least this wide: it grows to fit a long name and guild." },
 			{ type = "slider", key = KEY .. ".scale", label = "Size", min = 0.7, max = 1.6, step = 0.05, unit = "%", disabled = Off },
@@ -321,6 +324,7 @@ end
 local ROW_H, PAD, GAP, LVL_W, TITLE_H = 18, 6, 5, 22, 18
 
 local frame, body, title, empty   -- frame: what /dui unlock moves; body: the list, sized by its setting
+local shell, content              -- in body: the window (can be left off), and the title over it
 local rows = {}
 local list, byKey = {}, {}        -- the players listed, in order; key -> entry
 local plates = {}                 -- the nameplate units up now
@@ -436,6 +440,7 @@ local function Size(n, force)
 	local h = PAD * 2 + TITLE_H + max(n, 1) * ROW_H
 	local fight = InCombatLockdown()
 	local w = max(floor(G("width") or 210), NeedWidth(n))
+	shell:SetShown(G("windowless") ~= true)
 	local sig = h .. ":" .. w .. ":" .. (G("scale") or 1) .. (fight and ":f" or "")
 	if sig == sizedAs and not force then return false end
 	sizedAs = sig
@@ -448,7 +453,7 @@ local function Size(n, force)
 		body:SetScale(scale)
 		frame:SetSize(w * scale, h * scale)
 	end
-	API.Skin(body, { window = true })
+	API.Skin(shell, { window = true })
 	return true
 end
 
@@ -852,11 +857,19 @@ local function Build()
 	frame:Hide()
 	body = CreateFrame("Frame", nil, frame)
 	body:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
-	title = API.Text(body, "small", "LEFT")
+	-- The window on its own layer so it can be left off (Windowless); the rows (child frames) and
+	-- the title (on its own layer) draw over it.
+	shell = CreateFrame("Frame", nil, body)
+	shell:SetAllPoints()
+	shell:SetFrameLevel(body:GetFrameLevel())
+	content = CreateFrame("Frame", nil, body)
+	content:SetAllPoints()
+	content:SetFrameLevel(body:GetFrameLevel() + 5)
+	title = API.Text(content, "small", "LEFT")
 	title:SetPoint("TOPLEFT", body, "TOPLEFT", PAD + 1, -PAD)
 	title:SetText("Enemies nearby")
 	ns.Ink(title, "LABEL")
-	empty = API.Text(body, "small", "LEFT")
+	empty = API.Text(content, "small", "LEFT")
 	empty:SetPoint("TOPLEFT", body, "TOPLEFT", PAD + 1, -(PAD + TITLE_H + 3))
 	empty:SetText("Nobody seen lately")
 	ns.Ink(empty, "OFF")

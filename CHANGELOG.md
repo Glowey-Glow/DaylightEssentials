@@ -5,6 +5,7 @@
 - Click a name to target that player. In a fight the list keeps its order and players seen during it are added below, clickable once it ends.
 - Kill on Sight: right-click a name, or type /dui kos add Name, /dui kos remove Name or /dui kos list. Shared by all your characters; its names are marked in red.
 - Alerts: a line in the middle of the screen and a sound when someone on your Kill on Sight list shows up, and if you like when any new enemy does. The same player alerts again only after two minutes (a choice).
+- Windowless if you like: just the names, with no window behind them; click and right-click work the same.
 - Rests in battlegrounds and dungeons unless you ask otherwise. /dui unlock shows sample names and a sample alert to place them.
 - New: Secondary Stats, a small box of the stats that matter for how you play: attack power, crit, hit and haste for melee, their ranged ones for hunters, spell power, spell crit and mana regen for casters and healers, armor, defense, dodge, parry and block for tanks. Auto picks by your group role or your class.
 - Custom: pick up to six stats of your own, resistances included, in the order you like.
