@@ -236,9 +236,11 @@ end
 local WELL_FED = 19705   -- the "Well Fed" buff (any food's: they share the name)
 
 -- The player's buffs: name -> seconds left (math.huge for none), or nil if unreadable.
+local auraIds = {}   -- name -> auraInstanceID, from the last MyBuffs (to read a buff's tooltip)
 local function MyBuffs()
 	if not (C_UnitAuras and C_UnitAuras.GetAuraDataByIndex) then return nil end
 	local out = {}
+	wipe(auraIds)
 	local now = GetTime()
 	for i = 1, 40 do
 		local ok, data = pcall(C_UnitAuras.GetAuraDataByIndex, "player", i, "HELPFUL")
@@ -248,10 +250,38 @@ local function MyBuffs()
 		if not (Safe(name) and Safe(exp)) then return nil end
 		if type(name) == "string" then
 			local left = (type(exp) == "number" and exp > 0) and (exp - now) or math.huge
-			if not out[name] or left > out[name] then out[name] = left end
+			if not out[name] or left > out[name] then
+				out[name] = left
+				local id = data.auraInstanceID
+				if Safe(id) then auraIds[name] = id end
+			end
 		end
 	end
 	return out
+end
+
+-- The camp's buffs, as the game names them: sitting by a lit fire puts "Welcoming Campfire" on
+-- you with a countdown; when it ends, "Camp Benefits" holds the effects of every camp object at
+-- that fire. The objects on the ground can't be read by an addon, only these two buffs.
+local CAMP_BUFF, SITTING = "Camp Benefits", "Welcoming Campfire"
+
+-- A buff's tooltip lines under its name (what it gives), or nil.
+local function BuffLines(name)
+	local id = auraIds[name]
+	if not id or not (C_TooltipInfo and C_TooltipInfo.GetUnitBuffByAuraInstanceID) then return nil end
+	local ok, info = pcall(C_TooltipInfo.GetUnitBuffByAuraInstanceID, "player", id)
+	if not ok or type(info) ~= "table" or type(info.lines) ~= "table" then return nil end
+	local out = {}
+	for i = 2, #info.lines do
+		local t = info.lines[i] and info.lines[i].leftText
+		if Safe(t) and type(t) == "string" and t ~= "" and not t:lower():find("remaining$") then out[#out + 1] = t end
+	end
+	return out
+end
+
+local function Seconds(sec)
+	sec = math.max(0, math.ceil(sec))
+	return string.format("%d:%02d", math.floor(sec / 60), sec % 60)
 end
 
 local function Minutes(sec)
@@ -282,8 +312,10 @@ local function IsWeapon(slot)
 end
 
 -- The notes to show: { text, warn } each, and whether any is a countdown (needs a look later).
+local fast = false   -- sitting by the fire: a look every second
 local function Notes()
 	local notes, counting = {}, false
+	fast = false
 	if not RemindHere() then return notes, false end
 	local warn = (G("warn") or 3) * 60
 	local buffs = MyBuffs()
@@ -298,9 +330,24 @@ local function Notes()
 				counting = true
 			elseif left < math.huge then counting = counting or left - warn < 600 end
 		end
+		-- Sitting by the fire: the countdown to Camp Benefits (a look every second meanwhile).
+		local sitting = buffs[SITTING]
+		if sitting and sitting < math.huge then
+			notes[#notes + 1] = { "Stay seated: " .. CAMP_BUFF .. " in " .. Seconds(sitting), false, true }
+			fast = true
+		end
+		local camp = buffs[CAMP_BUFF]
+		if camp and camp < math.huge and camp > warn then
+			notes[#notes + 1] = { CAMP_BUFF .. ": " .. Minutes(camp) .. " (hover the tent)", false, true }
+			counting = true
+		end
 		for _, name in ipairs(DB().buffs) do
 			local left = buffs[name]
-			if not left then
+			if not left and name == CAMP_BUFF and sitting then
+				-- (on its way: the countdown above)
+			elseif not left and name == CAMP_BUFF then
+				notes[#notes + 1] = { "Gone: " .. name .. " (sit by a lit fire)", true }
+			elseif not left then
 				notes[#notes + 1] = { "Gone: " .. name, true }
 			elseif left < math.huge and left <= warn then
 				notes[#notes + 1] = { name .. ": " .. Minutes(left), true }
@@ -593,13 +640,16 @@ end
 -- The look: the notes, the tent's edge, the fade
 -- ---------------------------------------------------------------------------------------------
 
-local ticker
+local ticker, tickEvery
 local function Tick(on)
-	if on and not ticker then
-		ticker = C_Timer.NewTicker(10, function() P.Look() end)
-	elseif not on and ticker then
+	local every = fast and 1 or 10
+	if ticker and (not on or every ~= tickEvery) then
 		ticker:Cancel()
 		ticker = nil
+	end
+	if on and not ticker then
+		tickEvery = every
+		ticker = C_Timer.NewTicker(every, function() P.Look() end)
 	end
 end
 
@@ -641,9 +691,9 @@ function P.Look()
 		notes, counting = Notes()
 	end
 	local lines, warn = {}, false
-	local warnHex, labelHex = "|cffffbf4d", "|cffa0a0a0"
+	local warnHex, labelHex, goodHex = "|cffffbf4d", "|cffa0a0a0", "|cff7fd27f"
 	for _, n in ipairs(notes) do
-		lines[#lines + 1] = (n[2] and warnHex or labelHex) .. n[1] .. "|r"
+		lines[#lines + 1] = (n[2] and warnHex or (n[3] and goodHex) or labelHex) .. n[1] .. "|r"
 		warn = warn or n[2]
 	end
 	if #lines > 0 then
@@ -656,7 +706,7 @@ function P.Look()
 	end
 	-- The tent's edge in the warning color while something has run out.
 	tent.warn:SetShown(warn)
-	Tick(counting and not fight)
+	Tick((counting or fast) and not fight)
 	-- Fades while idle: nothing to say, the fan shut, the mouse away.
 	local idle = G("fadeIdle") and not warn and not open and not frame:IsMouseOver()
 		and not (holder and holder:IsMouseOver()) and not previewing
@@ -771,6 +821,20 @@ local function Build()
 		GameTooltip:SetOwner(self, "ANCHOR_TOP")
 		GameTooltip:SetText("Gone Camping")
 		GameTooltip:AddLine("Click: your camp objects. Drag a spell or item here to add it.", 1, 1, 1, true)
+		-- What the camp gives: Camp Benefits' own lines, or how to get it.
+		local buffs = MyBuffs()
+		GameTooltip:AddLine(" ")
+		if buffs and buffs[CAMP_BUFF] then
+			local left = buffs[CAMP_BUFF]
+			GameTooltip:AddLine(CAMP_BUFF .. (left < math.huge and (" (" .. Minutes(left) .. " left)") or ""), 0.5, 0.82, 0.5)
+			for _, line in ipairs(BuffLines(CAMP_BUFF) or {}) do GameTooltip:AddLine(line, 1, 1, 1, true) end
+		elseif buffs and buffs[SITTING] then
+			GameTooltip:AddLine("Stay seated: " .. CAMP_BUFF .. " in " .. Seconds(buffs[SITTING]), 0.5, 0.82, 0.5)
+			GameTooltip:AddLine("It will hold every camp object at this fire in one buff.", 1, 1, 1, true)
+		else
+			GameTooltip:AddLine("No " .. CAMP_BUFF, 1, 0.75, 0.3)
+			GameTooltip:AddLine("Sit by a lit campfire for about a minute: every camp object at that fire comes in one buff, for an hour.", 1, 1, 1, true)
+		end
 		GameTooltip:Show()
 		if G("fadeIdle") then API.Fade(frame, 1, "FAST") end
 	end)
