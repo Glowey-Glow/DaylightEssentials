@@ -11,7 +11,7 @@ A plugin for DaylightUI on WoW: Forever: small combat aids in the DaylightUI loo
 - **Secondary Stats:** the stats that matter for how you play (melee, ranged, caster, healer, tank, or your own pick of six) in a small box docked to the minimap, the damage meters or the chat that folds away with a tab (or free, windowless if you like), live in a fight.
 - **Buff Manners:** one click (or one key) to buff a player who buffed you, your target, your group or a passer-by missing your buff, with an optional thank-you.
 - **Halo:** hold a key for a ring of your own spells, items and macros at the mouse; point or scroll, let go, and it fires.
-- **Gone Camping:** every camp object you can put down behind one tent button, with notes when Well Fed, your weapon oil or stone or your camp buffs run out.
+- **Gone Camping:** one campfire button: left-click to sit by the fire or put one down, right-click for every camp object you can place; its edge shows your Camp Benefits, a box beside it Well Fed, and small icons what the camp holds.
 
 ## Requirements
 
