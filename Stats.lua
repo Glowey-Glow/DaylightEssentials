@@ -213,7 +213,7 @@ P.defaults = {
 	scale = 1,
 	dock = "minimap",
 	corner = "auto",
-	meterCorner = "BOTTOMLEFT",
+	meterCorner = "auto",
 	chatFade = false,
 	nudgeX = 0,
 	nudgeY = 0,
@@ -266,9 +266,9 @@ P.page = { id = KEY, label = "Secondary Stats",
 			  desc = "Docked, it sits against that frame's side at a corner, level with it, and slides out of it and back in with a tab on its edge. Damage meters: their own window when detached, else the minimap panel they sit in. Chat: DaylightUI's chat window. Free: move it anywhere with /dui unlock." },
 			{ type = "dropdown", key = KEY .. ".meterCorner", label = "Corner", disabled = Off,
 			  hidden = DockIsNot("meters"),
-			  desc = "A bottom corner only: the threat meter slides out over the top ones.",
-			  values = { BOTTOMLEFT = "Bottom-left", BOTTOMRIGHT = "Bottom-right" },
-			  order = { "BOTTOMLEFT", "BOTTOMRIGHT" } },
+			  desc = "A bottom corner only. Clear of threat: the side of the meter the threat meter doesn't slide out of (the other one if there's no room on screen). Bottom-left or Bottom-right: that one; when the threat meter grows down past it, the stats step down under it, or move to the other corner if there's no room below.",
+			  values = { auto = "Clear of threat", BOTTOMLEFT = "Bottom-left", BOTTOMRIGHT = "Bottom-right" },
+			  order = { "auto", "BOTTOMLEFT", "BOTTOMRIGHT" } },
 			{ type = "toggle", key = KEY .. ".chatFade", label = "Fade with the chat", disabled = Off,
 			  hidden = DockIsNot("chat"),
 			  desc = "The stats fade out and back in along with DaylightUI's chat window." },
@@ -576,9 +576,7 @@ local goesLeft, goesDown = true, true
 local function PickCorner(dock)
 	local corner = G("corner") or "auto"
 	-- By the damage meters, a bottom corner only (the threat meter slides out over the top ones).
-	if G("dock") == "meters" then
-		corner = G("meterCorner") == "BOTTOMRIGHT" and "BOTTOMRIGHT" or "BOTTOMLEFT"
-	end
+	if G("dock") == "meters" then corner = P.MeterCorner(dock) end
 	if corner ~= "auto" then
 		goesLeft = corner:find("LEFT") ~= nil
 		goesDown = corner:find("BOTTOM") ~= nil
@@ -754,38 +752,90 @@ end
 -- against the meter's side), and back up as it shrinks or slides away. Nothing of DaylightUI's is
 -- changed or covered. Screen positions are plain numbers, never secret.
 local THREAT_GAP = 2
+local function Other(corner) return corner == "BOTTOMLEFT" and "BOTTOMRIGHT" or "BOTTOMLEFT" end
+
+-- The side of the meter the threat meter slides out of ("left" or "right"), or nil when it can't
+-- meet the box (off, under the meter, or in its own window). Read from where DaylightUI put it;
+-- before it has been laid out, by the rule it follows (the meter's right edge unless the meter
+-- sits on the screen's left half... as its mover says: left of the middle means right).
+local function ThreatSide(dock)
+	local ok1, on = pcall(API.GetSetting, "InfoPanel", "threat.enabled")
+	local ok2, at = pcall(API.GetSetting, "InfoPanel", "threat.at")
+	if (ok1 and on == false) or (ok2 and (at == "below" or at == "free")) then return nil end
+	local threat = _G.DaylightUIThreatMeter
+	local clip = type(threat) == "table" and threat.GetParent and threat:GetParent()
+	if clip and clip ~= UIParent and clip.GetCenter then
+		local cx = clip:GetCenter()
+		local dx = dock:GetCenter()
+		if cx and dx and clip:GetNumPoints() > 0 then
+			return cx * clip:GetEffectiveScale() < dx * dock:GetEffectiveScale() and "left" or "right"
+		end
+	end
+	local movers = ns.DUI.Movers
+	if dock == _G.DaylightUIDamageMeter and type(movers) == "table" and type(movers.Position) == "function" then
+		local ok, x = pcall(movers.Position, "infopanel.meter")
+		if ok and type(x) == "number" then return x < 0 and "right" or "left" end
+	end
+	return "left"
+end
+
+-- Whether the box fits on screen at this bottom corner of the meter.
+local function Room(dock, corner)
+	local fs, ds, us = frame:GetEffectiveScale(), dock:GetEffectiveScale(), UIParent:GetEffectiveScale()
+	local dl, dr, ur = dock:GetLeft(), dock:GetRight(), UIParent:GetRight()
+	if not (dl and dr and ur) then return true end
+	local bw, nx = (fullW or 0) * fs, (G("nudgeX") or 0) * fs
+	if corner == "BOTTOMLEFT" then return dl * ds + nx - bw >= 0 end
+	return dr * ds + nx + bw <= ur * us
+end
+
+local meterFlip = false   -- the picked corner is blocked (threat meter there, no room below): the other
+function P.MeterCorner(dock, noFlip)
+	local pick = G("meterCorner") or "auto"
+	if pick ~= "BOTTOMLEFT" and pick ~= "BOTTOMRIGHT" then
+		pick = ThreatSide(dock) == "left" and "BOTTOMRIGHT" or "BOTTOMLEFT"
+		if not Room(dock, pick) and Room(dock, Other(pick)) then pick = Other(pick) end
+	end
+	if meterFlip and not noFlip then pick = Other(pick) end
+	return pick
+end
+
 function P.MakeWay()
-	local want = 0
+	local want, flip = 0, false
 	local dock = suspended and G("dock") == "meters" and DockFrame() or nil
 	local threat = _G.DaylightUIThreatMeter
 	local clip = dock and type(threat) == "table" and threat.IsVisible and threat:IsVisible() and threat:GetParent()
 	if clip and clip.GetRect then
 		-- Everything in screen pixels. The threat window's bottom (not its clip's, which has room
 		-- for a shadow), and its clip's sides (how far it has slid out). The box's spot worked out
-		-- from the meter, as if it hadn't stepped down: the same every time, whatever the screen
-		-- edge does to it.
+		-- from the meter at the picked corner, as if it hadn't stepped down or moved.
 		local fs, ds = frame:GetEffectiveScale(), dock:GetEffectiveScale()
 		local cs, ts = clip:GetEffectiveScale(), threat:GetEffectiveScale()
 		local cl, cr, tb = clip:GetLeft(), clip:GetRight(), threat:GetBottom()
 		local dl, dr, db = dock:GetLeft(), dock:GetRight(), dock:GetBottom()
 		if cl and cr and tb and dl and dr and db and cr > cl then
 			cl, cr, tb = cl * cs, cr * cs, tb * ts
+			local base = P.MeterCorner(dock, true)
 			local nx, ny = G("nudgeX") or 0, G("nudgeY") or 0
 			local bw, bh = (fullW or 0) * fs, (fullH or 0) * fs
 			local left
-			if goesLeft then
+			if base == "BOTTOMLEFT" then
 				left = dl * ds + (nx - DOCK_GAP) * fs - bw
 			else
 				left = dr * ds + (nx + DOCK_GAP) * fs
 			end
-			local top = db * ds + ny * fs + bh
-			if cl < left + bw and cr > left and tb < top then
-				want = math.ceil((top - tb) / fs + THREAT_GAP)
+			local bottom = db * ds + ny * fs
+			if cl < left + bw and cr > left and tb < bottom + bh then
+				want = math.ceil((bottom + bh - tb) / fs + THREAT_GAP)
+				-- No room below (the meter near the screen's bottom): the other corner instead.
+				if bottom - want * fs < 0 and Room(dock, Other(base)) then
+					want, flip = 0, true
+				end
 			end
 		end
 	end
-	if want ~= makeWay then
-		makeWay = want
+	if want ~= makeWay or flip ~= meterFlip then
+		makeWay, meterFlip = want, flip
 		local to = suspended and DockFrame()
 		if to then PlaceDocked(to) end
 	end
@@ -1076,6 +1126,25 @@ local function Build()
 	frame:SetPoint(unpack(Home()))
 	ns.me.RegisterMover(frame, KEY, "Secondary stats", Home)
 	ns.me.RegisterTestPart(KEY, "Secondary stats")
+	-- /dui statsdock: what the threat meter check sees (to sort out a placement by the meters).
+	ns.me.RegisterCommand("statsdock", function()
+		local function f(v) return type(v) == "number" and string.format("%.1f", v) or tostring(v) end
+		local dock = DockFrame()
+		local threat = _G.DaylightUIThreatMeter
+		local clip = type(threat) == "table" and threat.GetParent and threat:GetParent()
+		print("Stats dock:", G("dock"), "suspended", tostring(suspended), "dock frame", dock and (dock:GetName() or "?") or "none",
+			"goesLeft", tostring(goesLeft), "makeWay", f(makeWay), "full", f(fullW), f(fullH))
+		print("Threat:", type(threat) == "table" and "found" or "missing", "visible", threat and tostring(threat:IsVisible()),
+			"bottom", threat and f(threat:GetBottom()), "scale", threat and f(threat:GetEffectiveScale()),
+			"clip", clip and (f(clip:GetLeft()) .. " - " .. f(clip:GetRight())), clip and f(clip:GetEffectiveScale()))
+		if dock then
+			print("Meter:", f(dock:GetLeft()), f(dock:GetRight()), "bottom", f(dock:GetBottom()), "scale", f(dock:GetEffectiveScale()))
+		end
+		print("Box:", f(frame:GetLeft()), f(frame:GetRight()), "bottom", f(frame:GetBottom()), "top", f(frame:GetTop()),
+			"scale", f(frame:GetEffectiveScale()), "shown", tostring(frame:IsVisible()))
+		local ok, err = pcall(P.MakeWay)
+		print("Check:", ok and "ran" or ("error: " .. tostring(err)), "makeWay now", f(makeWay))
+	end, "statsdock: what Secondary Stats sees of the threat meter")
 end
 
 function P.Login()
