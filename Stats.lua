@@ -388,13 +388,15 @@ local function Size(n, oneLine)
 		local labelW, valueW, readable = Measure(title) or 0, 0, true
 		for i = 1, n do
 			local row = rows[i]
-			labelW = math.max(labelW, Measure(row.label) or 0)
-			local vw = Measure(row.value)
-			if vw then valueW = math.max(valueW, vw) else readable = false end
+			if row then   -- none yet when it's first built
+				labelW = math.max(labelW, Measure(row.label) or 0)
+				local vw = Measure(row.value)
+				if vw then valueW = math.max(valueW, vw) else readable = false end
+			end
 		end
 		if readable then lastValueW = valueW else valueW = math.max(valueW, lastValueW) end
 		valueW = math.ceil(valueW + SLACK)
-		for i = 1, n do rows[i].value:SetWidth(valueW) end
+		for i = 1, n do if rows[i] then rows[i].value:SetWidth(valueW) end end
 		w = math.ceil(labelW) + GAP + valueW + PAD * 2
 		h = PAD * 2 + TITLE_H + n * ROW_H
 	end
