@@ -67,9 +67,19 @@ end
 function ns.Forget() wipe(cache) end
 
 -- A part's own reader: ns.Reader("combatTimer")("hold").
+-- Each full key ("combatTimer.hold") is made once and kept, so a reader called every frame
+-- builds no strings.
 function ns.Reader(key)
 	local prefix = key .. "."
-	return function(name) return ns.Get(prefix .. name) end
+	local paths = {}
+	return function(name)
+		local path = paths[name]
+		if not path then
+			path = prefix .. name
+			paths[name] = path
+		end
+		return ns.Get(path)
+	end
 end
 
 -- ---------------------------------------------------------------------------------------------

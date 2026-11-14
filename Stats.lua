@@ -422,6 +422,7 @@ end
 local ROW_H, PAD, GAP, SLACK = 18, 6, 14, 6
 
 local frame, body, line   -- frame: what /dui unlock moves; body: the box, sized to its text
+local watcher             -- in frame: the threat meter and chat fade watch (Watching)
 local shell, content             -- in body: the window (can be left off), and the text over it
 local tab                        -- the fold tab, beside the box while it's under the minimap
 local rows = {}
@@ -440,21 +441,25 @@ local function Row(i)
 	row.label:SetPoint("LEFT", row, "LEFT", 0, 0)
 	row.label:SetPoint("RIGHT", row.value, "LEFT", -4, 0)
 	row.label:SetWordWrap(false)
+	-- Anchored once: a row's spot depends only on its number.
+	local y = -(PAD + (i - 1) * ROW_H)
+	row:SetPoint("TOPLEFT", body, "TOPLEFT", PAD, y)
+	row:SetPoint("TOPRIGHT", body, "TOPRIGHT", -PAD, y)
 	rows[i] = row
 	return row
 end
 
-local function PlaceRow(row, i)
-	local y = -(PAD + (i - 1) * ROW_H)
-	row:ClearAllPoints()
-	row:SetPoint("TOPLEFT", body, "TOPLEFT", PAD, y)
-	row:SetPoint("TOPRIGHT", body, "TOPRIGHT", -PAD, y)
-end
-
+-- A color's "|cff......" code, kept until the style changes (wiped in P.Style).
+local hexOf = {}
+local WHITE = { 1, 1, 1 }
 local function Hex(role)
-	local c = type(role) == "table" and role or ns.Colors()[role] or { 1, 1, 1 }
-	return string.format("|cff%02x%02x%02x", math.floor(c[1] * 255 + 0.5), math.floor(c[2] * 255 + 0.5),
+	local h = hexOf[role]
+	if h then return h end
+	local c = type(role) == "table" and role or ns.Colors()[role] or WHITE
+	h = string.format("|cff%02x%02x%02x", math.floor(c[1] * 255 + 0.5), math.floor(c[2] * 255 + 0.5),
 		math.floor(c[3] * 255 + 0.5))
+	hexOf[role] = h
+	return h
 end
 
 -- Where it starts (until it's moved): under the player frame, left edges together; the left of
@@ -479,6 +484,8 @@ end
 -- can't, the widths measured last stay (a little slack covers a number growing by a digit).
 local lastValueW, lastLineW = 40, 120
 local fullW, fullH = 1, 1   -- the box's whole size on screen, for the slide
+local sizedW, sizedH, sizedScale   -- what Size last set (nil: set it again, e.g. after a style change)
+local placeDirty = true            -- Present places the box (dock, slide) again on its next call
 local function Size(n, oneLine)
 	local w, h
 	if oneLine then
@@ -503,11 +510,14 @@ local function Size(n, oneLine)
 		h = PAD * 2 + n * ROW_H
 	end
 	local scale = G("scale") or 1
+	if w == sizedW and h == sizedH and scale == sizedScale then return end
+	sizedW, sizedH, sizedScale = w, h, scale
 	body:SetSize(w, h)
 	body:SetScale(scale)
 	fullW, fullH = w * scale, h * scale
 	frame:SetSize(fullW, fullH)   -- docked, the slide narrows it again (Present)
 	API.Skin(shell, { window = true })
+	placeDirty = true
 end
 
 -- Whether the box shows now (outside unlock).
@@ -700,11 +710,12 @@ end
 
 -- The tab shows while the mouse is near: over the box, the tab or the frame it's docked to.
 local tabNear, hoverWait = nil, 0
+local dockNow   -- the frame it's docked to, as Present last found it
 local function WatchHover(self, dt)
 	hoverWait = hoverWait + (dt or 0)
 	if hoverWait < 0.05 and tabNear ~= nil then return end
 	hoverWait = 0
-	local dock = DockFrame()
+	local dock = dockNow
 	local near = self:IsMouseOver() or (body:IsVisible() and body:IsMouseOver())
 		or (dock and dock:IsMouseOver()) or false
 	if near ~= tabNear then
@@ -841,31 +852,49 @@ function P.MakeWay()
 end
 
 -- Shows or hides the box (and its tab), docked or free.
+-- Placed again (PlaceDocked, ApplySlide, or the free spot) only when something changed: the
+-- settings or style (Refresh, P.Style), the box's size (Size), or the frame it docks to (another
+-- one, or moved). A plain repaint of the numbers leaves it where it is.
+local placedDock, placedX, placedY, placedOn
 local function Present(on)
 	local dock = DockFrame()
 	local docked = dock ~= nil
+	dockNow = dock
 	Suspend(docked)
 	if docked then
-		if not tab then BuildTab() end
-		PlaceDocked(dock)
-		if slideP == nil then slideP = Folded() and 0 or 1 end
-		if not slideT then ApplySlide() end
-	else
-		body:ClearAllPoints()
-		body:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
-		body:SetAlpha(1)
-		body:Show()
-		frame:SetClipsChildren(false)
-		frame:SetSize(fullW, fullH)
+		local x, y = dock:GetCenter()
+		if dock ~= placedDock or x ~= placedX or y ~= placedY then placeDirty = true end
+		placedDock, placedX, placedY = dock, x, y
+	elseif placedDock then
+		placedDock, placedX, placedY = nil, nil, nil
+		placeDirty = true
+	end
+	if on ~= placedOn then placeDirty = true end
+	placedOn = on
+	if placeDirty then
+		placeDirty = false
+		if docked then
+			if not tab then BuildTab() end
+			PlaceDocked(dock)
+			if slideP == nil then slideP = Folded() and 0 or 1 end
+			if not slideT then ApplySlide() end
+		else
+			body:ClearAllPoints()
+			body:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
+			body:SetAlpha(1)
+			body:Show()
+			frame:SetClipsChildren(false)
+			frame:SetSize(fullW, fullH)
+		end
+		if docked and on then
+			tab:SetFrameStrata(frame:GetFrameStrata())
+			tab:SetFrameLevel(math.max(0, frame:GetFrameLevel()))
+			tab:Show()
+		elseif tab then
+			tab:Hide()
+		end
 	end
 	shell:SetShown(G("windowless") ~= true)
-	if docked and on then
-		tab:SetFrameStrata(frame:GetFrameStrata())
-		tab:SetFrameLevel(math.max(0, frame:GetFrameLevel()))
-		tab:Show()
-	elseif tab then
-		tab:Hide()
-	end
 	frame:SetShown(on)
 end
 
@@ -910,7 +939,13 @@ end
 -- The text shadow the player picked (in px, down and to the right), on every paint as well.
 local function Shadow(fs)
 	local px = G("shadow") or 1
-	fs:SetShadowColor(0, 0, 0, px > 0 and 1 or 0)
+	local alpha = px > 0 and 1 or 0
+	-- Set only when it differs from what the text has now (DaylightUI may set it back on a style
+	-- change): reading it costs nothing, setting it every paint did.
+	local x, y = fs:GetShadowOffset()
+	local _, _, _, a = fs:GetShadowColor()
+	if x == px and y == -px and a == alpha then return end
+	fs:SetShadowColor(0, 0, 0, alpha)
 	fs:SetShadowOffset(px, -px)
 end
 
@@ -979,7 +1014,6 @@ function Paint()
 		for i = 1, n do
 			local d = drawn[i]
 			local row = Row(i)
-			PlaceRow(row, i)
 			local c = NameColor(d.stat)
 			Thicken(row.label)
 			Thicken(row.value)
@@ -1008,14 +1042,20 @@ function Paint()
 	Present(true)
 end
 
--- A burst of events: paint at once, then once more 0.3 s later for whatever came after.
-local pending = false
+-- A burst of events: paint at once, then once more 0.3 s later if more came meanwhile.
+local pending, again = false, false
 local function Later()
 	pending = false
-	Paint()
+	if again then
+		again = false
+		Paint()
+	end
 end
 local function PaintSoon()
-	if pending then return end
+	if pending then
+		again = true
+		return
+	end
 	pending = true
 	Paint()
 	C_Timer.After(0.3, Later)
@@ -1077,12 +1117,29 @@ local function OnEvent(_, event)
 	end
 end
 
+-- The watch runs by the meters or by the chat with its fade; turned off, the stats are back to
+-- full (no chat fade) and in their own spot (no threat meter to make way for).
+local function Watching()
+	if not watcher then return end
+	local to = G("dock")
+	local on = G("enabled") == true and (to == "meters" or (to == "chat" and G("chatFade") == true))
+	if on then
+		watcher:Show()
+	elseif watcher:IsShown() then
+		watcher:Hide()
+		P.MakeWay()
+		frame:SetAlpha(1)
+	end
+end
+
 -- Everything again from the settings.
 local function Refresh()
 	if not frame then return end
 	local on = G("enabled") == true
 	previewing = on and ns.Previewing(KEY)
 	Listen(on, (G("role") or "auto") == "auto")
+	sizedW, placeDirty = nil, true
+	Watching()
 	if not on then
 		frame:Hide()
 		if tab then tab:Hide() end
@@ -1099,9 +1156,12 @@ local function Build()
 	frame:SetClampedToScreen(true)
 	frame:Hide()
 	-- Docked to the chat with "Fade with the chat": as see-through as the chat window is now.
-	-- Docked to the damage meters: making way for the threat meter (MakeWay).
+	-- Docked to the damage meters: making way for the threat meter (MakeWay). A small child frame
+	-- does it, shown only for those two (Watching), so nothing runs otherwise.
 	local fadeWait = 0
-	frame:HookScript("OnUpdate", function(self, dt)
+	watcher = CreateFrame("Frame", nil, frame)
+	watcher:Hide()
+	watcher:SetScript("OnUpdate", function(_, dt)
 		fadeWait = fadeWait + (dt or 0)
 		if fadeWait < 0.03 then return end
 		fadeWait = 0
@@ -1114,7 +1174,7 @@ local function Build()
 				if ok and Safe(v) and type(v) == "number" then a = v end
 			end
 		end
-		if math.abs(self:GetAlpha() - a) > 0.01 then self:SetAlpha(a) end
+		if math.abs(frame:GetAlpha() - a) > 0.01 then frame:SetAlpha(a) end
 	end)
 	body = CreateFrame("Frame", nil, frame)
 	body:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
@@ -1168,8 +1228,10 @@ end
 function P.Style()
 	if not frame then return end
 	classColor = nil
+	wipe(hexOf)
+	sizedW, placeDirty = nil, true
 	if tab then
-		API.Skin(tab, { noBevel = true })
+		API.Skin(tab, { borderPx = 3 })   -- (as BuildTab made it)
 		PaintGrip(false)
 	end
 	Paint()

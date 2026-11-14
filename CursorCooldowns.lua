@@ -326,12 +326,24 @@ local function Refresh()
 		local start, duration, info = ReadCooldown(id)
 		local on = allowed and (info ~= nil or type(start) ~= "nil") and Cooling(start, duration, info)
 		if on then
-			Sweep(icon.cd, id, start, duration)
+			-- Which cooldown this is: its start and length when readable, else the game's flags
+			-- (never secret). Drawn again only when that changes or the icon comes up.
+			local key
+			if Safe(start) and Safe(duration) then
+				key = tostring(start) .. ":" .. tostring(duration)
+			elseif info and Safe(info.isActive) and Safe(info.isOnGCD) then
+				key = tostring(info.isActive) .. ":" .. tostring(info.isOnGCD)
+			end
+			if not icon:IsShown() or key == nil or key ~= icon.swept then
+				icon.swept = key
+				Sweep(icon.cd, id, start, duration)
+			end
 			if not icon:IsShown() then
 				icon:Show()
 				changed = true
 			end
 		elseif icon:IsShown() then
+			icon.swept = nil
 			icon.cd:Clear()
 			icon:Hide()
 			changed = true
@@ -469,14 +481,34 @@ local function Ready(id)
 end
 
 -- Which spell each slot follows, from the picks and what you know now.
+local readyListening = false
+local function ReadyEvents(on)
+	if on == readyListening or not holder then return end
+	readyListening = on
+	if on then
+		pcall(holder.RegisterEvent, holder, "PLAYER_TARGET_CHANGED")
+		pcall(holder.RegisterUnitEvent, holder, "UNIT_POWER_FREQUENT", "player")
+	else
+		pcall(holder.UnregisterEvent, holder, "PLAYER_TARGET_CHANGED")
+		pcall(holder.UnregisterEvent, holder, "UNIT_POWER_FREQUENT")
+	end
+end
+
 local function ReadyTrack()
-	local picks, book = Picks(), Known()
+	local picks = Picks()
+	if not (G("enabled") and G("ready")) or next(picks) == nil then
+		wipe(readyIds)
+		ReadyEvents(false)
+		return
+	end
+	local book = Known()
 	for slot = 1, READY_SLOTS do
 		local name = picks[slot]
 		local id = type(name) == "string" and book[name] or nil
 		readyIds[slot] = id   -- (nil entries leave the table empty when nothing is picked)
 		if id then ReadyIcon(slot).art:SetTexture(Texture(id)) end
 	end
+	ReadyEvents(next(readyIds) ~= nil)
 end
 
 function RefreshReady(retrack)
@@ -500,12 +532,32 @@ function RefreshReady(retrack)
 	if changed or retrack then ReadyLayout() end
 end
 
+-- Power changes come many times a second: the ready line is looked at once per 0.1 s at most.
+local powerQueued = false
+local function PowerLook()
+	powerQueued = false
+	if next(readyIds) ~= nil then RefreshReady() end
+end
+
+-- Spells learned or changed (forms and stances too): looked at once, a moment after the last.
+local trackQueued = false
+local function Retrack()
+	trackQueued = false
+	knownDirty = true
+	Track()
+	RefreshReady(true)
+end
+
 local function OnEvent(_, event)
 	if event == "SPELL_UPDATE_COOLDOWN" then
 		Refresh()
 		RefreshReady()
-	elseif event == "UNIT_POWER_FREQUENT" or event == "PLAYER_TARGET_CHANGED" then
-		-- (Often: only looked at while an ability is picked.)
+	elseif event == "UNIT_POWER_FREQUENT" then
+		if not powerQueued then
+			powerQueued = true
+			C_Timer.After(0.1, PowerLook)
+		end
+	elseif event == "PLAYER_TARGET_CHANGED" then
 		if next(readyIds) ~= nil then RefreshReady() end
 	elseif event == "SPELL_UPDATE_USABLE" or event == "PLAYER_DEAD" or event == "PLAYER_ALIVE"
 		or event == "PLAYER_UNGHOST" then
@@ -519,9 +571,10 @@ local function OnEvent(_, event)
 		Refresh()
 		RefreshReady()
 	else
-		knownDirty = true
-		Track()
-		RefreshReady(true)
+		if not trackQueued then
+			trackQueued = true
+			C_Timer.After(0.3, Retrack)
+		end
 	end
 end
 
@@ -541,8 +594,7 @@ function P.Login()
 		"PLAYER_ALIVE", "PLAYER_UNGHOST" }) do
 		pcall(holder.RegisterEvent, holder, e)
 	end
-	pcall(holder.RegisterEvent, holder, "PLAYER_TARGET_CHANGED")
-	pcall(holder.RegisterUnitEvent, holder, "UNIT_POWER_FREQUENT", "player")
+	-- (Target and power changes: registered by ReadyTrack while an ability is picked.)
 	Track()
 	RefreshReady(true)
 end

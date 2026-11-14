@@ -221,10 +221,14 @@ local function RingSize()
 end
 
 -- Which icon a direction points at (k), or nil in the middle. dx, dy in pixels from the middle.
+-- Settings read every frame while the ring is open: kept from the last Apply (which every setting
+-- change runs).
+local cIcon, cNames, cDim = 36, true, true
+
 local function Pointed(dx, dy)
 	local n = #shown
 	if n == 0 then return nil end
-	local dead = math.max(14, (G("iconSize") or 36) * 0.6)
+	local dead = math.max(14, cIcon * 0.6)
 	if dx * dx + dy * dy < dead * dead then return nil end
 	local a = math.deg(math.atan2(dy, dx))
 	local best, bestD
@@ -286,6 +290,9 @@ local WHEEL = [=[
 	self:SetAttribute("wheel", 1)
 ]=]
 
+local FIELDS = { "spell", "item", "macro" }   -- the secure button's action fields
+local reskin = false                           -- a style change: every tile skinned again
+
 -- Writes the ring's layout and every slot's action onto the secure button. Out of a fight only.
 local function Apply()
 	if not ring then return end
@@ -304,6 +311,7 @@ local function Apply()
 	local n = #shown
 	Angles(n)
 	local size, icon, radius = RingSize(), G("iconSize") or 36, G("radius") or 90
+	cIcon, cNames, cDim = icon, G("names") and true or false, G("dim") and true or false
 	ring:SetSize(size, size)
 	if G("opens") ~= "cursor" then
 		ring:ClearAllPoints()
@@ -320,13 +328,17 @@ local function Apply()
 			t:SetPoint("CENTER", ring, "CENTER", math.cos(rad) * radius, math.sin(rad) * radius)
 			t.art:SetTexture(Texture(a))
 			t.action = a
-			API.Skin(t, { noBevel = true, borderPx = 2, bgAlpha = 0.85 })
+			if reskin or t.skinnedAt ~= icon then
+				t.skinnedAt = icon
+				API.Skin(t, { noBevel = true, borderPx = 2, bgAlpha = 0.85 })
+			end
 			t:Show()
 		elseif t then
 			t:Hide()
 			t.action = nil
 		end
 	end
+	reskin = false
 	-- The secure side: how many, their directions, which slot each is, and each slot's action.
 	trigger:SetAttribute("n", n)
 	trigger:SetAttribute("size", size)
@@ -351,7 +363,7 @@ local function Apply()
 		end
 		trigger:SetAttribute("type" .. suffix, kind)
 		trigger:SetAttribute("typerelease" .. suffix, kind)
-		for _, f in ipairs({ "spell", "item", "macro" }) do
+		for _, f in ipairs(FIELDS) do
 			trigger:SetAttribute(f .. suffix, f == field and value or nil)
 		end
 	end
@@ -419,14 +431,14 @@ local function OnUpdate()
 			end
 		end
 		lastLit = k
-		if G("names") and k and tiles[k] and tiles[k].action then
+		if cNames and k and tiles[k] and tiles[k].action then
 			center:SetText(Label(tiles[k].action))
 		else
 			center:SetText("")
 		end
 	end
 	local now = GetTime()
-	if G("dim") and now >= dimAt then
+	if cDim and now >= dimAt then
 		dimAt = now + 0.2
 		for i = 1, #shown do
 			local t = tiles[i]
@@ -442,7 +454,7 @@ end
 local function OnShow()
 	lastLit, dimAt = false, 0
 	center:SetText(#shown == 0 and "No actions yet: Edit the slots on Halo's page" or "")
-	if not G("dim") then
+	if not cDim then
 		for _, t in ipairs(tiles) do
 			t.art:SetDesaturated(false)
 			t.art:SetAlpha(1)
@@ -477,8 +489,9 @@ local function Build()
 	trigger:Hide()   -- (a click binding still reaches a hidden button)
 	SecureHandlerSetFrameRef(trigger, "ring", ring)
 	SecureHandlerWrapScript(trigger, "OnClick", trigger, DOWN_UP)
-	SecureHandlerWrapScript(ring, "OnMouseWheel", trigger, WHEEL)
+	-- (The handler first, then wrapped: setting it after would replace the wrapper.)
 	ring:SetScript("OnMouseWheel", function() end)
+	SecureHandlerWrapScript(ring, "OnMouseWheel", trigger, WHEEL)
 end
 
 -- ---------------------------------------------------------------------------------------------
@@ -632,6 +645,7 @@ _G.BINDING_HEADER_DAYLIGHTESSENTIALS = _G.BINDING_HEADER_DAYLIGHTESSENTIALS or "
 _G["BINDING_NAME_CLICK DaylightEssentialsHaloButton:LeftButton"] = "Halo: hold to open the ring"
 
 local events
+local applyQueued = false
 function P.Login()
 	Build()
 	events = CreateFrame("Frame")
@@ -640,8 +654,13 @@ function P.Login()
 			if editor and editor:IsShown() then P.Edit(false) end
 		elseif event == "PLAYER_REGEN_ENABLED" then
 			if pending then Apply() end
-		else
-			Apply()   -- spells learned (a new rank's name and icon), macros changed
+		elseif not applyQueued then
+			-- Spells learned (a new rank's name and icon), macros changed: once, after the burst.
+			applyQueued = true
+			C_Timer.After(0.2, function()
+				applyQueued = false
+				Apply()
+			end)
 		end
 	end)
 	for _, e in ipairs({ "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED", "SPELLS_CHANGED", "UPDATE_MACROS" }) do
@@ -660,6 +679,7 @@ end
 function P.Style()
 	if not ring then return end
 	lastLit = false
+	reskin = true
 	ns.Ink(center, "TITLE")
 	Apply()
 end

@@ -583,10 +583,17 @@ function PaintSoon()
 	C_Timer.After(0.1, PaintNow)
 end
 
--- Out of a fight: the gone leave, the newest first, no more than fit.
+-- Out of a fight: the gone leave, the newest first, no more than fit. Alerts older than their
+-- wait are forgotten (the record of them doesn't grow all session).
+local function Newest(a, b) return a.added > b.added end
+local sortedAt   -- the list's version when it was last sorted
 local function Tidy()
 	if InCombatLockdown() then return end
 	local now, keep = GetTime(), max(15, G("keep") or 60)
+	local wait = G("throttle") or 120
+	for k, t in pairs(lastAlert) do
+		if now - t >= wait then lastAlert[k] = nil end
+	end
 	for i = #list, 1, -1 do
 		local e = list[i]
 		if now - e.seen > keep then
@@ -595,13 +602,14 @@ local function Tidy()
 			version = version + 1
 		end
 	end
-	table.sort(list, function(a, b) return a.added > b.added end)
+	if version ~= sortedAt then table.sort(list, Newest) end
 	local cap = max(1, floor(G("maxRows") or 8))
 	for i = #list, cap + 1, -1 do
 		byKey[list[i].key] = nil
 		list[i] = nil
 		version = version + 1
 	end
+	sortedAt = version
 end
 
 -- ---------------------------------------------------------------------------------------------
@@ -635,11 +643,15 @@ local function Spot(unit)
 	else
 		local cap = max(1, floor(G("maxRows") or 8))
 		e = { key = key, name = name, class = class, level = level, guild = guild, seen = now, added = now }
+		local listed = true
 		if InCombatLockdown() then
-			-- In a fight the order holds (the secure buttons can't follow): below the others.
+			-- In a fight the order holds (the secure buttons can't follow): below the others, while
+			-- there's room (a full list takes them once the fight ends).
 			if #list < cap then
 				list[#list + 1] = e
 				byKey[key] = e
+			else
+				listed = false
 			end
 		else
 			table.insert(list, 1, e)
@@ -649,10 +661,12 @@ local function Spot(unit)
 				list[i] = nil
 			end
 		end
-		version = version + 1
-		Alert(key, name, class, level)
-		PaintSoon()
-		StartTicker()
+		if listed then
+			version = version + 1
+			Alert(key, name, class, level)
+			PaintSoon()
+			StartTicker()
+		end
 	end
 	-- A Kill on Sight name typed in lower case takes the game's spelling.
 	local kos = KosDB()[key]
@@ -662,6 +676,12 @@ end
 
 -- Nameplates are followed only for players (their names may be secret for now, readable later).
 local function Plate(unit)
+	-- (Friendly and not attackable, as the game says plainly: a duel stays, a secret answer is
+	-- looked at again later.)
+	if Yes(Read(UnitIsFriend, "player", unit)) and not Yes(Read(UnitCanAttack, "player", unit)) then
+		plates[unit] = nil
+		return
+	end
 	if Yes(Read(UnitIsPlayer, unit)) then
 		plates[unit] = true
 		Spot(unit)
@@ -710,7 +730,7 @@ end
 local BASE = { "PLAYER_ENTERING_WORLD", "ZONE_CHANGED_NEW_AREA", "PLAYER_REGEN_DISABLED",
 	"PLAYER_REGEN_ENABLED", "UI_SCALE_CHANGED", "DISPLAY_SIZE_CHANGED" }
 local DETECT = { "NAME_PLATE_UNIT_ADDED", "NAME_PLATE_UNIT_REMOVED", "PLAYER_TARGET_CHANGED",
-	"UPDATE_MOUSEOVER_UNIT", "PLAYER_FOCUS_CHANGED" }
+	"UPDATE_MOUSEOVER_UNIT", "PLAYER_FOCUS_CHANGED", "UNIT_FACTION" }
 
 local function Listen(events, on)
 	for _, e in ipairs(events) do
@@ -742,6 +762,9 @@ local function OnEvent(_, event, unit)
 		if type(unit) == "string" then Plate(unit) end
 	elseif event == "NAME_PLATE_UNIT_REMOVED" then
 		if type(unit) == "string" then plates[unit] = nil end
+	elseif event == "UNIT_FACTION" then
+		-- A plate turned friendly or hostile (a duel, a flag): looked at again.
+		if type(unit) == "string" and unit:find("^nameplate%d") then Plate(unit) end
 	elseif event == "PLAYER_TARGET_CHANGED" then
 		Spot("target")
 	elseif event == "UPDATE_MOUSEOVER_UNIT" then

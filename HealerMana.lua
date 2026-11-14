@@ -164,12 +164,14 @@ local function ManaCurve()
 	return c
 end
 
+local function SetPct(fs, unit)
+	fs:SetFormattedText("%.0f%%", UnitPowerPercent(unit, MANA, false, CurveConstants.ScaleTo100))
+end
+
 local function PaintMana(fs, unit)
 	if UnitPowerPercent and CurveConstants then
 		-- Formatted by the game itself: a secret percent is fine here.
-		local ok = pcall(function()
-			fs:SetFormattedText("%.0f%%", UnitPowerPercent(unit, MANA, false, CurveConstants.ScaleTo100))
-		end)
+		local ok = pcall(SetPct, fs, unit)
 		if not ok then fs:SetText("?") end
 	else
 		-- An older client: the plain numbers, while they can be read.
@@ -283,6 +285,7 @@ end
 -- short. Names are plain text (a secret one shows as "Healer"); mana percents are kept to a
 -- column wide enough for "100%". Widths that can't be read keep the last ones measured.
 local lastNameW, lastManaW = 0, 0
+local sizedW, sizedH, sizedScale   -- what Size last set (nil: set it again)
 local function Size(n)
 	local nameW, manaW = 0, 0
 	local nameOk, manaOk = true, true
@@ -306,20 +309,42 @@ local function Size(n)
 	local w = math.max(math.floor(G("width") or 170), need, math.ceil(titleW) + PAD * 2 + 2)
 	local h = PAD * 2 + TITLE_H + n * ROW_H
 	local scale = G("scale") or 1
+	if w == sizedW and h == sizedH and scale == sizedScale then return end
+	sizedW, sizedH, sizedScale = w, h, scale
 	body:SetSize(w, h)
 	body:SetScale(scale)
 	frame:SetSize(w * scale, h * scale)
 	API.Skin(body, { window = true })
 end
 
--- The per-unit events, heard only while healers are listed.
-local LISTEN = { "UNIT_POWER_UPDATE", "UNIT_MAXPOWER", "UNIT_HEALTH" }
-local function Listen()
-	for _, e in ipairs(LISTEN) do frame:RegisterEvent(e) end
+-- The per-unit events: each listed healer's row hears its own unit only (RegisterUnitEvent), and
+-- nothing is heard while nobody is listed. (Every unit if this client lacks RegisterUnitEvent: the
+-- handler still looks the unit up.)
+local ROW_EVENTS = { "UNIT_POWER_UPDATE", "UNIT_MAXPOWER", "UNIT_HEALTH", "UNIT_CONNECTION", "UNIT_FLAGS" }
+local OnEvent   -- below
+local function ListenRow(row, unit)
+	local ev = row.ev
+	if not ev then
+		ev = CreateFrame("Frame")
+		ev:SetScript("OnEvent", function(...) OnEvent(...) end)
+		row.ev = ev
+	end
+	ev:UnregisterAllEvents()
+	-- Your own row in a raid: the game may speak of you as "player" rather than "raidN".
+	local okU, me = pcall(UnitIsUnit, unit, "player")
+	local alias = (unit ~= "player" and okU and Safe(me) and me == true) and "player" or nil
+	for _, e in ipairs(ROW_EVENTS) do
+		local ok
+		if alias then ok = pcall(ev.RegisterUnitEvent, ev, e, unit, alias)
+		else ok = pcall(ev.RegisterUnitEvent, ev, e, unit) end
+		if not ok then pcall(ev.RegisterEvent, ev, e) end
+	end
 end
-local function Unlisten()
-	if not frame then return end
-	for _, e in ipairs(LISTEN) do frame:UnregisterEvent(e) end
+local function Unlisten(from)
+	for i = from or 1, #rows do
+		local ev = rows[i].ev
+		if ev then ev:UnregisterAllEvents() end
+	end
 end
 
 -- The list made again from the group.
@@ -338,7 +363,7 @@ local function Rebuild()
 		end
 		for i = #PREVIEW + 1, #rows do rows[i]:Hide() end
 		Size(#PREVIEW)
-		Unlisten()
+		Unlisten(1)
 		frame:Show()
 		return
 	end
@@ -349,16 +374,16 @@ local function Rebuild()
 		-- Your own row in a raid: the game may speak of you as "player" rather than "raidN".
 		if UnitIsUnit(unit, "player") then rowOf.player = row end
 		FillRow(row, unit)
+		ListenRow(row, unit)
 		row:Show()
 	end
 	for i = #list + 1, #rows do rows[i]:Hide() end
+	Unlisten(#list + 1)
 	if #list == 0 then
-		Unlisten()
 		frame:Hide()
 		return
 	end
 	Size(#list)
-	Listen()
 	frame:Show()
 end
 
@@ -380,7 +405,7 @@ local function Refit()
 	if n > 0 then Size(n) end
 end
 
-local function OnEvent(_, event, unit, kind)
+function OnEvent(_, event, unit, kind)
 	if event == "UNIT_POWER_UPDATE" or event == "UNIT_MAXPOWER" then
 		local row = rowOf[unit]
 		if row and not row.dead and not row.off and (kind == nil or kind == "MANA") then PaintMana(row.mana, unit) end
@@ -418,8 +443,8 @@ local function Build()
 	title:SetText("Healer mana")
 	ns.Ink(title, "LABEL")
 	frame:SetScript("OnEvent", OnEvent)
-	for _, e in ipairs({ "GROUP_ROSTER_UPDATE", "PLAYER_ROLES_ASSIGNED", "PLAYER_ENTERING_WORLD",
-		"UNIT_CONNECTION", "UNIT_FLAGS" }) do
+	-- (A healer's connection, flags, health and mana: heard by its own row, ListenRow.)
+	for _, e in ipairs({ "GROUP_ROSTER_UPDATE", "PLAYER_ROLES_ASSIGNED", "PLAYER_ENTERING_WORLD" }) do
 		frame:RegisterEvent(e)
 	end
 	Size(1)
@@ -445,6 +470,7 @@ end
 
 function P.Style()
 	manaCurve = nil
+	sizedW = nil   -- (skinned again on the next size)
 	if not frame then return end
 	ns.Ink(title, "LABEL")
 	RebuildSoon()

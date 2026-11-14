@@ -347,6 +347,7 @@ local BUFFED_FOR = 180
 local function NoteBuffs(updateInfo)
 	if not G("enabled") or InCombatLockdown() then return end
 	if type(updateInfo) ~= "table" or updateInfo.isFullUpdate or type(updateInfo.addedAuras) ~= "table" then return end
+	local before = next(buffedBy)
 	for _, data in ipairs(updateInfo.addedAuras) do
 		if Safe(data) and type(data) == "table" then
 			local src, helpful = data.sourceUnit, data.isHelpful
@@ -362,6 +363,8 @@ local function NoteBuffs(updateInfo)
 			end
 		end
 	end
+	-- (A class with no buffs to give rests until someone buffs it: looking again now.)
+	if not before and next(buffedBy) and P.Wake then P.Wake() end
 end
 
 -- ---------------------------------------------------------------------------------------------
@@ -425,6 +428,7 @@ local function Macro(o)
 	return table.concat(lines, "\n")
 end
 
+local sizedAs   -- the box's last size and scale (skinned again only when they change)
 local function Paint(o)
 	local spell = o.spell
 	icon:SetTexture(spell and spell.icon or o.icon or 136243)
@@ -439,6 +443,9 @@ local function Paint(o)
 	local tw = math.max(ns.TextWidth(title) or 0, ns.TextWidth(sub) or 0)
 	local w = math.max(W, math.ceil(PAD * 2 + ICON + GAP + tw + 2))
 	local scale = G("scale") or 1
+	local sig = w .. ":" .. scale
+	if sig == sizedAs then return end
+	sizedAs = sig
 	body:SetSize(w, H)
 	body:SetScale(scale)
 	frame:SetSize(w * scale, H * scale)
@@ -446,30 +453,48 @@ local function Paint(o)
 end
 
 -- The secure part over the body (out of a fight only).
+local placedAs, macroText   -- the secure part's last spot and macro (set again only when changed)
 local function PlaceButton()
 	if InCombatLockdown() or not holder then return end
-	holder:ClearAllPoints()
 	local l, t = body:GetLeft(), body:GetTop()
 	if not l or not t or not body:IsVisible() or previewing or not offer then
-		button:Hide()
+		if button:IsShown() then button:Hide() end
+		placedAs = nil
 		return
 	end
 	local s = body:GetEffectiveScale() / UIParent:GetEffectiveScale()
-	holder:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", l * s, t * s)
-	holder:SetSize(body:GetWidth() * s, body:GetHeight() * s)
-	holder:SetFrameStrata(frame:GetFrameStrata())
-	holder:SetFrameLevel(frame:GetFrameLevel() + 20)
-	button:SetAttribute("macrotext1", Macro(offer))
-	button:Show()
+	local w, h = body:GetWidth() * s, body:GetHeight() * s
+	local spot = l * s .. ":" .. t * s .. ":" .. w .. ":" .. h
+	if spot ~= placedAs then
+		placedAs = spot
+		holder:ClearAllPoints()
+		holder:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", l * s, t * s)
+		holder:SetSize(w, h)
+		holder:SetFrameStrata(frame:GetFrameStrata())
+		holder:SetFrameLevel(frame:GetFrameLevel() + 20)
+	end
+	local m = Macro(offer)
+	if m ~= macroText then
+		macroText = m
+		button:SetAttribute("macrotext1", m)
+	end
+	if not button:IsShown() then button:Show() end
 end
 
+local shownAs   -- the offer on show (who, which buff, why): painted again only when it changes
 local function ShowOffer(o)
 	offer = o
 	if o then
-		Paint(o)
+		local key = (o.guid or o.name) .. ":" .. (o.spell and o.spell.name or "") .. ":" .. o.reason
+			.. (o.thanks and ":t" or "") .. (previewing and ":p" or "") .. ":" .. (G("scale") or 1)
+		if key ~= shownAs or not body:IsShown() then
+			shownAs = key
+			Paint(o)
+		end
 		body:Show()
 		if not frame:IsShown() then frame:Show() end
 	else
+		shownAs = nil
 		body:Hide()
 	end
 	PlaceButton()
@@ -508,13 +533,14 @@ local function Try(unit, reason, seen, thanksFor)
 	local guid, name = Candidate(unit)
 	if not guid or seen[guid] then return nil end
 	seen[guid] = true
+	-- (A passer-by too far away: no need to read their buffs.)
+	if reason == "nearby" and G("nearby") == "beside" and not Beside(unit) then return nil end
 	local buffs = Buffs(unit)
 	if not buffs then return nil end
 	local spell = Pick(unit, buffs)
 	local thanks = thanksFor and thanksFor[guid] or nil
 	if spell then
 		if not InRange(spell.name, unit) then return nil end
-		if reason == "nearby" and G("nearby") == "beside" and not Beside(unit) then return nil end
 	elseif thanks then
 		local inInstance = IsInInstance and IsInInstance() or false
 		local emote, say = ThanksWanted(inInstance, true)
@@ -537,6 +563,15 @@ local function KnownUnits()
 	return units
 end
 
+-- Whether your class has a buff to give right now (a warlock's breath only while swimming).
+local function CanGive()
+	if class == "PALADIN" then return true end
+	local list = BUFFS[class]
+	if not list then return false end
+	if class == "WARLOCK" then return (IsSwimming and IsSwimming()) and true or false end
+	return true
+end
+
 local function Find()
 	local seen = {}
 	local now = GetTime()
@@ -553,6 +588,8 @@ local function Find()
 			end
 		end
 	end
+	-- Nothing of yours to give: only the thank-yous above.
+	if not CanGive() then return nil end
 	-- 2. Your target.
 	if G("target") then
 		local o = Try("target", "target", seen)
@@ -615,10 +652,25 @@ end
 local ticker
 local function Tick(on)
 	if on and not ticker then
-		ticker = C_Timer.NewTicker(1.5, function() if not looking then Look() end end)
+		ticker = C_Timer.NewTicker(1.5, function()
+			if not looking then Look() end
+			-- Nothing to give and nobody to thank: rests until someone buffs you (NoteBuffs wakes
+			-- it). A warlock keeps looking: swimming has no event of its own.
+			if not previewing and class ~= "WARLOCK" and not CanGive() and not next(buffedBy) and ticker then
+				ticker:Cancel()
+				ticker = nil
+			end
+		end)
 	elseif not on and ticker then
 		ticker:Cancel()
 		ticker = nil
+	end
+end
+
+function P.Wake()
+	if frame and G("enabled") and not InCombatLockdown() then
+		Tick(true)
+		LookSoon()
 	end
 end
 
@@ -699,7 +751,13 @@ local EVENTS = { "PLAYER_ENTERING_WORLD", "PLAYER_REGEN_DISABLED", "PLAYER_REGEN
 
 local function OnEvent(_, event, unit, info)
 	if event == "UNIT_AURA" then
-		Forget(unit)
+		-- Only a buff added or taken away changes what we read (refreshed timers and stacks don't).
+		local changed = true
+		if type(info) == "table" and Safe(info.isFullUpdate) and not info.isFullUpdate then
+			local added, removed = info.addedAuras, info.removedAuraInstanceIDs
+			changed = (type(added) == "table" and #added > 0) or (type(removed) == "table" and #removed > 0)
+		end
+		if changed then Forget(unit) end
 		if unit == "player" then NoteBuffs(info) end
 		return
 	elseif event == "NAME_PLATE_UNIT_ADDED" then
@@ -839,6 +897,8 @@ function P.Setting()
 end
 
 function P.Style()
+	-- The look changed: everything painted and skinned again.
+	shownAs, sizedAs = nil, nil
 	if frame and offer then LookSoon() end
 end
 
