@@ -1,5 +1,8 @@
 # Daylight Essentials
 
+## 1.1.2
+- Fixed the "Binding header DAYLIGHTESSENTIALS was attempted to be loaded more than once" warning at login. The key bindings still sit under Key Bindings, AddOns, Daylight Essentials.
+
 ## 1.1.1
 - Healer Mana: while a healer is drinking, their line becomes their mana bar, filling as they drink, with "Drinking" on it in place of the percent, so you can see who is getting their mana back and how far along they are; it ends by itself as a fight starts (a switch on its page, on to start).
 - Healer Mana: a dead or offline healer's whole line is grayed out (name and class icon), with "Dead" in red or "Offline" in gray in place of the percent, so it reads at a glance.

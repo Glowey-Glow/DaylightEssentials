@@ -1,6 +1,6 @@
 <Bindings>
 	<Binding name="CLICK DaylightEssentialsBuffMannersButton:LeftButton" header="DAYLIGHTESSENTIALS" category="ADDONS">
 	</Binding>
-	<Binding name="CLICK DaylightEssentialsHaloButton:LeftButton" header="DAYLIGHTESSENTIALS" category="ADDONS">
+	<Binding name="CLICK DaylightEssentialsHaloButton:LeftButton" category="ADDONS">
 	</Binding>
 </Bindings>
