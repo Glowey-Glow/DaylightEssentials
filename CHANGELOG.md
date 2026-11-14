@@ -18,6 +18,7 @@
 - Right-click the prompt for Not now or Never offer; /dui manners never Name, /dui manners allow Name and /dui manners list manage the Never list.
 - New: Halo. Hold a key (Key Bindings, AddOns, Daylight Essentials) for a ring of your own spells, items and macros around the mouse; point at one or scroll to it, then let go to use it. Fill its slots by dragging onto them (the Edit the slots button or /dui halo edit). Choose the shape, the number of slots, the ring size, the icon size and where it opens.
 - Cursor Cooldowns: Ready at the cursor. Pick up to six abilities, and their icons show in a line beside the mouse pointer while each is ready to cast (off cooldown and usable now). You choose the side (Top left through Left) and the icon size (24 px by default). Picks are kept per class.
+- Healer Mana, Combat Timer, Pet Reminder, Enemy Nearby, Secondary Stats and the Buff Manners prompt come up with DaylightUI's own fade-in on login and /reload, instead of popping in (only when DaylightUI's fade-in is on).
 - Nothing is cut short any more: Healer Mana and Enemy Nearby grow wider to fit a long name or "Offline" (their Width is now the least they take), and the option pages' descriptions and dropdown choices fit in full, with the detail in their tooltips.
 - Fixed: no more "unknown unit" lines in chat about Combat Alert's "Stays for" and Combat Timer's "Keep the last fight's time" sliders.
 

@@ -137,6 +137,17 @@ function ns.TextWidth(fs)
 	return w
 end
 
+-- Joins DaylightUI's login and /reload fade-in: the frames start unseen and come up with the rest
+-- of the UI (its timing, after the loading screen, only when the player has "fade in" on and
+-- motion allowed). Nothing more: no fade choices of its own, so they stay fully shown after.
+-- Frames whose alpha the part sets itself are never handed over (DaylightUI owns these ones').
+function ns.FadeIn(partKey, frames)
+	local reg = ns.me.RegisterFade
+	if type(reg) ~= "function" then return false end
+	local ok, done = pcall(reg, { key = partKey .. ".intro", frames = frames })
+	return ok and done == true
+end
+
 -- Whether the player lets DaylightUI animate (its "motion" choice). True when it can't be asked.
 function ns.MotionOn()
 	local motion = DUI.Motion

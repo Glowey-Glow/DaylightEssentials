@@ -872,6 +872,8 @@ local function Build()
 	-- Placed now: after a /reload in a fight, the mover only places it once the fight ends.
 	frame:SetPoint(unpack(Home()))
 	ns.me.RegisterMover(frame, KEY, "Enemies nearby", Home)
+	-- Comes up with DaylightUI's fade-in on login and /reload (the inner box: the frame's own alpha is left alone).
+	ns.FadeIn(KEY, function() return { body } end)
 	-- When the list is moved (a profile, the mover), the secure buttons follow it.
 	hooksecurefunc(frame, "SetPoint", function() PlaceSoon() end)
 

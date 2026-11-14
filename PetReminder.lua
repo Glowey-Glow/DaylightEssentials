@@ -167,6 +167,8 @@ function P.Login()
 	-- Placed now: after a /reload in a fight, the mover only places it once the fight ends.
 	frame:SetPoint(unpack(DEFAULT))
 	ns.me.RegisterMover(frame, KEY, "Pet reminder", DEFAULT)
+	-- Comes up with DaylightUI's fade-in on login and /reload (the inner box: the frame's own alpha is its pulse).
+	ns.FadeIn(KEY, function() return { body } end)
 	ns.me.RegisterTestPart(KEY, "Pet reminder")
 	frame:SetScript("OnEvent", OnEvent)
 	for _, e in ipairs(EVENTS) do pcall(frame.RegisterEvent, frame, e) end

@@ -202,6 +202,8 @@ function P.Login()
 	-- Placed now: after a /reload in a fight, the mover only places it once the fight ends.
 	frame:SetPoint(unpack(Home()))
 	ns.me.RegisterMover(frame, KEY, "Combat timer", Home)
+	-- Comes up with DaylightUI's fade-in on login and /reload (the inner box: the frame's own alpha is its own fade).
+	ns.FadeIn(KEY, function() return { body } end)
 	ns.me.RegisterTestPart(KEY, "Combat timer")
 	-- A /reload in a fight: the count starts from the reload.
 	if InCombatLockdown() then Start() end

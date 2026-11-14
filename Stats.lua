@@ -1136,6 +1136,9 @@ local function Build()
 	-- Placed now: after a /reload in a fight, the mover only places it once the fight ends.
 	frame:SetPoint(unpack(Home()))
 	ns.me.RegisterMover(frame, KEY, "Secondary stats", Home)
+	-- Comes up with DaylightUI's fade-in on login and /reload: its window and text layers (the
+	-- frame fades with the chat, the box with its slide).
+	ns.FadeIn(KEY, function() return { shell, content } end)
 	ns.me.RegisterTestPart(KEY, "Secondary stats")
 end
 

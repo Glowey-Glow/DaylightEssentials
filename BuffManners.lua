@@ -791,6 +791,8 @@ local function Build()
 
 	frame:SetPoint(unpack(DEFAULT))
 	ns.me.RegisterMover(frame, KEY, "Buff prompt", DEFAULT)
+	-- Comes up with DaylightUI's fade-in on login and /reload (the inner box: the frame's own alpha is left alone).
+	ns.FadeIn(KEY, function() return { body } end)
 	ns.me.RegisterTestPart(KEY, "Buff prompt")
 	-- When the prompt is moved (a profile, the mover), the secure part follows it.
 	hooksecurefunc(frame, "SetPoint", function() LookSoon() end)
