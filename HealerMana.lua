@@ -233,6 +233,24 @@ local function Row(i)
 	row.name:SetPoint("LEFT", row.icon, "RIGHT", GAP, 0)
 	row.name:SetPoint("RIGHT", row.mana, "LEFT", -GAP, 0)
 	row.name:SetWordWrap(false)
+	-- Drinking: a soft mana-blue glow behind the name, gently pulsing (shown by PaintClass).
+	row.glow = row:CreateTexture(nil, "BACKGROUND")
+	row.glow:SetPoint("LEFT", row.name, "LEFT", -4, 0)
+	row.glow:SetHeight(ROW_H - 2)
+	row.glow:SetColorTexture(1, 1, 1, 1)
+	if row.glow.SetGradient and CreateColor then
+		row.glow:SetGradient("HORIZONTAL", CreateColor(0.35, 0.6, 1, 0.45), CreateColor(0.35, 0.6, 1, 0))
+	else
+		row.glow:SetVertexColor(0.35, 0.6, 1, 0.3)
+	end
+	row.glow:Hide()
+	row.pulse = row.glow:CreateAnimationGroup()
+	row.pulse:SetLooping("BOUNCE")
+	local a = row.pulse:CreateAnimation("Alpha")
+	a:SetFromAlpha(1)
+	a:SetToAlpha(0.35)
+	a:SetDuration(1.1)
+	a:SetSmoothing("IN_OUT")
 	rows[i] = row
 	return row
 end
@@ -265,8 +283,26 @@ local function Drinking(unit)
 	return false
 end
 
+-- The glow behind a drinking healer's name, as wide as the name (and a little more).
+local function PaintGlow(row)
+	if row.drinking then
+		local w = ns.TextWidth(row.name) or 60
+		local box = row.name:GetWidth()
+		if Safe(box) and type(box) == "number" and box > 0 then w = math.min(w, box) end
+		row.glow:SetWidth(w + 14)
+		if not row.glow:IsShown() then
+			row.glow:Show()
+			row.pulse:Play()
+		end
+	elseif row.glow:IsShown() then
+		row.pulse:Stop()
+		row.glow:Hide()
+	end
+end
+
 local function PaintClass(row, class)
 	row.class = class
+	PaintGlow(row)
 	if row.drinking then
 		row.icon:SetTexture(DRINK_ICON)
 		row.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)

@@ -1,7 +1,7 @@
 # Daylight Essentials
 
 ## 1.1.1
-- Healer Mana: a cup takes the class icon's place while a healer is drinking, so you can see who is getting their mana back (a switch on its page, on to start).
+- Healer Mana: a cup takes the class icon's place and a soft blue glow pulses behind the name while a healer is drinking, so you can see who is getting their mana back (a switch on its page, on to start).
 
 ## 1.1.0
 - New: Enemy Nearby, a small list of the enemy players seen near you lately (level and name in class color), the newest at the top. Names fade while unseen and leave after a minute (a choice). It sees players through their nameplates, your target, focus and mouseover, so enemy nameplates have to be shown: its page has the switch.
