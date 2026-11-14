@@ -1,5 +1,8 @@
 # Daylight Essentials
 
+## 1.1.4
+- Buff Manners no longer offers to thank someone for a passive aura that's there while they're near (a paladin's auras, Trueshot Aura); only buffs cast on you that run out count.
+
 ## 1.1.3
 - Fixed a Lua error in Buff Manners ("attempt to perform boolean test on field 'isFullUpdate'") when the game hides a buff update's details. Healer Mana's drinking check is guarded the same way.
 

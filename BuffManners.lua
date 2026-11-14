@@ -353,8 +353,12 @@ local function NoteBuffs(updateInfo)
 	local before = next(buffedBy)
 	for _, data in ipairs(added) do
 		if Safe(data) and type(data) == "table" then
-			local src, helpful = data.sourceUnit, data.isHelpful
-			if Safe(src) and Safe(helpful) and helpful and type(src) == "string"
+			local src, helpful, duration = data.sourceUnit, data.isHelpful, data.duration
+			-- Only a buff someone cast on you, which runs out: not an aura that's there while they're
+			-- near (a paladin's auras, Trueshot Aura), which has no duration. (A duration the game
+			-- hides is passed over too.)
+			local timed = Safe(duration) and type(duration) == "number" and duration > 0
+			if timed and Safe(src) and Safe(helpful) and helpful and type(src) == "string"
 				and src ~= "player" and src ~= "pet" and src ~= "vehicle" then
 				local guid = Read(UnitGUID, src)
 				local name = FullName(src)
