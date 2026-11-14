@@ -36,6 +36,7 @@ P.defaults = {
 	includeSelf = false,
 	maxRaid = 5,
 	colorByMana = true,
+	drinking = true,
 	scale = 1,
 	width = 170,
 }
@@ -63,6 +64,8 @@ P.page = { id = KEY, label = "Healer Mana",
 		{ label = "Look", items = {
 			{ type = "toggle", key = KEY .. ".colorByMana", label = "Color the mana by what's left",
 			  desc = "Red when nearly out, yellow when low, bright above. Works in a fight too." },
+			{ type = "toggle", key = KEY .. ".drinking", label = "Show when they're drinking",
+			  desc = "A cup in place of the class icon while the healer drinks to get their mana back." },
 			{ type = "slider", key = KEY .. ".width", label = "Width", min = 130, max = 260, step = 5, unit = "px",
 			  desc = "At least this wide: it grows to fit a long name." },
 			{ type = "slider", key = KEY .. ".scale", label = "Size", min = 0.7, max = 1.6, step = 0.05, unit = "%" },
@@ -208,7 +211,7 @@ local previewing = false
 
 local PREVIEW = {
 	{ name = "Lightwell", class = "PRIEST", pct = 82 },
-	{ name = "Barkskin", class = "DRUID", pct = 41 },
+	{ name = "Barkskin", class = "DRUID", pct = 41, drinking = true },
 	{ name = "Tidecaller", class = "SHAMAN", pct = 14 },
 }
 
@@ -234,7 +237,46 @@ local function Row(i)
 	return row
 end
 
+-- Drinking: the "Drink" buff (by the game's spell, so in its language), and "Refreshment".
+local DRINK_ICON = "Interface\\Icons\\INV_Drink_07"
+local drinkNames
+local function DrinkNames()
+	if drinkNames then return drinkNames end
+	local t = {}
+	for _, id in ipairs({ 430, 43180 }) do   -- Drink, Refreshment
+		local ok, n = pcall(C_Spell.GetSpellName, id)
+		if ok and Safe(n) and type(n) == "string" then t[#t + 1] = n end
+	end
+	-- (Kept once the game has both names; until then asked again, with the English one meanwhile.)
+	if #t == 2 then drinkNames = t elseif #t == 0 then t[1] = "Drink" end
+	return t
+end
+
+-- Whether the healer is drinking now, or nil when it can't be read (a fight: they can't drink then).
+local function Drinking(unit)
+	if not G("drinking") then return false end
+	local find = C_UnitAuras and C_UnitAuras.GetAuraDataBySpellName
+	if not find then return nil end
+	for _, name in ipairs(DrinkNames()) do
+		local ok, aura = pcall(find, unit, name, "HELPFUL")
+		if not ok or not Safe(aura) then return nil end
+		if aura then return true end
+	end
+	return false
+end
+
 local function PaintClass(row, class)
+	row.class = class
+	if row.drinking then
+		row.icon:SetTexture(DRINK_ICON)
+		row.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+		row.icon:Show()
+		local r, g, b = 1, 1, 1
+		if class then r, g, b = API.ClassColor(class) end
+		row.name:SetTextColor(r or 1, g or 1, b or 1)
+		return
+	end
+	row.icon:SetTexture(CLASS_ICONS)
 	local coords = class and CLASS_ICON_TCOORDS and CLASS_ICON_TCOORDS[class]
 	if coords then
 		row.icon:SetTexCoord(coords[1], coords[2], coords[3], coords[4])
@@ -252,6 +294,8 @@ local function FillRow(row, unit)
 	local name = UnitName(unit)
 	if not Safe(name) or not name then name = "Healer" end
 	row.name:SetText(name)
+	local drinking = Drinking(unit)
+	if drinking ~= nil then row.drinking = drinking end
 	PaintClass(row, ClassOf(unit))
 	local connected = UnitIsConnected(unit)
 	row.off = Safe(connected) and connected == false
@@ -320,7 +364,7 @@ end
 -- The per-unit events: each listed healer's row hears its own unit only (RegisterUnitEvent), and
 -- nothing is heard while nobody is listed. (Every unit if this client lacks RegisterUnitEvent: the
 -- handler still looks the unit up.)
-local ROW_EVENTS = { "UNIT_POWER_UPDATE", "UNIT_MAXPOWER", "UNIT_HEALTH", "UNIT_CONNECTION", "UNIT_FLAGS" }
+local ROW_EVENTS = { "UNIT_POWER_UPDATE", "UNIT_MAXPOWER", "UNIT_HEALTH", "UNIT_CONNECTION", "UNIT_FLAGS", "UNIT_AURA" }
 local OnEvent   -- below
 local function ListenRow(row, unit)
 	local ev = row.ev
@@ -355,6 +399,7 @@ local function Rebuild()
 		for i, p in ipairs(PREVIEW) do
 			local row = Row(i)
 			row.name:SetText(p.name)
+			row.drinking = p.drinking and G("drinking") or false
 			PaintClass(row, p.class)
 			row.mana:SetFormattedText("%d%%", p.pct)
 			local c = p.pct <= 20 and LOW or p.pct <= 50 and WARN or ns.Colors().VALUE
@@ -417,6 +462,15 @@ function OnEvent(_, event, unit, kind)
 		if Safe(dead) and (dead == true) ~= (row.dead == true) then
 			FillRow(row, unit)
 			Refit()
+		end
+	elseif event == "UNIT_AURA" then
+		-- Started or stopped drinking: the icon only.
+		local row = rowOf[unit]
+		if not row then return end
+		local drinking = Drinking(unit)
+		if drinking ~= nil and drinking ~= (row.drinking == true) then
+			row.drinking = drinking
+			PaintClass(row, row.class)
 		end
 	elseif event == "UNIT_CONNECTION" or event == "UNIT_FLAGS" then
 		-- Offline (or back): its line only.
