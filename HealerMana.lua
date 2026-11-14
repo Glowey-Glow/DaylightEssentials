@@ -259,8 +259,9 @@ local function DrinkNames()
 		local ok, n = pcall(C_Spell.GetSpellName, id)
 		if ok and Safe(n) and type(n) == "string" then t[#t + 1] = n end
 	end
-	-- (Kept once the game has both names; until then asked again, with the English one meanwhile.)
-	if #t == 2 then drinkNames = t elseif #t == 0 then t[1] = "Drink" end
+	-- (Kept once the game names Drink; until then asked again, with the English word meanwhile.
+	-- Refreshment is only added when this game has it.)
+	if #t > 0 then drinkNames = t else t[1] = "Drink" end
 	return t
 end
 
@@ -320,8 +321,8 @@ local function FillRow(row, unit)
 	local name = UnitName(unit)
 	if not Safe(name) or not name then name = "Healer" end
 	row.name:SetText(name)
-	local drinking = Drinking(unit)
-	if drinking ~= nil then row.drinking = drinking end
+	-- (Unreadable means a fight, where nobody drinks: a reused row never keeps the last one's.)
+	row.drinking = Drinking(unit) == true
 	PaintClass(row, ClassOf(unit))
 	local connected = UnitIsConnected(unit)
 	row.off = Safe(connected) and connected == false
@@ -512,7 +513,13 @@ function OnEvent(_, event, unit, kind)
 		-- Started or stopped drinking: its line only.
 		local row = rowOf[unit]
 		if not row or row.dead or row.off then return end
+		-- Only a buff gained or lost can start or end a drink (not a timer or stack refresh).
+		if type(kind) == "table" and not kind.isFullUpdate and not kind.addedAuras and not kind.removedAuraInstanceIDs then
+			return
+		end
 		local drinking = Drinking(unit)
+		-- Buffs unreadable in a fight: nobody drinks in one, so a drink that was showing has ended.
+		if drinking == nil and InCombatLockdown() then drinking = false end
 		if drinking ~= nil and drinking ~= (row.drinking == true) then
 			row.drinking = drinking
 			PaintDrink(row, unit)
