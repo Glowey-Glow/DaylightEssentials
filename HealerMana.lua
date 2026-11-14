@@ -65,7 +65,7 @@ P.page = { id = KEY, label = "Healer Mana",
 			{ type = "toggle", key = KEY .. ".colorByMana", label = "Color the mana by what's left",
 			  desc = "Red when nearly out, yellow when low, bright above. Works in a fight too." },
 			{ type = "toggle", key = KEY .. ".drinking", label = "Show when they're drinking",
-			  desc = "A cup in place of the class icon while the healer drinks to get their mana back." },
+			  desc = "While a healer drinks, their line becomes their mana bar, filling as they drink, with \"Drinking\" on it." },
 			{ type = "slider", key = KEY .. ".width", label = "Width", min = 130, max = 260, step = 5, unit = "px",
 			  desc = "At least this wide: it grows to fit a long name." },
 			{ type = "slider", key = KEY .. ".scale", label = "Size", min = 0.7, max = 1.6, step = 0.05, unit = "%" },
@@ -209,6 +209,8 @@ local rows = {}
 local rowOf = {}            -- unit -> its row, for the units listed now
 local previewing = false
 
+local DRINK_BAR = { 0.25, 0.5, 1 }   -- mana blue
+
 local PREVIEW = {
 	{ name = "Lightwell", class = "PRIEST", pct = 82 },
 	{ name = "Barkskin", class = "DRUID", pct = 41, drinking = true },
@@ -226,37 +228,29 @@ local function Row(i)
 	row.icon:SetSize(ICON, ICON)
 	row.icon:SetPoint("LEFT", row, "LEFT", 0, 0)
 	row.icon:SetTexture(CLASS_ICONS)
-	row.mana = API.Text(row, "body", "RIGHT")
+	-- Drinking: the line becomes their mana bar, filling as they drink, with "Drinking" on it.
+	row.bar = API.Bar(row)
+	row.bar:SetPoint("TOPLEFT", row.icon, "TOPRIGHT", GAP - 2, 1)
+	row.bar:SetPoint("BOTTOMRIGHT", row, "BOTTOMRIGHT", 0, 1)
+	row.bar:SetMinMaxValues(0, 1)
+	row.bar:SetValue(0)
+	if row.bar.SetStatusBarColor then row.bar:SetStatusBarColor(DRINK_BAR[1], DRINK_BAR[2], DRINK_BAR[3]) end
+	row.bar:Hide()
+	local top = CreateFrame("Frame", nil, row)
+	top:SetAllPoints()
+	top:SetFrameLevel(row.bar:GetFrameLevel() + 2)
+	row.mana = API.Text(top, "body", "RIGHT")
 	row.mana:SetPoint("RIGHT", row, "RIGHT", 0, 0)
 	row.mana:SetWidth(MANA_W)
-	row.name = API.Text(row, "body", "LEFT")
+	row.name = API.Text(top, "body", "LEFT")
 	row.name:SetPoint("LEFT", row.icon, "RIGHT", GAP, 0)
 	row.name:SetPoint("RIGHT", row.mana, "LEFT", -GAP, 0)
 	row.name:SetWordWrap(false)
-	-- Drinking: a soft mana-blue glow behind the name, gently pulsing (shown by PaintClass).
-	row.glow = row:CreateTexture(nil, "BACKGROUND")
-	row.glow:SetPoint("LEFT", row.name, "LEFT", -4, 0)
-	row.glow:SetHeight(ROW_H - 2)
-	row.glow:SetColorTexture(1, 1, 1, 1)
-	if row.glow.SetGradient and CreateColor then
-		row.glow:SetGradient("HORIZONTAL", CreateColor(0.35, 0.6, 1, 0.45), CreateColor(0.35, 0.6, 1, 0))
-	else
-		row.glow:SetVertexColor(0.35, 0.6, 1, 0.3)
-	end
-	row.glow:Hide()
-	row.pulse = row.glow:CreateAnimationGroup()
-	row.pulse:SetLooping("BOUNCE")
-	local a = row.pulse:CreateAnimation("Alpha")
-	a:SetFromAlpha(1)
-	a:SetToAlpha(0.35)
-	a:SetDuration(1.1)
-	a:SetSmoothing("IN_OUT")
 	rows[i] = row
 	return row
 end
 
 -- Drinking: the "Drink" buff (by the game's spell, so in its language), and "Refreshment".
-local DRINK_ICON = "Interface\\Icons\\INV_Drink_07"
 local drinkNames
 local function DrinkNames()
 	if drinkNames then return drinkNames end
@@ -283,36 +277,8 @@ local function Drinking(unit)
 	return false
 end
 
--- The glow behind a drinking healer's name, as wide as the name (and a little more).
-local function PaintGlow(row)
-	if row.drinking then
-		local w = ns.TextWidth(row.name) or 60
-		local box = row.name:GetWidth()
-		if Safe(box) and type(box) == "number" and box > 0 then w = math.min(w, box) end
-		row.glow:SetWidth(w + 14)
-		if not row.glow:IsShown() then
-			row.glow:Show()
-			row.pulse:Play()
-		end
-	elseif row.glow:IsShown() then
-		row.pulse:Stop()
-		row.glow:Hide()
-	end
-end
-
 local function PaintClass(row, class)
 	row.class = class
-	PaintGlow(row)
-	if row.drinking then
-		row.icon:SetTexture(DRINK_ICON)
-		row.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
-		row.icon:Show()
-		local r, g, b = 1, 1, 1
-		if class then r, g, b = API.ClassColor(class) end
-		row.name:SetTextColor(r or 1, g or 1, b or 1)
-		return
-	end
-	row.icon:SetTexture(CLASS_ICONS)
 	local coords = class and CLASS_ICON_TCOORDS and CLASS_ICON_TCOORDS[class]
 	if coords then
 		row.icon:SetTexCoord(coords[1], coords[2], coords[3], coords[4])
@@ -325,6 +291,20 @@ local function PaintClass(row, class)
 	row.name:SetTextColor(r or 1, g or 1, b or 1)
 end
 
+-- A drinking healer's line: the bar at their mana and "Drinking"; or back to the plain line.
+local function PaintDrink(row, unit)
+	if row.drinking then
+		pcall(row.bar.SetMinMaxValues, row.bar, 0, UnitPowerMax(unit, MANA))
+		pcall(row.bar.SetValue, row.bar, UnitPower(unit, MANA))
+		row.bar:Show()
+		row.mana:SetText("Drinking")
+		ns.Ink(row.mana, "VALUE")
+	else
+		row.bar:Hide()
+		PaintMana(row.mana, unit)
+	end
+end
+
 -- One healer's line: its name, class and state, then its mana.
 local function FillRow(row, unit)
 	local name = UnitName(unit)
@@ -335,6 +315,7 @@ local function FillRow(row, unit)
 	PaintClass(row, ClassOf(unit))
 	local connected = UnitIsConnected(unit)
 	row.off = Safe(connected) and connected == false
+	if row.off or (Safe(UnitIsDeadOrGhost(unit)) and UnitIsDeadOrGhost(unit)) then row.bar:Hide() end
 	if row.off then
 		row.dead = false
 		row.mana:SetText("Offline")
@@ -348,7 +329,7 @@ local function FillRow(row, unit)
 		ns.Ink(row.mana, "LABEL")
 		return
 	end
-	PaintMana(row.mana, unit)
+	PaintDrink(row, unit)
 end
 
 -- Where it starts (until it's moved): snapped under the party frames, centered on them, edge to edge
@@ -374,7 +355,7 @@ local function Size(n)
 		if row and row:IsShown() then
 			local nw = ns.TextWidth(row.name)
 			if nw then nameW = math.max(nameW, nw) else nameOk = false end
-			if row.off or row.dead then
+			if row.off or row.dead or row.drinking then
 				local mw = ns.TextWidth(row.mana)
 				if mw then manaW = math.max(manaW, mw) else manaOk = false end
 			end
@@ -437,9 +418,18 @@ local function Rebuild()
 			row.name:SetText(p.name)
 			row.drinking = p.drinking and G("drinking") or false
 			PaintClass(row, p.class)
-			row.mana:SetFormattedText("%d%%", p.pct)
-			local c = p.pct <= 20 and LOW or p.pct <= 50 and WARN or ns.Colors().VALUE
-			row.mana:SetTextColor(c[1], c[2], c[3])
+			if row.drinking then
+				row.bar:SetMinMaxValues(0, 100)
+				row.bar:SetValue(p.pct)
+				row.bar:Show()
+				row.mana:SetText("Drinking")
+				ns.Ink(row.mana, "VALUE")
+			else
+				row.bar:Hide()
+				row.mana:SetFormattedText("%d%%", p.pct)
+				local c = p.pct <= 20 and LOW or p.pct <= 50 and WARN or ns.Colors().VALUE
+				row.mana:SetTextColor(c[1], c[2], c[3])
+			end
 			row:Show()
 		end
 		for i = #PREVIEW + 1, #rows do rows[i]:Hide() end
@@ -489,7 +479,14 @@ end
 function OnEvent(_, event, unit, kind)
 	if event == "UNIT_POWER_UPDATE" or event == "UNIT_MAXPOWER" then
 		local row = rowOf[unit]
-		if row and not row.dead and not row.off and (kind == nil or kind == "MANA") then PaintMana(row.mana, unit) end
+		if row and not row.dead and not row.off and (kind == nil or kind == "MANA") then
+			if row.drinking then
+				pcall(row.bar.SetMinMaxValues, row.bar, 0, UnitPowerMax(unit, MANA))
+				pcall(row.bar.SetValue, row.bar, UnitPower(unit, MANA))
+			else
+				PaintMana(row.mana, unit)
+			end
+		end
 	elseif event == "UNIT_HEALTH" then
 		-- Health ticks often: the line is only redrawn when the healer dies or comes back.
 		local row = rowOf[unit]
@@ -500,13 +497,14 @@ function OnEvent(_, event, unit, kind)
 			Refit()
 		end
 	elseif event == "UNIT_AURA" then
-		-- Started or stopped drinking: the icon only.
+		-- Started or stopped drinking: its line only.
 		local row = rowOf[unit]
-		if not row then return end
+		if not row or row.dead or row.off then return end
 		local drinking = Drinking(unit)
 		if drinking ~= nil and drinking ~= (row.drinking == true) then
 			row.drinking = drinking
-			PaintClass(row, row.class)
+			PaintDrink(row, unit)
+			Refit()
 		end
 	elseif event == "UNIT_CONNECTION" or event == "UNIT_FLAGS" then
 		-- Offline (or back): its line only.
