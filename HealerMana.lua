@@ -279,6 +279,8 @@ end
 
 local function PaintClass(row, class)
 	row.class = class
+	row.icon:SetDesaturated(false)
+	row.icon:SetAlpha(1)
 	local coords = class and CLASS_ICON_TCOORDS and CLASS_ICON_TCOORDS[class]
 	if coords then
 		row.icon:SetTexCoord(coords[1], coords[2], coords[3], coords[4])
@@ -289,6 +291,14 @@ local function PaintClass(row, class)
 	local r, g, b = 1, 1, 1
 	if class then r, g, b = API.ClassColor(class) end
 	row.name:SetTextColor(r or 1, g or 1, b or 1)
+end
+
+-- A dead or offline healer: the whole line grayed (name and class icon), so it reads at a glance.
+local function GrayLine(row)
+	row.bar:Hide()
+	ns.Ink(row.name, "OFF")
+	row.icon:SetDesaturated(true)
+	row.icon:SetAlpha(0.6)
 end
 
 -- A drinking healer's line: the bar at their mana and "Drinking"; or back to the plain line.
@@ -320,13 +330,15 @@ local function FillRow(row, unit)
 		row.dead = false
 		row.mana:SetText("Offline")
 		ns.Ink(row.mana, "OFF")
+		GrayLine(row)
 		return
 	end
 	local dead = UnitIsDeadOrGhost(unit)
 	row.dead = Safe(dead) and dead == true
 	if row.dead then
 		row.mana:SetText("Dead")
-		ns.Ink(row.mana, "LABEL")
+		ns.Ink(row.mana, "BAD")
+		GrayLine(row)
 		return
 	end
 	PaintDrink(row, unit)

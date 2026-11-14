@@ -2,6 +2,7 @@
 
 ## 1.1.1
 - Healer Mana: while a healer is drinking, their line becomes their mana bar, filling as they drink, with "Drinking" on it in place of the percent, so you can see who is getting their mana back and how far along they are (a switch on its page, on to start).
+- Healer Mana: a dead or offline healer's whole line is grayed out (name and class icon), with "Dead" in red or "Offline" in gray in place of the percent, so it reads at a glance.
 
 ## 1.1.0
 - New: Enemy Nearby, a small list of the enemy players seen near you lately (level and name in class color), the newest at the top. Names fade while unseen and leave after a minute (a choice). It sees players through their nameplates, your target, focus and mouseover, so enemy nameplates have to be shown: its page has the switch.
