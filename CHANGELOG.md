@@ -1,5 +1,8 @@
 # Daylight Essentials
 
+## 1.1.3
+- Fixed a Lua error in Buff Manners ("attempt to perform boolean test on field 'isFullUpdate'") when the game hides a buff update's details. Healer Mana's drinking check is guarded the same way.
+
 ## 1.1.2
 - Fixed the "Binding header DAYLIGHTESSENTIALS was attempted to be loaded more than once" warning at login. The key bindings still sit under Key Bindings, AddOns, Daylight Essentials.
 

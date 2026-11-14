@@ -346,9 +346,12 @@ local BUFFED_FOR = 180
 
 local function NoteBuffs(updateInfo)
 	if not G("enabled") or InCombatLockdown() then return end
-	if type(updateInfo) ~= "table" or updateInfo.isFullUpdate or type(updateInfo.addedAuras) ~= "table" then return end
+	-- (The update can come with its fields hidden by the game: then there's nothing to read.)
+	if type(updateInfo) ~= "table" or not Safe(updateInfo) then return end
+	local full, added = updateInfo.isFullUpdate, updateInfo.addedAuras
+	if not Safe(full) or full or not Safe(added) or type(added) ~= "table" then return end
 	local before = next(buffedBy)
-	for _, data in ipairs(updateInfo.addedAuras) do
+	for _, data in ipairs(added) do
 		if Safe(data) and type(data) == "table" then
 			local src, helpful = data.sourceUnit, data.isHelpful
 			if Safe(src) and Safe(helpful) and helpful and type(src) == "string"
@@ -753,9 +756,12 @@ local function OnEvent(_, event, unit, info)
 	if event == "UNIT_AURA" then
 		-- Only a buff added or taken away changes what we read (refreshed timers and stacks don't).
 		local changed = true
-		if type(info) == "table" and Safe(info.isFullUpdate) and not info.isFullUpdate then
+		if type(info) == "table" and Safe(info) and Safe(info.isFullUpdate) and not info.isFullUpdate then
 			local added, removed = info.addedAuras, info.removedAuraInstanceIDs
-			changed = (type(added) == "table" and #added > 0) or (type(removed) == "table" and #removed > 0)
+			-- (Hidden lists: counted as a change, to be safe.)
+			if Safe(added) and Safe(removed) then
+				changed = (type(added) == "table" and #added > 0) or (type(removed) == "table" and #removed > 0)
+			end
 		end
 		if changed then Forget(unit) end
 		if unit == "player" then NoteBuffs(info) end

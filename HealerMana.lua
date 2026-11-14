@@ -514,8 +514,12 @@ function OnEvent(_, event, unit, kind)
 		local row = rowOf[unit]
 		if not row or row.dead or row.off then return end
 		-- Only a buff gained or lost can start or end a drink (not a timer or stack refresh).
-		if type(kind) == "table" and not kind.isFullUpdate and not kind.addedAuras and not kind.removedAuraInstanceIDs then
-			return
+		-- (Fields the game hides count as a change.)
+		if type(kind) == "table" and Safe(kind) then
+			local full, added, removed = kind.isFullUpdate, kind.addedAuras, kind.removedAuraInstanceIDs
+			if Safe(full) and Safe(added) and Safe(removed) and not full and not added and not removed then
+				return
+			end
 		end
 		local drinking = Drinking(unit)
 		-- Buffs unreadable in a fight: nobody drinks in one, so a drink that was showing has ended.
