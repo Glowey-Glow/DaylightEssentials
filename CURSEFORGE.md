@@ -49,12 +49,18 @@ For hunters and warlocks: "No pet" or "Pet is passive" until it's sorted. Quiet 
 - Skips PvP-flagged players while you aren't flagged, and can be quiet in towns, dungeons and raids. Right-click the prompt for **Not now** or **Never offer**; `/dui manners never Name`, `/dui manners allow Name`, `/dui manners list`.
 - The idea comes from Manners by fpsacha.
 
-### Halo (new)
-- **Hold a key for a ring of your own spells, items and macros around the mouse.** Point at one or scroll to it, then let go to use it. Let go in the middle to close it without using anything.
-- Fill its slots by dragging spells, items or macros onto them (**Edit the slots** on its page, or `/dui halo edit`).
-- Choose the shape (ring or arc), the number of slots (2 to 12), the ring size, the icon size and where it opens (at the mouse or the screen's center). The action you point at is outlined in your accent, with its name in the middle.
+### Halo
+- **Hold a key and your own spells, items and macros open in a Halo around the cursor.** Point at one or scroll to it, then let go to use it. Let go in the middle to close it without using anything. Works in a fight.
+- **Its own key:** **Set Key** on its page takes the next key or mouse button you press, without touching your key bindings (or bind it under Key Bindings).
+- **Up to four Halos (new in 1.2.0):** the base Halo, plus a **Shift, Alt and Ctrl Halo**. Hold the modifier with Halo's key to open that one. Each has its own slots, **its own color** (rim, highlight and label) and **a label** of up to 16 letters.
+- Fill the slots by dragging spells, items or macros onto them in **Edit Halos** (a tab per Halo, or `/dui halo edit`).
+- Choose the shape (circle or arc), the number of slots (2 to 12), the Halo's size, the icon size and where it opens (around the cursor or the screen's center).
 
 ---
+
+## Also new in 1.2.0
+- **In your language:** Daylight Essentials speaks German, French, Spanish, Russian, Korean and Simplified Chinese (machine drafts, corrections welcome), with fixes for non-English clients (Cursor Cooldowns, Kill on Sight, Buff Manners, Secondary Stats).
+- **Window opacity** follows DaylightUI's, or set your own on the options page.
 
 ## Also new in 1.1.0
 - **Fades in with DaylightUI** on login and /reload, instead of popping in (when DaylightUI's fade-in is on).

@@ -23,12 +23,14 @@
 local _, ns = ...
 if ns.off then return end
 
+local L = ns.L
+
 local API = ns.API
 local KEY = "stats"
 local G = ns.Reader(KEY)
 local Safe = ns.Safe
 
-local P = ns.Part({ key = KEY, label = "Secondary Stats" })
+local P = ns.Part({ key = KEY, label = L["Secondary Stats"] })
 
 -- ---------------------------------------------------------------------------------------------
 -- Reading the game
@@ -98,73 +100,77 @@ local function Second(name, ...) local _, b = Call(name, ...) return b end
 local function Third(name, ...) local _, _, c = Call(name, ...) return c end
 
 local CATALOG = {
-	{ id = "ap", label = "Attack power", tag = "Atk Pwr", short = "AP", kind = "int", sample = 1234,
+	{ id = "ap", label = "Attack power", tag = L["Atk Pwr"], short = L["AP"], kind = "int", sample = 1234,
 	  sum = function() return Sum(Call("UnitAttackPower", "player")) end },
-	{ id = "crit", label = "Crit", short = "Crit", kind = "pct", sample = 12.4,
+	{ id = "crit", label = L["Crit"], short = L["Crit"], kind = "pct", sample = 12.4,
 	  live = function() return First("GetCritChance") end },
-	{ id = "hit", label = "Hit", short = "Hit", kind = "pct", sample = 5, cap = "melee",
+	{ id = "hit", label = L["Hit"], short = L["Hit"], kind = "pct", sample = 5, cap = "melee",
 	  sum = function() return Sum(First("GetCombatRatingBonus", CR_MELEE), First("GetHitModifier")) end },
-	{ id = "speed", label = "Attack speed", tag = "Atk Speed", short = "Speed", kind = "sec", sample = 2.6,
+	{ id = "speed", label = "Attack speed", tag = L["Atk Speed"], short = L["Speed"], kind = "sec", sample = 2.6,
 	  live = function() return First("UnitAttackSpeed", "player") end },
-	{ id = "haste", label = "Haste", short = "Haste", kind = "pct", sample = 3.15, zero = true,
+	{ id = "haste", label = L["Haste"], short = L["Haste"], kind = "pct", sample = 3.15, zero = true,
 	  live = function() return First("GetMeleeHaste") end },
-	{ id = "expertise", label = "Expertise", short = "Exp", kind = "pct", sample = 1.5, zero = true,
+	{ id = "expertise", label = L["Expertise"], short = L["Exp"], kind = "pct", sample = 1.5, zero = true,
 	  live = function() return First("GetExpertise") end },
-	{ id = "armorpen", label = "Armor penetration", tag = "Armor Pen", short = "ArP", kind = "int", sample = 140, zero = true,
+	{ id = "armorpen", label = "Armor penetration", tag = L["Armor Pen"], short = L["ArP"], kind = "int", sample = 140, zero = true,
 	  live = function() return First("GetArmorPenetration") end },
 
-	{ id = "rap", label = "Ranged AP", tag = "Rng Atk Pwr", short = "RAP", kind = "int", sample = 1480,
+	{ id = "rap", label = "Ranged AP", tag = L["Rng Atk Pwr"], short = L["RAP"], kind = "int", sample = 1480,
 	  sum = function() return Sum(Call("UnitRangedAttackPower", "player")) end },
-	{ id = "rcrit", label = "Ranged crit", tag = "Rng Crit", short = "RCrit", kind = "pct", sample = 14.25,
+	{ id = "rcrit", label = "Ranged crit", tag = L["Rng Crit"], short = L["RCrit"], kind = "pct", sample = 14.25,
 	  live = function() return First("GetRangedCritChance") end },
-	{ id = "rhit", label = "Ranged hit", tag = "Rng Hit", short = "RHit", kind = "pct", sample = 6, cap = "ranged",
+	{ id = "rhit", label = "Ranged hit", tag = L["Rng Hit"], short = L["RHit"], kind = "pct", sample = 6, cap = "ranged",
 	  sum = function() return Sum(First("GetCombatRatingBonus", CR_RANGED), First("GetRangedHitModifier")) end },
-	{ id = "rspeed", label = "Ranged speed", tag = "Rng Speed", short = "RSpeed", kind = "sec", sample = 2.9,
+	{ id = "rspeed", label = "Ranged speed", tag = L["Rng Speed"], short = L["RSpeed"], kind = "sec", sample = 2.9,
 	  live = function() return First("UnitRangedDamage", "player") end },
 	-- The weapon's haste plus the quiver's.
-	{ id = "rhaste", label = "Ranged haste", tag = "Rng Haste", short = "RHaste", kind = "pct", sample = 15, zero = true,
+	{ id = "rhaste", label = "Ranged haste", tag = L["Rng Haste"], short = L["RHaste"], kind = "pct", sample = 15, zero = true,
 	  sum = function() return Sum(Call("GetRangedHaste")) end },
 
-	{ id = "sp", label = "Spell power", tag = "Spell Pwr", short = "SP", kind = "int", sample = 612,
+	{ id = "sp", label = "Spell power", tag = L["Spell Pwr"], short = L["SP"], kind = "int", sample = 612,
 	  live = function() return First("GetSpellBonusDamage", BestSchool("GetSpellBonusDamage")) end },
-	{ id = "heal", label = "Healing", short = "Heal", kind = "int", sample = 1105,
+	{ id = "heal", label = L["Healing"], short = L["Heal"], kind = "int", sample = 1105,
 	  live = function() return First("GetSpellBonusHealing") end },
-	{ id = "scrit", label = "Spell crit", tag = "Spell Crit", short = "SCrit", kind = "pct", sample = 9.8,
+	{ id = "scrit", label = "Spell crit", tag = L["Spell Crit"], short = L["SCrit"], kind = "pct", sample = 9.8,
 	  live = function() return First("GetSpellCritChance", BestSchool("GetSpellCritChance")) end },
-	{ id = "shit", label = "Spell hit", tag = "Spell Hit", short = "SHit", kind = "pct", sample = 7, cap = "spell",
+	{ id = "shit", label = "Spell hit", tag = L["Spell Hit"], short = L["SHit"], kind = "pct", sample = 7, cap = "spell",
 	  sum = function() return Sum(First("GetCombatRatingBonus", CR_SPELL), First("GetSpellHitModifier")) end },
-	{ id = "shaste", label = "Spell haste", tag = "Spell Haste", short = "SHaste", kind = "pct", sample = 4.2, zero = true,
+	{ id = "shaste", label = "Spell haste", tag = L["Spell Haste"], short = L["SHaste"], kind = "pct", sample = 4.2, zero = true,
 	  live = function() return First("UnitSpellHaste", "player") end },
 	-- While casting (the regen that counts in a fight), per second, so times five.
-	{ id = "regen", label = "Mana regen", tag = "Regen", short = "MP5", kind = "mp5", sample = 48,
+	{ id = "regen", label = "Mana regen", tag = L["Regen"], short = L["MP5"], kind = "mp5", sample = 48,
 	  sum = function()
 		local _, casting = Call("GetManaRegen")
 		local v = Sum(casting)
 		if v then v = math.floor(v * 5 + 0.5) end
 		return v
 	  end },
-	{ id = "spen", label = "Spell penetration", tag = "Spell Pen", short = "SPen", kind = "int", sample = 10, zero = true,
+	{ id = "spen", label = "Spell penetration", tag = L["Spell Pen"], short = L["SPen"], kind = "int", sample = 10, zero = true,
 	  live = function() return First("GetSpellPenetration") end },
 
-	{ id = "armor", label = "Armor", short = "Armor", kind = "int", sample = 7320,
+	{ id = "armor", label = ns.GameText("STAT_ARMOR", L["Armor"]), short = L["Armor"], kind = "int", sample = 7320,
 	  live = function() return Second("UnitArmor", "player") end },
-	{ id = "defense", label = "Defense", short = "Def", kind = "int", sample = 415,
+	{ id = "defense", label = ns.GameText("DEFENSE", L["Defense"]), short = L["Def"], kind = "int", sample = 415,
 	  sum = function() return Sum(Call("UnitDefenseSkill", "player")) end },
-	{ id = "dodge", label = "Dodge", short = "Dodge", kind = "pct", sample = 11.6,
+	{ id = "dodge", label = ns.GameText("STAT_DODGE", L["Dodge"]), short = L["Dodge"], kind = "pct", sample = 11.6,
 	  live = function() return First("GetDodgeChance") end },
-	{ id = "parry", label = "Parry", short = "Parry", kind = "pct", sample = 10.2,
+	{ id = "parry", label = ns.GameText("STAT_PARRY", L["Parry"]), short = L["Parry"], kind = "pct", sample = 10.2,
 	  live = function() return First("GetParryChance") end },
-	{ id = "block", label = "Block", short = "Block", kind = "pct", sample = 14.8, shield = true,
+	{ id = "block", label = ns.GameText("STAT_BLOCK", L["Block"]), short = L["Block"], kind = "pct", sample = 14.8, shield = true,
 	  live = function() return First("GetBlockChance") end },
-	{ id = "blockvalue", label = "Block value", tag = "Block Value", short = "BV", kind = "int", sample = 162, shield = true,
+	{ id = "blockvalue", label = "Block value", tag = L["Block Value"], short = L["BV"], kind = "int", sample = 162, shield = true,
 	  live = function() return First("GetShieldBlock") end },
 }
 
 -- Resistances (base, ?, effective): the effective one, live.
-for _, r in ipairs({ { 2, "fire", "Fire" }, { 3, "nature", "Nature" }, { 4, "frost", "Frost" },
-	{ 5, "shadow", "Shadow" }, { 6, "arcane", "Arcane" } }) do
+-- (Each name whole, in the game's words on other clients: RESISTANCE2_NAME is Fire Resistance.)
+for _, r in ipairs({ { 2, "fire", L["Fire resistance"], L["Fire Res"], L["Fire"] },
+	{ 3, "nature", L["Nature resistance"], L["Nature Res"], L["Nature"] },
+	{ 4, "frost", L["Frost resistance"], L["Frost Res"], L["Frost"] },
+	{ 5, "shadow", L["Shadow resistance"], L["Shadow Res"], L["Shadow"] },
+	{ 6, "arcane", L["Arcane resistance"], L["Arcane Res"], L["Arcane"] } }) do
 	local school = r[1]
-	CATALOG[#CATALOG + 1] = { id = "res_" .. r[2], label = r[3] .. " resistance", tag = r[3] .. " Res", short = r[3], kind = "int", sample = 35,
+	CATALOG[#CATALOG + 1] = { id = "res_" .. r[2], label = ns.GameText("RESISTANCE" .. school .. "_NAME", r[3]), tag = r[4], short = r[5], kind = "int", sample = 35,
 		live = function() return Third("UnitResistance", "player", school) end }
 end
 
@@ -224,7 +230,7 @@ P.defaults = {
 	shadow = 1,
 }
 
-local SLOT_VALUES, SLOT_ORDER = { none = "None" }, { "none" }
+local SLOT_VALUES, SLOT_ORDER = { none = L["None"] }, { "none" }
 for _, s in ipairs(CATALOG) do
 	SLOT_VALUES[s.id] = s.tag or s.label
 	SLOT_ORDER[#SLOT_ORDER + 1] = s.id
@@ -238,71 +244,71 @@ local function NotCustom(get) return Off(get) or get(KEY .. ".role") ~= "custom"
 
 local slotItems = {}
 for i = 1, SLOTS do
-	slotItems[i] = { type = "dropdown", key = KEY .. ".slot" .. i, label = "Stat " .. i,
+	slotItems[i] = { type = "dropdown", key = KEY .. ".slot" .. i, label = L["Stat %d"]:format(i),
 		values = SLOT_VALUES, order = SLOT_ORDER, disabled = NotCustom }
 end
 
-P.page = { id = KEY, label = "Secondary Stats",
-	desc = "The stats that matter for how you play, by role, class or your own pick.",
+P.page = { id = KEY, label = L["Secondary Stats"],
+	desc = L["The stats that matter for how you play, by role, class or your own pick."],
 	groups = {
-		{ label = "Secondary Stats",
-		  desc = "Crit, haste, armor and the like stay live in a fight; stats the game gives in parts (attack power, hit, defense, mana regen) keep their numbers from before the fight. DaylightUI's info bar has small Crit, AP, SP and Hit texts too, if you'd rather have something smaller.",
+		{ label = L["Secondary Stats"],
+		  desc = L["Crit, haste, armor and the like stay live in a fight; stats the game gives in parts (attack power, hit, defense, mana regen) keep their numbers from before the fight. DaylightUI's info bar has small Crit, AP, SP and Hit texts too, if you'd rather have something smaller."],
 		  items = {
-			{ type = "toggle", key = KEY .. ".enabled", label = "On" },
-			{ type = "dropdown", key = KEY .. ".role", label = "Stats for", disabled = Off,
-			  values = { auto = "Auto", melee = "Melee", ranged = "Ranged", caster = "Caster",
-				healer = "Healer", tank = "Tank", custom = "Custom" },
+			{ type = "toggle", key = KEY .. ".enabled", label = L["On"] },
+			{ type = "dropdown", key = KEY .. ".role", label = L["Stats for"], disabled = Off,
+			  values = { auto = L["Auto"], melee = L["Melee"], ranged = L["Ranged"], caster = L["Caster"],
+				healer = L["Healer"], tank = L["Tank"], custom = L["Custom"] },
 			  order = { "auto", "melee", "ranged", "caster", "healer", "tank", "custom" },
-			  desc = "Auto: the healer or tank stats when the group gave you that role, else your class's: melee for warriors and rogues, ranged for hunters, caster for mages and warlocks, healer for priests, druids, shamans and paladins. Custom: the six stats you pick below." },
-			{ type = "toggle", key = KEY .. ".hideZero", label = "Hide stats at 0", disabled = Off,
-			  desc = "Haste, expertise, armor penetration and spell penetration leave the box while you have none. Decided out of a fight and kept through it." },
-			{ type = "dropdown", key = KEY .. ".shows", label = "Shows", disabled = Off,
-			  values = { always = "Always", combat = "In a fight", calm = "Out of a fight" },
+			  desc = L["Auto: the healer or tank stats when the group gave you that role, else your class's: melee for warriors and rogues, ranged for hunters, caster for mages and warlocks, healer for priests, druids, shamans and paladins. Custom: the six stats you pick below."] },
+			{ type = "toggle", key = KEY .. ".hideZero", label = L["Hide stats at 0"], disabled = Off,
+			  desc = L["Haste, expertise, armor penetration and spell penetration leave the box while you have none. Decided out of a fight and kept through it."] },
+			{ type = "dropdown", key = KEY .. ".shows", label = L["Shows"], disabled = Off,
+			  values = { always = L["Always"], combat = L["In a fight"], calm = L["Out of a fight"] },
 			  order = { "always", "combat", "calm" } },
 		} },
-		{ label = "Where", items = {
-			{ type = "dropdown", key = KEY .. ".dock", label = "Dock to", disabled = Off,
-			  values = { minimap = "Minimap", meters = "Damage meters", chat = "Chat", free = "Free" },
+		{ label = L["Where"], items = {
+			{ type = "dropdown", key = KEY .. ".dock", label = L["Dock to"], disabled = Off,
+			  values = { minimap = L["Minimap"], meters = L["Damage meters"], chat = L["Chat"], free = L["Free"] },
 			  order = { "minimap", "meters", "chat", "free" },
-			  desc = "Docked, it sits against that frame's side at a corner, level with it, and slides out of it and back in with a tab on its edge. Damage meters: their own window when detached, else the minimap panel they sit in. Chat: DaylightUI's chat window. Free: move it anywhere with /dui unlock." },
-			{ type = "dropdown", key = KEY .. ".meterCorner", label = "Corner", disabled = Off,
+			  desc = L["Docked, it sits against that frame's side at a corner, level with it, and slides out of it and back in with a tab on its edge. Damage meters: their own window when detached, else the minimap panel they sit in. Chat: DaylightUI's chat window. Free: move it anywhere with /dui unlock."] },
+			{ type = "dropdown", key = KEY .. ".meterCorner", label = L["Corner"], disabled = Off,
 			  hidden = DockIsNot("meters"),
-			  desc = "A bottom corner only: the threat meter slides out of the top. When it grows down past the stats, they step down under it, or out beside it when there's no room below.",
-			  values = { BOTTOMLEFT = "Bottom-left", BOTTOMRIGHT = "Bottom-right" },
+			  desc = L["A bottom corner only: the threat meter slides out of the top. When it grows down past the stats, they step down under it, or out beside it when there's no room below."],
+			  values = { BOTTOMLEFT = L["Bottom-left"], BOTTOMRIGHT = L["Bottom-right"] },
 			  order = { "BOTTOMLEFT", "BOTTOMRIGHT" } },
-			{ type = "toggle", key = KEY .. ".chatFade", label = "Fade with the chat", disabled = Off,
+			{ type = "toggle", key = KEY .. ".chatFade", label = L["Fade with the chat"], disabled = Off,
 			  hidden = DockIsNot("chat"),
-			  desc = "The stats fade out and back in along with DaylightUI's chat window." },
-			{ type = "dropdown", key = KEY .. ".corner", label = "Corner", disabled = Free, hidden = DockIs("meters"),
-			  desc = "Auto: the corner facing the middle of the screen.",
-			  values = { auto = "Auto", BOTTOMLEFT = "Bottom-left",
-				BOTTOMRIGHT = "Bottom-right", TOPLEFT = "Top-left", TOPRIGHT = "Top-right" },
+			  desc = L["The stats fade out and back in along with DaylightUI's chat window."] },
+			{ type = "dropdown", key = KEY .. ".corner", label = L["Corner"], disabled = Free, hidden = DockIs("meters"),
+			  desc = L["Auto: the corner facing the middle of the screen."],
+			  values = { auto = L["Auto"], BOTTOMLEFT = L["Bottom-left"],
+				BOTTOMRIGHT = L["Bottom-right"], TOPLEFT = L["Top-left"], TOPRIGHT = L["Top-right"] },
 			  order = { "auto", "BOTTOMLEFT", "BOTTOMRIGHT", "TOPLEFT", "TOPRIGHT" } },
-			{ type = "slider", key = KEY .. ".nudgeX", label = "Nudge sideways", min = -60, max = 60, step = 1, unit = "px",
-			  disabled = Free, desc = "Fine-tunes the docked spot: right is more." },
-			{ type = "slider", key = KEY .. ".nudgeY", label = "Nudge up or down", min = -60, max = 60, step = 1, unit = "px",
-			  disabled = Free, desc = "Up is more." },
-			{ type = "toggle", key = KEY .. ".windowless", label = "Windowless", disabled = Off,
-			  desc = "Just the text, with no window behind it, docked or free. Docked, the fold tab stays." },
+			{ type = "slider", key = KEY .. ".nudgeX", label = L["Nudge sideways"], min = -60, max = 60, step = 1, unit = "px",
+			  disabled = Free, desc = L["Fine-tunes the docked spot: right is more."] },
+			{ type = "slider", key = KEY .. ".nudgeY", label = L["Nudge up or down"], min = -60, max = 60, step = 1, unit = "px",
+			  disabled = Free, desc = L["Up is more."] },
+			{ type = "toggle", key = KEY .. ".windowless", label = L["Windowless"], disabled = Off,
+			  desc = L["Just the text, with no window behind it, docked or free. Docked, the fold tab stays."] },
 		} },
-		{ label = "Custom", desc = "Your own list, in this order, when Stats for is Custom.",
+		{ label = L["Custom"], desc = L["Your own list, in this order, when Stats for is Custom."],
 		  items = slotItems },
-		{ label = "Look", items = {
-			{ type = "dropdown", key = KEY .. ".layout", label = "Layout", disabled = Off,
-			  values = { list = "A list", line = "One line" }, order = { "list", "line" } },
-			{ type = "dropdown", key = KEY .. ".nameColors", label = "Name colors", disabled = Off,
-			  values = { stat = "Per stat", class = "Class color", plain = "Plain" },
+		{ label = L["Look"], items = {
+			{ type = "dropdown", key = KEY .. ".layout", label = L["Layout"], disabled = Off,
+			  values = { list = L["A list"], line = L["One line"] }, order = { "list", "line" } },
+			{ type = "dropdown", key = KEY .. ".nameColors", label = L["Name colors"], disabled = Off,
+			  values = { stat = L["Per stat"], class = L["Class color"], plain = L["Plain"] },
 			  order = { "stat", "class", "plain" },
-			  desc = "Per stat: crits gold, hit blue, haste green, attack power orange, spell power violet, and so on." },
-			{ type = "toggle", key = KEY .. ".colorValues", label = "Numbers in the same color", disabled = Off },
-			{ type = "toggle", key = KEY .. ".hitCap", label = "Hit in green when it's enough", disabled = Off,
-			  desc = "Melee, ranged and spell hit turn green when you have enough to never miss your current target, by its level: the same numbers as the game's Hit Chance tooltip (5% melee and 4% spells at your level, 8% and 17% against raid bosses)." },
-			{ type = "slider", key = KEY .. ".shadow", label = "Text shadow", min = 0, max = 4, step = 1, unit = "px", disabled = Off,
-			  desc = "How far the dark shadow under the text reaches. 0 for none." },
-			{ type = "slider", key = KEY .. ".decimals", label = "Decimals on percents", min = 0, max = 2, step = 1, disabled = Off },
-			{ type = "toggle", key = KEY .. ".dim", label = "Dim numbers from before the fight", disabled = Off,
-			  desc = "Attack power, hit, defense and mana regen can't be worked out in a fight; their last numbers stay, dimmed." },
-			{ type = "slider", key = KEY .. ".scale", label = "Size", min = 0.7, max = 1.6, step = 0.05, unit = "%", disabled = Off },
+			  desc = L["Per stat: crits gold, hit blue, haste green, attack power orange, spell power violet, and so on."] },
+			{ type = "toggle", key = KEY .. ".colorValues", label = L["Numbers in the same color"], disabled = Off },
+			{ type = "toggle", key = KEY .. ".hitCap", label = L["Hit in green when it's enough"], disabled = Off,
+			  desc = L["Melee, ranged and spell hit turn green when you have enough to never miss your current target, by its level: the same numbers as the game's Hit Chance tooltip (5% melee and 4% spells at your level, 8% and 17% against raid bosses)."] },
+			{ type = "slider", key = KEY .. ".shadow", label = L["Text shadow"], min = 0, max = 4, step = 1, unit = "px", disabled = Off,
+			  desc = L["How far the dark shadow under the text reaches. 0 for none."] },
+			{ type = "slider", key = KEY .. ".decimals", label = L["Decimals on percents"], min = 0, max = 2, step = 1, disabled = Off },
+			{ type = "toggle", key = KEY .. ".dim", label = L["Dim numbers from before the fight"], disabled = Off,
+			  desc = L["Attack power, hit, defense and mana regen can't be worked out in a fight; their last numbers stay, dimmed."] },
+			{ type = "slider", key = KEY .. ".scale", label = L["Size"], min = 0.7, max = 1.6, step = 0.05, unit = "%", disabled = Off },
 		} },
 	} }
 
@@ -342,7 +348,7 @@ end
 -- Values
 -- ---------------------------------------------------------------------------------------------
 
-local FMT_FIXED = { int = "%.0f", sec = "%.2f s", mp5 = "%.0f / 5 s" }
+local FMT_FIXED = { int = "%.0f", sec = L["%.2f s"], mp5 = L["%.0f / 5 s"] }
 local PCT = { [0] = "%.0f%%", [1] = "%.1f%%", [2] = "%.2f%%" }
 local function FormatOf(s)
 	if s.kind == "pct" then
@@ -516,7 +522,7 @@ local function Size(n, oneLine)
 	body:SetScale(scale)
 	fullW, fullH = w * scale, h * scale
 	frame:SetSize(fullW, fullH)   -- docked, the slide narrows it again (Present)
-	API.Skin(shell, { window = true })
+	ns.SkinWindow(shell)
 	placeDirty = true
 end
 
@@ -760,7 +766,7 @@ local function BuildTab()
 	tab:SetScript("OnEnter", function(self)
 		PaintGrip(true)
 		GameTooltip:SetOwner(self, goesLeft and "ANCHOR_LEFT" or "ANCHOR_RIGHT")
-		GameTooltip:SetText(Folded() and "Show your stats" or "Fold your stats away")
+		GameTooltip:SetText(Folded() and L["Show your stats"] or L["Fold your stats away"])
 		GameTooltip:Show()
 	end)
 	tab:SetScript("OnLeave", function()
@@ -925,12 +931,51 @@ local function NameColor(stat)
 	return nil
 end
 
+-- The thicker outline goes on through a font family made from the one the text has: each
+-- alphabet keeps the font DaylightUI gave it, so Russian, Korean and Chinese letters still draw. (A
+-- plain SetFont would fix the text to the one font file, which shows those letters as boxes.) One
+-- family per set of fonts, size and outline, made once a session (the game never frees one).
+local ALPHABETS = { "roman", "russian", "korean", "simplifiedchinese", "traditionalchinese" }
+local thickFamilies, thickCount = {}, 0   -- key -> family, or false when it couldn't be made
+
+-- (Paths may come back with other slashes or case.)
+local function SamePath(a, b)
+	return type(a) == "string" and type(b) == "string"
+		and string.lower((a:gsub("/", "\\"))) == string.lower((b:gsub("/", "\\")))
+end
+
+-- nil when the text's font isn't its font object's (a plain SetFont put it there): then the old
+-- way, a plain SetFont, keeps that face.
+local function ThickFamily(fs, font, size, flags)
+	local obj = fs.GetFontObject and fs:GetFontObject()
+	if type(CreateFontFamily) ~= "function" or type(obj) ~= "table" or not obj.GetFontObjectForAlphabet then
+		return nil
+	end
+	size = math.floor(size * 4 + 0.5) / 4
+	local members, files = {}, {}
+	for i, alphabet in ipairs(ALPHABETS) do
+		local ok, member = pcall(obj.GetFontObjectForAlphabet, obj, alphabet)
+		local file = ok and type(member) == "table" and member.GetFont and member:GetFont()
+		if not Safe(file) or type(file) ~= "string" then return nil end
+		if alphabet == "roman" and not SamePath(file, font) then return nil end
+		members[i] = { alphabet = alphabet, file = file, height = size, flags = flags }
+		files[i] = file
+	end
+	local key = table.concat(files, "|") .. "|" .. size .. "|" .. flags
+	local fam = thickFamilies[key]
+	if fam ~= nil then return fam or nil end
+	thickCount = thickCount + 1
+	local ok, made = pcall(CreateFontFamily, "DaylightEssentialsStatsFont" .. thickCount, members)
+	thickFamilies[key] = (ok and made) or false
+	return ok and made or nil
+end
+
 -- The outline one step thicker than the player's (none to thin, thin to thick), so the colored
 -- names read on any ground. Checked on every paint: DaylightUI sets the player's font back when
 -- it changes.
 local function Thicken(fs)
 	local font, size, flags = fs:GetFont()
-	if not font then return end
+	if not font or not Safe(font) or not Safe(size) or not Safe(flags) then return end
 	flags = flags or ""
 	if flags:find("THICK") then return end
 	local want
@@ -939,7 +984,20 @@ local function Thicken(fs)
 	else
 		want = flags == "" and "OUTLINE" or (flags .. ",OUTLINE")
 	end
-	fs:SetFont(font, size, want)
+	local fam = type(size) == "number" and ThickFamily(fs, font, size, want)
+	if not fam then
+		fs:SetFont(font, size, want)
+		return
+	end
+	-- (A font object resets the text's justification and color: they're handed back. The shadow
+	-- is set right after, by Shadow.)
+	local justifyH = fs:GetJustifyH()
+	local justifyV = fs:GetJustifyV()
+	local r, g, b, a = fs:GetTextColor()
+	fs:SetFontObject(fam)
+	if type(justifyH) == "string" then fs:SetJustifyH(justifyH) end
+	if type(justifyV) == "string" then fs:SetJustifyV(justifyV) end
+	if type(r) == "number" and Safe(r) then fs:SetTextColor(r, g, b, a) end
 end
 
 -- The text shadow the player picked (in px, down and to the right), on every paint as well.
@@ -1201,11 +1259,11 @@ local function Build()
 	Size(1, false)
 	-- Placed now: after a /reload in a fight, the mover only places it once the fight ends.
 	frame:SetPoint(unpack(Home()))
-	ns.me.RegisterMover(frame, KEY, "Secondary stats", Home)
+	ns.me.RegisterMover(frame, KEY, L["Secondary stats"], Home)
 	-- Comes up with DaylightUI's fade-in on login and /reload: its window and text layers (the
 	-- frame fades with the chat, the box with its slide).
 	ns.FadeIn(KEY, function() return { shell, content } end)
-	ns.me.RegisterTestPart(KEY, "Secondary stats")
+	ns.me.RegisterTestPart(KEY, L["Secondary stats"])
 end
 
 function P.Login()

@@ -7,11 +7,13 @@
 local _, ns = ...
 if ns.off then return end
 
+local L = ns.L
+
 local API = ns.API
 local KEY = "combatTimer"
 local G = ns.Reader(KEY)
 
-local P = ns.Part({ key = KEY, label = "Combat Timer" })
+local P = ns.Part({ key = KEY, label = L["Combat Timer"] })
 
 P.defaults = {
 	enabled = true,
@@ -21,20 +23,20 @@ P.defaults = {
 	scale = 1,
 }
 
-P.page = { id = KEY, label = "Combat Timer",
-	desc = "How long you've been fighting. Move it with /dui unlock.",
+P.page = { id = KEY, label = L["Combat Timer"],
+	desc = L["How long you've been fighting. Move it with /dui unlock."],
 	groups = {
-		{ label = "Combat Timer", items = {
-			{ type = "toggle", key = KEY .. ".enabled", label = "On" },
-			{ type = "slider", key = KEY .. ".hold", label = "Keep the last fight's time (seconds)", min = 0, max = 15, step = 1,
-			  desc = "Seconds the fight's length stays after it ends. 0 hides it at once." },
-			{ type = "toggle", key = KEY .. ".tenths", label = "Tenths of a second",
-			  desc = "1:23.4 instead of 1:23." },
+		{ label = L["Combat Timer"], items = {
+			{ type = "toggle", key = KEY .. ".enabled", label = L["On"] },
+			{ type = "slider", key = KEY .. ".hold", label = L["Keep the last fight's time (seconds)"], min = 0, max = 15, step = 1,
+			  desc = L["Seconds the fight's length stays after it ends. 0 hides it at once."] },
+			{ type = "toggle", key = KEY .. ".tenths", label = L["Tenths of a second"],
+			  desc = L["1:23.4 instead of 1:23."] },
 		} },
-		{ label = "Look", items = {
-			{ type = "toggle", key = KEY .. ".ground", label = "Window ground",
-			  desc = "The timer on a small DaylightUI window. Off: the time alone." },
-			{ type = "slider", key = KEY .. ".scale", label = "Size", min = 0.7, max = 2, step = 0.05, unit = "%" },
+		{ label = L["Look"], items = {
+			{ type = "toggle", key = KEY .. ".ground", label = L["Window ground"],
+			  desc = L["The timer on a small DaylightUI window. Off: the time alone."] },
+			{ type = "slider", key = KEY .. ".scale", label = L["Size"], min = 0.7, max = 2, step = 0.05, unit = "%" },
 		} },
 	} }
 
@@ -90,9 +92,10 @@ local function Look()
 	body:SetScale(scale)
 	frame:SetSize(W * scale, H * scale)
 	if G("ground") then
-		shell = API.Skin(body, { window = true })
+		shell = ns.SkinWindow(body)
 		if shell then shell:Show() end
 	elseif shell then
+		ns.ForgetWindow(body)
 		shell:Hide()
 	end
 end
@@ -201,10 +204,10 @@ function P.Login()
 	frame:RegisterEvent("PLAYER_REGEN_ENABLED")
 	-- Placed now: after a /reload in a fight, the mover only places it once the fight ends.
 	frame:SetPoint(unpack(Home()))
-	ns.me.RegisterMover(frame, KEY, "Combat timer", Home)
+	ns.me.RegisterMover(frame, KEY, L["Combat timer"], Home)
 	-- Comes up with DaylightUI's fade-in on login and /reload (the inner box: the frame's own alpha is its own fade).
 	ns.FadeIn(KEY, function() return { body } end)
-	ns.me.RegisterTestPart(KEY, "Combat timer")
+	ns.me.RegisterTestPart(KEY, L["Combat timer"])
 	-- A /reload in a fight: the count starts from the reload.
 	if InCombatLockdown() then Start() end
 end

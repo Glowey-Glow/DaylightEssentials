@@ -1,5 +1,16 @@
 # Daylight Essentials
 
+## 1.2.0
+- Halo has a key of its own: Set Key on its page opens a small box that takes the next key you press (a mouse's middle or side button works too); Escape cancels and Clear takes it off. It never changes your saved key bindings, and a key set under Key Bindings, AddOns, Daylight Essentials keeps working beside it. Shift, Alt and Ctrl on their own can't be the key: they open the other Halos. Also /dui halo key.
+- Up to three more Halos: Shift Halo, Alt Halo and Ctrl Halo, each switched on on Halo's page (off to start). Hold Shift, Alt or Ctrl with Halo's key to open that Halo instead, in a fight too; a Halo that's off or empty leaves its modifier to the base Halo. Each Halo has its own button, so the one you press is the one that opens, and pressing or letting go of a modifier while you hold the key never switches it. Using Key Bindings instead of Halo's own key? Each Halo has its own entry there (Halo: Shift Halo, Alt Halo, Ctrl Halo). Each has its own slots, kept per character like the base Halo's, which keeps the slots you already had.
+- Edit Halos has a tab for each Halo (the ones that are off are dimmed, with a hint to turn them on). Halo's page has a Clear button for each Halo (Clear Base Halo, Clear Shift Halo...), dimmed while that Halo is off; /dui halo clear shift, alt or ctrl empties that one.
+- Pointing reads the whole screen from where the Halo opened, so a long flick past it still picks the slot in that direction.
+- Each Halo has its own color, so you can tell which one is open: a rim around its icons, the one you point at and its label take it. The base Halo follows your DaylightUI accent unless you pick its own; Shift is blue, Alt green and Ctrl orange to start. All four are on Halo's page, and the editor's tabs show them.
+- Each Halo can have a label of up to 16 letters, typed in the slot editor under its tab and kept per character. It shows over the open Halo in the Halo's color, whole at any Halo size, and under the Halo's tab in the editor.
+- Fixes for non-English game clients: Cursor Cooldowns keeps your Ready at the cursor picks by spell, so they stay when the game's language changes (picks saved by name move over the first time the spell is found), and long ability names are shortened at whole letters. Kill on Sight and Buff Manners' Never list match names with accented and Cyrillic capitals (É and é, Д and д) whatever way they were typed; lists you already have keep working. Secondary Stats' thicker outline keeps DaylightUI's fonts for each alphabet, so Russian, Korean and Chinese letters no longer show as boxes. Buff Manners' thank-you line is cut at a whole letter to fit a macro's 255 bytes, and so is a custom line.
+- Window opacity: follows DaylightUI's by default, or set your own on the options page.
+- Daylight Essentials speaks German, French, Spanish, Russian, Korean and Simplified Chinese (machine drafts, corrections welcome).
+
 ## 1.1.5
 - Pet Reminder's sample (unlock and test mode) takes turns showing both warnings, "No pet" and "Pet is passive", and shows on every class, so it can be placed from any character (the warnings themselves stay for hunters and warlocks).
 - Secondary Stats steps aside while a whisper conversation is open (DaylightUI's conversation card slides out over where it sits) and comes back once the card has slid away.

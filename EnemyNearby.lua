@@ -29,12 +29,14 @@
 local _, ns = ...
 if ns.off then return end
 
+local L = ns.L
+
 local API = ns.API
 local KEY = "enemyNearby"
 local G = ns.Reader(KEY)
 local Safe = ns.Safe
 
-local P = ns.Part({ key = KEY, label = "Enemy Nearby" })
+local P = ns.Part({ key = KEY, label = L["Enemy Nearby"] })
 
 P.defaults = {
 	enabled = true,
@@ -88,16 +90,22 @@ end
 
 local function ShowPlates(on)
 	if InCombatLockdown() then
-		Say("enemy nameplates can be switched after the fight.")
+		Say(L["enemy nameplates can be switched after the fight."])
 		return false
 	end
 	if C_CVar and C_CVar.SetCVar then pcall(C_CVar.SetCVar, "nameplateShowEnemies", on and "1" or "0") end
 end
 
 -- ---------------------------------------------------------------------------------------------
--- Kill on Sight: account-wide, in DaylightEssentialsDB.kos (lowercased name -> { name, added })
+-- Kill on Sight: account-wide, in DaylightEssentialsDB.kos (name in small letters, ns.Fold ->
+-- { name, added })
 -- ---------------------------------------------------------------------------------------------
 
+local Fold = ns.Fold
+
+-- (Lists kept before 1.2.0 lowered A to Z only, so "Élise" was kept as "Élise", not "élise":
+-- once a session, such a key moves to its folded one.)
+local kosFolded = false
 local function KosDB()
 	local db = _G.DaylightEssentialsDB
 	if type(db) ~= "table" then
@@ -105,6 +113,10 @@ local function KosDB()
 		_G.DaylightEssentialsDB = db
 	end
 	if type(db.kos) ~= "table" then db.kos = {} end
+	if not kosFolded then
+		kosFolded = true
+		ns.FoldKeys(db.kos)
+	end
 	return db.kos
 end
 
@@ -113,11 +125,11 @@ local function Clean(name)
 	if type(name) ~= "string" then return nil end
 	name = name:match("^%s*(.-)%s*$")
 	if name == "" then return nil end
-	return (name:gsub("^%l", string.upper))
+	return ns.UpperFirst(name)
 end
 
 local function IsKos(name)
-	return type(name) == "string" and KosDB()[string.lower(name)] ~= nil
+	return type(name) == "string" and KosDB()[Fold(name)] ~= nil
 end
 
 local PaintSoon -- below
@@ -126,13 +138,13 @@ local function KosAdd(name)
 	name = Clean(name)
 	if not name then return false end
 	local db = KosDB()
-	local k = string.lower(name)
+	local k = Fold(name)
 	if db[k] then
-		Say(db[k].name .. " is already on your Kill on Sight list.")
+		Say(L["%s is already on your Kill on Sight list."]:format(db[k].name))
 		return false
 	end
 	db[k] = { name = name, added = time() }
-	Say(name .. " is on your Kill on Sight list.")
+	Say(L["%s is on your Kill on Sight list."]:format(name))
 	PaintSoon()
 	return true
 end
@@ -141,12 +153,12 @@ local function KosRemove(name)
 	name = Clean(name)
 	if not name then return false end
 	local db = KosDB()
-	local k = string.lower(name)
+	local k = Fold(name)
 	if not db[k] then
-		Say(name .. " isn't on your Kill on Sight list.")
+		Say(L["%s isn't on your Kill on Sight list."]:format(name))
 		return false
 	end
-	Say(db[k].name .. " is off your Kill on Sight list.")
+	Say(L["%s is off your Kill on Sight list."]:format(db[k].name))
 	db[k] = nil
 	PaintSoon()
 	return true
@@ -176,50 +188,50 @@ end
 
 local function Off(get) return get(KEY .. ".enabled") == false end
 
-P.page = { id = KEY, label = "Enemy Nearby",
-	desc = "Enemy players seen near you lately; click a name to target them.",
+P.page = { id = KEY, label = L["Enemy Nearby"],
+	desc = L["Enemy players seen near you lately; click a name to target them."],
 	groups = {
-		{ label = "Enemy Nearby", items = {
-			{ type = "toggle", key = KEY .. ".enabled", label = "On" },
-			{ type = "toggle", label = "Show enemy nameplates",
-			  desc = "The game's own setting (V by default). The list sees players through their nameplates, your target, focus and mouseover, so enemy nameplates have to be shown. It can't be switched in a fight. Move the list with /dui unlock.",
+		{ label = L["Enemy Nearby"], items = {
+			{ type = "toggle", key = KEY .. ".enabled", label = L["On"] },
+			{ type = "toggle", label = L["Show enemy nameplates"],
+			  desc = L["The game's own setting (V by default). The list sees players through their nameplates, your target, focus and mouseover, so enemy nameplates have to be shown. It can't be switched in a fight. Move the list with /dui unlock."],
 			  get = PlatesShown, set = ShowPlates },
-			{ type = "toggle", key = KEY .. ".inInstances", label = "Also in battlegrounds and dungeons",
-			  desc = "Off: the list rests while you're inside an instance.", disabled = Off },
+			{ type = "toggle", key = KEY .. ".inInstances", label = L["Also in battlegrounds and dungeons"],
+			  desc = L["Off: the list rests while you're inside an instance."], disabled = Off },
 		} },
-		{ label = "The list", items = {
-			{ type = "slider", key = KEY .. ".keep", label = "Seconds a name stays once unseen", min = 15, max = 300, step = 15,
-			  desc = "A name fades as the time passes, and leaves the list at the end. In a fight names stay until it ends.",
+		{ label = L["The list"], items = {
+			{ type = "slider", key = KEY .. ".keep", label = L["Seconds a name stays once unseen"], min = 15, max = 300, step = 15,
+			  desc = L["A name fades as the time passes, and leaves the list at the end. In a fight names stay until it ends."],
 			  disabled = Off },
-			{ type = "slider", key = KEY .. ".maxRows", label = "Names listed", min = 3, max = 15, step = 1, disabled = Off },
-			{ type = "toggle", key = KEY .. ".alwaysShow", label = "Show it when nobody's listed", disabled = Off },
-			{ type = "toggle", key = KEY .. ".windowless", label = "Windowless", disabled = Off,
-			  desc = "Just the names, with no window behind them. Click and right-click work the same." },
-			{ type = "slider", key = KEY .. ".width", label = "Width", min = 160, max = 320, step = 5, unit = "px", disabled = Off,
-			  desc = "At least this wide: it grows to fit a long name." },
-			{ type = "slider", key = KEY .. ".scale", label = "Size", min = 0.7, max = 1.6, step = 0.05, unit = "%", disabled = Off },
+			{ type = "slider", key = KEY .. ".maxRows", label = L["Names listed"], min = 3, max = 15, step = 1, disabled = Off },
+			{ type = "toggle", key = KEY .. ".alwaysShow", label = L["Show it when nobody's listed"], disabled = Off },
+			{ type = "toggle", key = KEY .. ".windowless", label = L["Windowless"], disabled = Off,
+			  desc = L["Just the names, with no window behind them. Click and right-click work the same."] },
+			{ type = "slider", key = KEY .. ".width", label = L["Width"], min = 160, max = 320, step = 5, unit = "px", disabled = Off,
+			  desc = L["At least this wide: it grows to fit a long name."] },
+			{ type = "slider", key = KEY .. ".scale", label = L["Size"], min = 0.7, max = 1.6, step = 0.05, unit = "%", disabled = Off },
 		} },
-		{ label = "Alerts", items = {
-			{ type = "toggle", key = KEY .. ".alertKos", label = "When someone on my Kill on Sight list shows up", disabled = Off },
-			{ type = "toggle", key = KEY .. ".soundKos", label = "Kill on Sight sound",
+		{ label = L["Alerts"], items = {
+			{ type = "toggle", key = KEY .. ".alertKos", label = L["When someone on my Kill on Sight list shows up"], disabled = Off },
+			{ type = "toggle", key = KEY .. ".soundKos", label = L["Kill on Sight sound"],
 			  disabled = function(get) return Off(get) or get(KEY .. ".alertKos") == false end },
-			{ type = "toggle", key = KEY .. ".alertNew", label = "When any new enemy shows up", disabled = Off },
-			{ type = "toggle", key = KEY .. ".soundNew", label = "New enemy sound",
+			{ type = "toggle", key = KEY .. ".alertNew", label = L["When any new enemy shows up"], disabled = Off },
+			{ type = "toggle", key = KEY .. ".soundNew", label = L["New enemy sound"],
 			  disabled = function(get) return Off(get) or get(KEY .. ".alertNew") == false end },
-			{ type = "slider", key = KEY .. ".throttle", label = "Seconds before the same player alerts again", min = 30, max = 600, step = 30,
+			{ type = "slider", key = KEY .. ".throttle", label = L["Seconds before the same player alerts again"], min = 30, max = 600, step = 30,
 			  disabled = Off },
-			{ type = "slider", key = KEY .. ".alertScale", label = "Alert size", min = 0.7, max = 2, step = 0.05, unit = "%", disabled = Off },
+			{ type = "slider", key = KEY .. ".alertScale", label = L["Alert size"], min = 0.7, max = 2, step = 0.05, unit = "%", disabled = Off },
 		} },
-		{ label = "Kill on Sight", items = {
-			{ type = "text", label = "Right-click a name in the list to add or remove it, or type /dui kos add Name, /dui kos remove Name or /dui kos list. The list is shared by all your characters; its names show in red, with a mark." },
+		{ label = L["Kill on Sight"], items = {
+			{ type = "text", label = L["Right-click a name in the list to add or remove it, or type /dui kos add Name, /dui kos remove Name or /dui kos list. The list is shared by all your characters; its names show in red, with a mark."] },
 			{ type = "text", label = function()
 				local names = KosNames()
-				if #names == 0 then return "On the list: nobody yet." end
-				return "On the list: " .. table.concat(names, ", ") .. "."
+				if #names == 0 then return L["On the list: nobody yet."] end
+				return L["On the list: %s."]:format(table.concat(names, L[", "]))
 			end },
-			{ type = "button", label = "Add my target", func = function()
+			{ type = "button", label = L["Add my target"], func = function()
 				local name = TargetName()
-				if name then KosAdd(name) else Say("target a player first.") end
+				if name then KosAdd(name) else Say(L["target a player first."]) end
 			end },
 		} },
 	} }
@@ -228,8 +240,8 @@ P.page = { id = KEY, label = "Enemy Nearby",
 -- Looking at a unit
 -- ---------------------------------------------------------------------------------------------
 
--- An enemy player's key (lowercased full name), name, class, level and guild; nil for anyone
--- else, and for anyone the game won't name to addons right now.
+-- An enemy player's key (full name in small letters, ns.Fold), name, class, level and guild; nil
+-- for anyone else, and for anyone the game won't name to addons right now.
 local function Look(unit)
 	if not Yes(Read(UnitExists, unit)) then return nil end
 	if not Yes(Read(UnitIsPlayer, unit)) then return nil end
@@ -245,7 +257,7 @@ local function Look(unit)
 	if not Safe(level) or type(level) ~= "number" then level = nil end
 	local guild = Read(GetGuildInfo, unit)
 	if not Safe(guild) or type(guild) ~= "string" or guild == "" then guild = nil end
-	return string.lower(name), name, class, level, guild
+	return Fold(name), name, class, level, guild
 end
 
 -- ---------------------------------------------------------------------------------------------
@@ -307,12 +319,12 @@ local function Alert(key, name, class, level)
 	if last and now - last < (G("throttle") or 120) then return end
 	lastAlert[key] = now
 	if wantKos then
-		ShowAlert("Kill on sight: " .. name, "BAD", 3)
+		ShowAlert(L["Kill on sight: %s"]:format(name), "BAD", 3)
 		if G("soundKos") and SOUNDKIT then Sound(SOUNDKIT.RAID_WARNING) end
 	else
 		local what = ClassName(class)
 		local lvl = level and level > 0 and tostring(level) or "??"
-		ShowAlert("Enemy: " .. name .. (what and (" (" .. lvl .. " " .. what .. ")") or ""), "WARN", 2.5)
+		ShowAlert(what and L["Enemy: %s (%s %s)"]:format(name, lvl, what) or L["Enemy: %s"]:format(name), "WARN", 2.5)
 		if G("soundNew") and SOUNDKIT then Sound(SOUNDKIT.ALARM_CLOCK_WARNING_2 or SOUNDKIT.RAID_WARNING) end
 	end
 end
@@ -446,7 +458,7 @@ local function Size(n, force)
 		body:SetScale(scale)
 		frame:SetSize(w * scale, h * scale)
 	end
-	API.Skin(shell, { window = true })
+	ns.SkinWindow(shell)
 	return true
 end
 
@@ -795,12 +807,12 @@ function P.Menu(owner, key)
 		MenuUtil.CreateContextMenu(owner, function(_, root)
 			root:CreateTitle(name)
 			if kos then
-				root:CreateButton("Take off Kill on Sight", function() KosRemove(name) end)
+				root:CreateButton(L["Take off Kill on Sight"], function() KosRemove(name) end)
 			else
-				root:CreateButton("Add to Kill on Sight", function() KosAdd(name) end)
+				root:CreateButton(L["Add to Kill on Sight"], function() KosAdd(name) end)
 			end
 			if not InCombatLockdown() then
-				root:CreateButton("Take off this list", function()
+				root:CreateButton(L["Take off this list"], function()
 					if InCombatLockdown() or not byKey[key] then return end
 					for i, x in ipairs(list) do
 						if x.key == key then
@@ -831,19 +843,19 @@ local function Command(rest)
 	word = string.lower(word or "")
 	if word == "add" then
 		local name = (arg ~= "" and arg) or TargetName()
-		if name then KosAdd(name) else Say("/dui kos add Name (or target a player).") end
+		if name then KosAdd(name) else Say(L["/dui kos add Name (or target a player)."]) end
 	elseif word == "remove" or word == "del" or word == "rm" then
 		local name = (arg ~= "" and arg) or TargetName()
-		if name then KosRemove(name) else Say("/dui kos remove Name (or target a player).") end
+		if name then KosRemove(name) else Say(L["/dui kos remove Name (or target a player)."]) end
 	elseif word == "" or word == "list" then
 		local names = KosNames()
 		if #names == 0 then
-			Say("your Kill on Sight list is empty. /dui kos add Name to add someone.")
+			Say(L["your Kill on Sight list is empty. /dui kos add Name to add someone."])
 		else
-			Say("Kill on Sight (" .. #names .. "): " .. table.concat(names, ", "))
+			Say(L["Kill on Sight (%d): %s"]:format(#names, table.concat(names, L[", "])))
 		end
 	else
-		Say("/dui kos add Name, /dui kos remove Name, /dui kos list.")
+		Say(L["/dui kos add Name, /dui kos remove Name, /dui kos list."])
 	end
 end
 
@@ -854,7 +866,7 @@ end
 local function ShowSamples()
 	previewing = G("enabled") and ns.Previewing(KEY) or false
 	if previewing then
-		ShowAlert("Kill on sight: " .. PREVIEW[1].name, "BAD", nil)
+		ShowAlert(L["Kill on sight: %s"]:format(PREVIEW[1].name), "BAD", nil)
 	elseif alertSample then
 		alertSample = false
 		alertToken = alertToken + 1
@@ -880,18 +892,18 @@ local function Build()
 	content:SetFrameLevel(body:GetFrameLevel() + 5)
 	title = API.Text(content, "small", "LEFT")
 	title:SetPoint("TOPLEFT", body, "TOPLEFT", PAD + 1, -PAD)
-	title:SetText("Enemies nearby")
+	title:SetText(L["Enemies nearby"])
 	ns.Ink(title, "LABEL")
 	empty = API.Text(content, "small", "LEFT")
 	empty:SetPoint("TOPLEFT", body, "TOPLEFT", PAD + 1, -(PAD + TITLE_H + 3))
-	empty:SetText("Nobody seen lately")
+	empty:SetText(L["Nobody seen lately"])
 	ns.Ink(empty, "OFF")
 	empty:Hide()
 	frame:SetScript("OnEvent", OnEvent)
 	Size(1)
 	-- Placed now: after a /reload in a fight, the mover only places it once the fight ends.
 	frame:SetPoint(unpack(Home()))
-	ns.me.RegisterMover(frame, KEY, "Enemies nearby", Home)
+	ns.me.RegisterMover(frame, KEY, L["Enemies nearby"], Home)
 	-- Comes up with DaylightUI's fade-in on login and /reload (the inner box: the frame's own alpha is left alone).
 	ns.FadeIn(KEY, function() return { body } end)
 	-- When the list is moved (a profile, the mover), the secure buttons follow it.
@@ -909,10 +921,10 @@ local function Build()
 	alertText:SetPoint("CENTER", alertBody, "CENTER", 0, 0)
 	AlertLook()
 	alertFrame:SetPoint(unpack(ALERT_HOME))
-	ns.me.RegisterMover(alertFrame, KEY .. "Alert", "Enemy alert", ALERT_HOME)
+	ns.me.RegisterMover(alertFrame, KEY .. "Alert", L["Enemy alert"], ALERT_HOME)
 
-	ns.me.RegisterTestPart(KEY, "Enemies nearby")
-	ns.me.RegisterCommand("kos", Command, "kos add|remove|list Name: your Kill on Sight list")
+	ns.me.RegisterTestPart(KEY, L["Enemies nearby"])
+	ns.me.RegisterCommand("kos", Command, L["kos add|remove|list Name: your Kill on Sight list"])
 end
 
 function P.Login()

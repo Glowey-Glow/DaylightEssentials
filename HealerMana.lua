@@ -21,12 +21,14 @@
 local _, ns = ...
 if ns.off then return end
 
+local L = ns.L
+
 local API = ns.API
 local KEY = "healerMana"
 local G = ns.Reader(KEY)
 local Safe = ns.Safe
 
-local P = ns.Part({ key = KEY, label = "Healer Mana" })
+local P = ns.Part({ key = KEY, label = L["Healer Mana"] })
 
 P.defaults = {
 	enabled = true,
@@ -41,34 +43,34 @@ P.defaults = {
 	width = 170,
 }
 
-P.page = { id = KEY, label = "Healer Mana",
-	desc = "Your group's healers and the mana each has left.",
+P.page = { id = KEY, label = L["Healer Mana"],
+	desc = L["Your group's healers and the mana each has left."],
 	groups = {
-		{ label = "Healer Mana", items = {
-			{ type = "toggle", key = KEY .. ".enabled", label = "On" },
+		{ label = L["Healer Mana"], items = {
+			{ type = "toggle", key = KEY .. ".enabled", label = L["On"] },
 		} },
-		{ label = "When it shows", items = {
-			{ type = "toggle", key = KEY .. ".inParty", label = "In a party" },
-			{ type = "toggle", key = KEY .. ".inRaid", label = "In a raid" },
-			{ type = "slider", key = KEY .. ".maxRaid", label = "Healers listed in a raid", min = 1, max = 10, step = 1,
-			  desc = "The first healers of the raid, in its order.",
+		{ label = L["When it shows"], items = {
+			{ type = "toggle", key = KEY .. ".inParty", label = L["In a party"] },
+			{ type = "toggle", key = KEY .. ".inRaid", label = L["In a raid"] },
+			{ type = "slider", key = KEY .. ".maxRaid", label = L["Healers listed in a raid"], min = 1, max = 10, step = 1,
+			  desc = L["The first healers of the raid, in its order."],
 			  disabled = function(get) return get(KEY .. ".inRaid") == false end },
-			{ type = "toggle", key = KEY .. ".includeSelf", label = "List me too",
-			  desc = "Your own mana in the list when you're one of the healers." },
+			{ type = "toggle", key = KEY .. ".includeSelf", label = L["List me too"],
+			  desc = L["Your own mana in the list when you're one of the healers."] },
 		} },
-		{ label = "Who's a healer", items = {
-			{ type = "dropdown", key = KEY .. ".noRoles", label = "When the group has no roles",
-			  values = { classes = "Healing classes", none = "Nobody" },
-			  desc = "Players the group gave the healer role (the group finder or a role check) are always the healers. With no roles set: Healing classes lists every priest, druid, shaman and paladin; Nobody lists only players given the healer role." },
+		{ label = L["Who's a healer"], items = {
+			{ type = "dropdown", key = KEY .. ".noRoles", label = L["When the group has no roles"],
+			  values = { classes = L["Healing classes"], none = L["Nobody"] },
+			  desc = L["Players the group gave the healer role (the group finder or a role check) are always the healers. With no roles set: Healing classes lists every priest, druid, shaman and paladin; Nobody lists only players given the healer role."] },
 		} },
-		{ label = "Look", items = {
-			{ type = "toggle", key = KEY .. ".colorByMana", label = "Color the mana by what's left",
-			  desc = "Red when nearly out, yellow when low, bright above. Works in a fight too." },
-			{ type = "toggle", key = KEY .. ".drinking", label = "Show when they're drinking",
-			  desc = "While a healer drinks, their line becomes their mana bar, filling as they drink, with \"Drinking\" on it." },
-			{ type = "slider", key = KEY .. ".width", label = "Width", min = 130, max = 260, step = 5, unit = "px",
-			  desc = "At least this wide: it grows to fit a long name." },
-			{ type = "slider", key = KEY .. ".scale", label = "Size", min = 0.7, max = 1.6, step = 0.05, unit = "%" },
+		{ label = L["Look"], items = {
+			{ type = "toggle", key = KEY .. ".colorByMana", label = L["Color the mana by what's left"],
+			  desc = L["Red when nearly out, yellow when low, bright above. Works in a fight too."] },
+			{ type = "toggle", key = KEY .. ".drinking", label = L["Show when they're drinking"],
+			  desc = L["While a healer drinks, their line becomes their mana bar, filling as they drink, with \"Drinking\" on it."] },
+			{ type = "slider", key = KEY .. ".width", label = L["Width"], min = 130, max = 260, step = 5, unit = "px",
+			  desc = L["At least this wide: it grows to fit a long name."] },
+			{ type = "slider", key = KEY .. ".scale", label = L["Size"], min = 0.7, max = 1.6, step = 0.05, unit = "%" },
 		} },
 	} }
 
@@ -308,7 +310,7 @@ local function PaintDrink(row, unit)
 		pcall(row.bar.SetMinMaxValues, row.bar, 0, UnitPowerMax(unit, MANA))
 		pcall(row.bar.SetValue, row.bar, UnitPower(unit, MANA))
 		row.bar:Show()
-		row.mana:SetText("Drinking")
+		row.mana:SetText(L["Drinking"])
 		ns.Ink(row.mana, "VALUE")
 	else
 		row.bar:Hide()
@@ -319,7 +321,7 @@ end
 -- One healer's line: its name, class and state, then its mana.
 local function FillRow(row, unit)
 	local name = UnitName(unit)
-	if not Safe(name) or not name then name = "Healer" end
+	if not Safe(name) or not name then name = L["Healer"] end
 	row.name:SetText(name)
 	-- (Unreadable means a fight, where nobody drinks: a reused row never keeps the last one's.)
 	row.drinking = Drinking(unit) == true
@@ -329,7 +331,7 @@ local function FillRow(row, unit)
 	if row.off or (Safe(UnitIsDeadOrGhost(unit)) and UnitIsDeadOrGhost(unit)) then row.bar:Hide() end
 	if row.off then
 		row.dead = false
-		row.mana:SetText("Offline")
+		row.mana:SetText(L["Offline"])
 		ns.Ink(row.mana, "OFF")
 		GrayLine(row)
 		return
@@ -337,7 +339,7 @@ local function FillRow(row, unit)
 	local dead = UnitIsDeadOrGhost(unit)
 	row.dead = Safe(dead) and dead == true
 	if row.dead then
-		row.mana:SetText("Dead")
+		row.mana:SetText(L["Dead"])
 		ns.Ink(row.mana, "BAD")
 		GrayLine(row)
 		return
@@ -388,7 +390,7 @@ local function Size(n)
 	body:SetSize(w, h)
 	body:SetScale(scale)
 	frame:SetSize(w * scale, h * scale)
-	API.Skin(body, { window = true })
+	ns.SkinWindow(body)
 end
 
 -- The per-unit events: each listed healer's row hears its own unit only (RegisterUnitEvent), and
@@ -435,7 +437,7 @@ local function Rebuild()
 				row.bar:SetMinMaxValues(0, 100)
 				row.bar:SetValue(p.pct)
 				row.bar:Show()
-				row.mana:SetText("Drinking")
+				row.mana:SetText(L["Drinking"])
 				ns.Ink(row.mana, "VALUE")
 			else
 				row.bar:Hide()
@@ -551,7 +553,7 @@ local function Build()
 	body:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
 	title = API.Text(body, "small", "LEFT")
 	title:SetPoint("TOPLEFT", body, "TOPLEFT", PAD + 1, -PAD)
-	title:SetText("Healer mana")
+	title:SetText(L["Healer mana"])
 	ns.Ink(title, "LABEL")
 	frame:SetScript("OnEvent", OnEvent)
 	-- (A healer's connection, flags, health and mana: heard by its own row, ListenRow.)
@@ -561,10 +563,10 @@ local function Build()
 	Size(1)
 	-- Placed now: after a /reload in a fight, the mover only places it once the fight ends.
 	frame:SetPoint(unpack(Home()))
-	ns.me.RegisterMover(frame, KEY, "Healer mana", Home)
+	ns.me.RegisterMover(frame, KEY, L["Healer mana"], Home)
 	-- Comes up with DaylightUI's fade-in on login and /reload (the inner box: the frame's own alpha is left alone).
 	ns.FadeIn(KEY, function() return { body } end)
-	ns.me.RegisterTestPart(KEY, "Healer mana")
+	ns.me.RegisterTestPart(KEY, L["Healer mana"])
 end
 
 function P.Login()

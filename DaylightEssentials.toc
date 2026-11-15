@@ -8,6 +8,13 @@
 ## Dependencies: DaylightUI
 ## SavedVariables: DaylightEssentialsDB
 
+Locales\Locales.lua
+Locales\deDE.lua
+Locales\frFR.lua
+Locales\esES.lua
+Locales\ruRU.lua
+Locales\koKR.lua
+Locales\zhCN.lua
 Core.lua
 HealerMana.lua
 CombatTimer.lua

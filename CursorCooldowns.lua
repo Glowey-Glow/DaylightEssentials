@@ -15,7 +15,8 @@
 -- ability like Overpower or Execute only while the game allows it). A usability the game keeps
 -- secret in a fight counts as usable. The line sits on the side of the pointer you choose and
 -- runs away from it: to the left for the three left-hand spots, to the right for the right-hand
--- ones, centered above or below for Top and Bottom. Picked by name, so a new rank still counts.
+-- ones, centered above or below for Top and Bottom. Kept by spell id and followed by its name in
+-- the game's language, so a new rank still counts and a change of language keeps the picks.
 --
 -- The cooldown is read the way the game allows in a fight: a time it keeps secret goes to the
 -- cooldown sweep untouched (the game draws it), and the global cooldown is told apart by the
@@ -26,12 +27,14 @@
 local _, ns = ...
 if ns.off then return end
 
+local L = ns.L
+
 local API = ns.API
 local KEY = "cursorCooldowns"
 local G = ns.Reader(KEY)
 local Safe = ns.Safe
 
-local P = ns.Part({ key = KEY, label = "Cursor Cooldowns" })
+local P = ns.Part({ key = KEY, label = L["Cursor Cooldowns"] })
 
 P.defaults = {
 	enabled = true,
@@ -47,7 +50,8 @@ P.defaults = {
 }
 
 -- ---------------------------------------------------------------------------------------------
--- Ready at the cursor: the picks (DaylightEssentialsDB.ready[CLASS][slot] = spell name)
+-- Ready at the cursor: the picks (DaylightEssentialsDB.ready[CLASS][slot] = spell id; a name
+-- before 1.2.0)
 -- ---------------------------------------------------------------------------------------------
 
 local READY_SLOTS = 6
@@ -102,38 +106,66 @@ local function Known()
 end
 
 -- A long name made to fit the option box (the list itself shows names in full): every word but
--- the last cut to its first letter: "Blessing of Sanctuary" -> "B. o. Sanctuary".
+-- the last cut to its first letter: "Blessing of Sanctuary" -> "B. o. Sanctuary". Letters are
+-- counted and cut whole (a letter in another language takes two to four bytes).
 local function Short(name)
-	if type(name) ~= "string" or #name <= 16 then return name end
+	if type(name) ~= "string" or ns.CharCount(name) <= 16 then return name end
 	local words = {}
 	for w in string.gmatch(name, "%S+") do words[#words + 1] = w end
 	if #words < 2 then return name end
-	for i = 1, #words - 1 do words[i] = string.sub(words[i], 1, 1) .. "." end
+	for i = 1, #words - 1 do words[i] = ns.FirstChar(words[i]) .. "." end
 	return table.concat(words, " ")
+end
+
+local function SpellNameOf(id)
+	if C_Spell and C_Spell.GetSpellName then
+		local ok, name = pcall(C_Spell.GetSpellName, id)
+		if ok and type(name) == "string" and name ~= "" then return name end
+	end
+	if GetSpellInfo then
+		local ok, name = pcall(GetSpellInfo, id)
+		if ok and type(name) == "string" and name ~= "" then return name end
+	end
+end
+
+-- A slot's pick by name, in the game's language (nil for none). A pick kept by name (before 1.2.0)
+-- becomes the id of the rank you know once its name is found in your spellbook.
+local function PickName(picks, slot)
+	local v = picks[slot]
+	if type(v) == "number" then return SpellNameOf(v) end
+	if type(v) == "string" then
+		local id = Known()[v]
+		if id then picks[slot] = id end
+		return v
+	end
 end
 
 local function ReadyOff(get) return get(KEY .. ".enabled") == false or get(KEY .. ".ready") == false end
 
 local function SlotRow(i)
-	return { type = "dropdown", label = "Ability " .. i,
-		desc = i == 1 and "Shows by the pointer while it's ready to cast. Lists the abilities you know; your picks are kept for each class." or nil,
+	return { type = "dropdown", label = L["Ability %d"]:format(i),
+		desc = i == 1 and L["Shows by the pointer while it's ready to cast. Lists the abilities you know; your picks are kept for each class."] or nil,
 		default = function() return NONE end,
 		get = function()
-			local v = Picks()[i]
-			return type(v) == "string" and v or NONE
+			return PickName(Picks(), i) or NONE
 		end,
 		set = function(v)
-			Picks()[i] = (v ~= NONE and type(v) == "string") and v or nil
+			local picks = Picks()
+			if v == NONE or type(v) ~= "string" then
+				picks[i] = nil
+			elseif v ~= PickName(picks, i) then
+				picks[i] = Known()[v] or v
+			end
 			if RefreshReady then RefreshReady(true) end
 			return true
 		end,
-		shownAs = function(v) return v == NONE and "None" or Short(v) end,
+		shownAs = function(v) return v == NONE and L["None"] or Short(v) end,
 		choices = function()
-			local values, keys = { [NONE] = "None" }, {}
+			local values, keys = { [NONE] = L["None"] }, {}
 			for name in pairs(Known()) do values[name] = name end
 			-- A pick this character doesn't know (yet) stays listed.
-			local cur = Picks()[i]
-			if type(cur) == "string" then values[cur] = cur end
+			local cur = PickName(Picks(), i)
+			if cur then values[cur] = cur end
 			for k in pairs(values) do if k ~= NONE then keys[#keys + 1] = k end end
 			table.sort(keys)
 			table.insert(keys, 1, NONE)
@@ -142,32 +174,32 @@ local function SlotRow(i)
 		disabled = ReadyOff }
 end
 
-P.page = { id = KEY, label = "Cursor Cooldowns",
-	desc = "Your cooldowns, and abilities ready to cast, beside the mouse pointer.",
+P.page = { id = KEY, label = L["Cursor Cooldowns"],
+	desc = L["Your cooldowns, and abilities ready to cast, beside the mouse pointer."],
 	groups = {
-		{ label = "Cursor Cooldowns", items = {
-			{ type = "toggle", key = KEY .. ".enabled", label = "On" },
-			{ type = "toggle", key = KEY .. ".taunts", label = "Taunts",
-			  desc = "Taunt, Mocking Blow, Challenging Shout, Growl, Challenging Roar." },
-			{ type = "toggle", key = KEY .. ".dispels", label = "Dispels",
-			  desc = "Dispel Magic, Cure and Abolish Disease, Cleanse, Purify, Remove Curse, Remove Lesser Curse, Cure and Abolish Poison, Purge. One with no cooldown of its own never shows." },
-			{ type = "toggle", key = KEY .. ".onlyCombat", label = "Only in a fight" },
+		{ label = L["Cursor Cooldowns"], items = {
+			{ type = "toggle", key = KEY .. ".enabled", label = L["On"] },
+			{ type = "toggle", key = KEY .. ".taunts", label = L["Taunts"],
+			  desc = L["Taunt, Mocking Blow, Challenging Shout, Growl, Challenging Roar."] },
+			{ type = "toggle", key = KEY .. ".dispels", label = L["Dispels"],
+			  desc = L["Dispel Magic, Cure and Abolish Disease, Cleanse, Purify, Remove Curse, Remove Lesser Curse, Cure and Abolish Poison, Purge. One with no cooldown of its own never shows."] },
+			{ type = "toggle", key = KEY .. ".onlyCombat", label = L["Only in a fight"] },
 		} },
-		{ label = "Look", items = {
-			{ type = "slider", key = KEY .. ".size", label = "Icon size", min = 18, max = 44, step = 1, unit = "px" },
-			{ type = "slider", key = KEY .. ".distance", label = "Distance from the pointer", min = 8, max = 60, step = 1, unit = "px" },
+		{ label = L["Look"], items = {
+			{ type = "slider", key = KEY .. ".size", label = L["Icon size"], min = 18, max = 44, step = 1, unit = "px" },
+			{ type = "slider", key = KEY .. ".distance", label = L["Distance from the pointer"], min = 8, max = 60, step = 1, unit = "px" },
 		} },
-		{ label = "Ready at the cursor",
-		  desc = "Abilities you pick show by the pointer while they're ready to cast: off cooldown and usable now (enough power, or an ability like Execute while it's allowed).",
+		{ label = L["Ready at the cursor"],
+		  desc = L["Abilities you pick show by the pointer while they're ready to cast: off cooldown and usable now (enough power, or an ability like Execute while it's allowed)."],
 		  items = {
-			{ type = "toggle", key = KEY .. ".ready", label = "On" },
-			{ type = "toggle", key = KEY .. ".readyOnlyCombat", label = "Only in a fight", disabled = ReadyOff },
-			{ type = "dropdown", key = KEY .. ".readyAnchor", label = "Side of the pointer", disabled = ReadyOff,
-			  values = { TOPLEFT = "Top left", TOP = "Top", TOPRIGHT = "Top right", RIGHT = "Right",
-				BOTTOMRIGHT = "Bottom right", BOTTOM = "Bottom", BOTTOMLEFT = "Bottom left", LEFT = "Left" },
+			{ type = "toggle", key = KEY .. ".ready", label = L["On"] },
+			{ type = "toggle", key = KEY .. ".readyOnlyCombat", label = L["Only in a fight"], disabled = ReadyOff },
+			{ type = "dropdown", key = KEY .. ".readyAnchor", label = L["Side of the pointer"], disabled = ReadyOff,
+			  values = { TOPLEFT = L["Top left"], TOP = L["Top"], TOPRIGHT = L["Top right"], RIGHT = L["Right"],
+				BOTTOMRIGHT = L["Bottom right"], BOTTOM = L["Bottom"], BOTTOMLEFT = L["Bottom left"], LEFT = L["Left"] },
 			  order = { "TOPLEFT", "TOP", "TOPRIGHT", "RIGHT", "BOTTOMRIGHT", "BOTTOM", "BOTTOMLEFT", "LEFT" },
-			  desc = "The line runs away from the pointer: leftward on the left side, rightward on the right, centered for Top and Bottom. Bottom right sits under the cooldown icons." },
-			{ type = "slider", key = KEY .. ".readySize", label = "Icon size", min = 16, max = 48, step = 1, unit = "px", disabled = ReadyOff },
+			  desc = L["The line runs away from the pointer: leftward on the left side, rightward on the right, centered for Top and Bottom. Bottom right sits under the cooldown icons."] },
+			{ type = "slider", key = KEY .. ".readySize", label = L["Icon size"], min = 16, max = 48, step = 1, unit = "px", disabled = ReadyOff },
 		  } },
 	} }
 
@@ -503,8 +535,8 @@ local function ReadyTrack()
 	end
 	local book = Known()
 	for slot = 1, READY_SLOTS do
-		local name = picks[slot]
-		local id = type(name) == "string" and book[name] or nil
+		local name = PickName(picks, slot)
+		local id = name and book[name] or nil
 		readyIds[slot] = id   -- (nil entries leave the table empty when nothing is picked)
 		if id then ReadyIcon(slot).art:SetTexture(Texture(id)) end
 	end

@@ -9,12 +9,14 @@
 local _, ns = ...
 if ns.off then return end
 
+local L = ns.L
+
 local API = ns.API
 local KEY = "petReminder"
 local G = ns.Reader(KEY)
 local Safe = ns.Safe
 
-local P = ns.Part({ key = KEY, label = "Pet Reminder" })
+local P = ns.Part({ key = KEY, label = L["Pet Reminder"] })
 
 P.defaults = {
 	enabled = true,
@@ -24,17 +26,17 @@ P.defaults = {
 	scale = 1,
 }
 
-P.page = { id = KEY, label = "Pet Reminder",
-	desc = "For hunters and warlocks: a warning while your pet is missing or passive.",
+P.page = { id = KEY, label = L["Pet Reminder"],
+	desc = L["For hunters and warlocks: a warning while your pet is missing or passive."],
 	groups = {
-		{ label = "Pet Reminder", items = {
-			{ type = "toggle", key = KEY .. ".enabled", label = "On" },
-			{ type = "toggle", key = KEY .. ".missing", label = "When I have no pet out",
-			  desc = "Not for a warlock under Demonic Sacrifice's buff (the demon given up on purpose)." },
-			{ type = "toggle", key = KEY .. ".passive", label = "When my pet is set to passive" },
-			{ type = "toggle", key = KEY .. ".notResting", label = "Quiet in towns and inns",
-			  desc = "No warning while you're resting." },
-			{ type = "slider", key = KEY .. ".scale", label = "Size", min = 0.7, max = 2, step = 0.05, unit = "%" },
+		{ label = L["Pet Reminder"], items = {
+			{ type = "toggle", key = KEY .. ".enabled", label = L["On"] },
+			{ type = "toggle", key = KEY .. ".missing", label = L["When I have no pet out"],
+			  desc = L["Not for a warlock under Demonic Sacrifice's buff (the demon given up on purpose)."] },
+			{ type = "toggle", key = KEY .. ".passive", label = L["When my pet is set to passive"] },
+			{ type = "toggle", key = KEY .. ".notResting", label = L["Quiet in towns and inns"],
+			  desc = L["No warning while you're resting."] },
+			{ type = "slider", key = KEY .. ".scale", label = L["Size"], min = 0.7, max = 2, step = 0.05, unit = "%" },
 		} },
 	} }
 
@@ -92,10 +94,10 @@ end
 local function Warning()
 	if not G("enabled") or not CALLS[class] or not Known(CALLS[class]) or Quiet() then return nil end
 	if not UnitExists("pet") then
-		if G("missing") and not Sacrificed() then return "No pet" end
+		if G("missing") and not Sacrificed() then return L["No pet"] end
 		return nil
 	end
-	if G("passive") and Passive() then return "Pet is passive" end
+	if G("passive") and Passive() then return L["Pet is passive"] end
 	return nil
 end
 
@@ -117,7 +119,7 @@ local function Show(word)
 end
 
 -- The sample (unlock or test mode) takes turns with both warnings, a few seconds each.
-local SAMPLES = { "No pet", "Pet is passive" }
+local SAMPLES = { L["No pet"], L["Pet is passive"] }
 local sampleTicker, sampleAt = nil, 1
 
 local function StopSample()
@@ -189,7 +191,7 @@ local function Build()
 	a:SetSmoothing("IN_OUT")
 	-- Placed now: after a /reload in a fight, the mover only places it once the fight ends.
 	frame:SetPoint(unpack(DEFAULT))
-	ns.me.RegisterMover(frame, KEY, "Pet reminder", DEFAULT)
+	ns.me.RegisterMover(frame, KEY, L["Pet reminder"], DEFAULT)
 	-- Comes up with DaylightUI's fade-in on login and /reload (the inner box: the frame's own alpha is its pulse).
 	ns.FadeIn(KEY, function() return { body } end)
 	frame:SetScript("OnEvent", OnEvent)
@@ -204,7 +206,7 @@ function P.Login()
 	local _, token = UnitClass("player")
 	class = token
 	-- The test part for every class (test mode lists it, and its sample can be placed from anyone).
-	ns.me.RegisterTestPart(KEY, "Pet reminder")
+	ns.me.RegisterTestPart(KEY, L["Pet reminder"])
 	if not CALLS[class] then
 		-- (Unlock mode: the sample too, so it can be moved from any character.)
 		if ns.Previewing(KEY) then

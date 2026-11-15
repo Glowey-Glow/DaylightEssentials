@@ -5,11 +5,13 @@
 local _, ns = ...
 if ns.off then return end
 
+local L = ns.L
+
 local API = ns.API
 local KEY = "combatAlert"
 local G = ns.Reader(KEY)
 
-local P = ns.Part({ key = KEY, label = "Combat Alert" })
+local P = ns.Part({ key = KEY, label = L["Combat Alert"] })
 
 P.defaults = {
 	enabled = true,
@@ -21,23 +23,23 @@ P.defaults = {
 }
 
 local WORDS = {
-	plus = { "+ Combat", "- Combat" },
-	words = { "Entering combat", "Leaving combat" },
-	short = { "Combat", "Safe" },
+	plus = { L["+ Combat"], L["- Combat"] },
+	words = { L["Entering combat"], L["Leaving combat"] },
+	short = { L["Combat"], L["Safe"] },
 }
 
-P.page = { id = KEY, label = "Combat Alert",
-	desc = "A short line mid-screen as a fight starts and ends.",
+P.page = { id = KEY, label = L["Combat Alert"],
+	desc = L["A short line mid-screen as a fight starts and ends."],
 	groups = {
-		{ label = "Combat Alert", items = {
-			{ type = "toggle", key = KEY .. ".enabled", label = "On" },
-			{ type = "toggle", key = KEY .. ".onLeave", label = "Also when a fight ends" },
-			{ type = "dropdown", key = KEY .. ".words", label = "Words",
-			  values = { plus = "+/- Combat", words = "Entering, leaving", short = "Combat, Safe" },
-			  desc = "+/- Combat: \"+ Combat\" and \"- Combat\". Entering, leaving: \"Entering combat\" and \"Leaving combat\". Combat, Safe: \"Combat\" and \"Safe\". Move it with /dui unlock." },
-			{ type = "slider", key = KEY .. ".hold", label = "Stays for (seconds)", min = 0.5, max = 3, step = 0.25 },
-			{ type = "toggle", key = KEY .. ".sound", label = "A sound as a fight starts" },
-			{ type = "slider", key = KEY .. ".scale", label = "Size", min = 0.7, max = 2, step = 0.05, unit = "%" },
+		{ label = L["Combat Alert"], items = {
+			{ type = "toggle", key = KEY .. ".enabled", label = L["On"] },
+			{ type = "toggle", key = KEY .. ".onLeave", label = L["Also when a fight ends"] },
+			{ type = "dropdown", key = KEY .. ".words", label = L["Words"],
+			  values = { plus = L["+/- Combat"], words = L["Entering, leaving"], short = L["Combat, Safe"] },
+			  desc = L["+/- Combat: \"+ Combat\" and \"- Combat\". Entering, leaving: \"Entering combat\" and \"Leaving combat\". Combat, Safe: \"Combat\" and \"Safe\". Move it with /dui unlock."] },
+			{ type = "slider", key = KEY .. ".hold", label = L["Stays for (seconds)"], min = 0.5, max = 3, step = 0.25 },
+			{ type = "toggle", key = KEY .. ".sound", label = L["A sound as a fight starts"] },
+			{ type = "slider", key = KEY .. ".scale", label = L["Size"], min = 0.7, max = 2, step = 0.05, unit = "%" },
 		} },
 	} }
 
@@ -123,8 +125,8 @@ function P.Login()
 	frame:RegisterEvent("PLAYER_REGEN_ENABLED")
 	-- Placed now: after a /reload in a fight, the mover only places it once the fight ends.
 	frame:SetPoint(unpack(DEFAULT))
-	ns.me.RegisterMover(frame, KEY, "Combat alert", DEFAULT)
-	ns.me.RegisterTestPart(KEY, "Combat alert")
+	ns.me.RegisterMover(frame, KEY, L["Combat alert"], DEFAULT)
+	ns.me.RegisterTestPart(KEY, L["Combat alert"])
 end
 
 function P.Setting()

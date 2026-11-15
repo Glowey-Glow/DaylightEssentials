@@ -98,6 +98,26 @@ function ns.Ink(fs, role)
 	if type(c) == "table" then fs:SetTextColor(c[1], c[2], c[3]) end
 end
 
+-- A box of ours in DaylightUI's window shell: its background at DaylightUI's window opacity, or
+-- at our own ("look.opacity") with "Use DaylightUI's opacity" off. extra: the shell's other opts
+-- (borderPx...). Each box is remembered (weakly) with them, so a change to either setting, or to
+-- DaylightUI's look, dresses them all again (Options.lua's Look part). A box whose shell is put
+-- away (the combat timer without its ground) is let go with ns.ForgetWindow. Returns API.Skin's.
+local windows = setmetatable({}, { __mode = "k" })
+function ns.SkinWindow(frame, extra)
+	windows[frame] = extra or false
+	local opts = { window = true }
+	if extra then for k, v in pairs(extra) do opts[k] = v end end
+	if ns.Get("look.duiOpacity") == false and not opts.noBackground then opts.bgAlpha = ns.Get("look.opacity") end
+	return API.Skin(frame, opts)
+end
+
+function ns.ForgetWindow(frame) windows[frame] = nil end
+
+function ns.ReskinWindows()
+	for frame, extra in pairs(windows) do ns.SkinWindow(frame, extra or nil) end
+end
+
 -- Whether a value can be read (the game keeps some values secret from addons in a fight).
 function ns.Safe(v)
 	return not (issecretvalue and issecretvalue(v))
@@ -147,7 +167,110 @@ function ns.TextWidth(fs)
 	return w
 end
 
--- Joins DaylightUI's login and /reload fade-in: the frames start unseen and come up with the rest
+-- Text in UTF-8: names and spells in other languages take two to four bytes a letter, so text is
+-- cut and counted by whole letters, never by bytes (half a letter shows as a box, or breaks a
+-- macro).
+local CHAR = "[%z\1-\127\194-\244][\128-\191]*"
+
+-- The first letter (all its bytes), or "".
+function ns.FirstChar(s)
+	return type(s) == "string" and s:match("^" .. CHAR) or ""
+end
+
+-- How many letters (not bytes).
+function ns.CharCount(s)
+	if type(s) ~= "string" then return 0 end
+	local _, n = s:gsub(CHAR, "")
+	return n
+end
+
+-- s cut to at most maxBytes bytes, at the end of a whole letter.
+function ns.CutBytes(s, maxBytes)
+	if type(s) ~= "string" or #s <= maxBytes then return s end
+	local out = 0
+	for ch in s:gmatch(CHAR) do
+		if out + #ch > maxBytes then break end
+		out = out + #ch
+	end
+	return s:sub(1, out)
+end
+
+-- Capital and small letters beyond A to Z: Latin-1 (À to Þ), Latin Extended-A (Ā to ž) and
+-- Cyrillic (Ѐ to Я), all two bytes in UTF-8. string.lower and string.upper only know A to Z.
+local function LowerCode(c)
+	if c >= 0xC0 and c <= 0xDE and c ~= 0xD7 then return c + 0x20 end
+	if c >= 0x100 and c <= 0x17F then
+		if c == 0x130 or c == 0x131 or c == 0x138 or c == 0x149 or c == 0x17F then return c end
+		if c == 0x178 then return 0xFF end
+		-- (Ĺ to ň and Ź to ž put the capital on the odd number; the rest on the even one.)
+		if (c >= 0x139 and c <= 0x148) or (c >= 0x179 and c <= 0x17E) then
+			return c % 2 == 1 and c + 1 or c
+		end
+		return c % 2 == 0 and c + 1 or c
+	end
+	if c >= 0x410 and c <= 0x42F then return c + 0x20 end
+	if c >= 0x400 and c <= 0x40F then return c + 0x50 end
+	return c
+end
+
+local function UpperCode(c)
+	if c >= 0xE0 and c <= 0xFE and c ~= 0xF7 then return c - 0x20 end
+	if c == 0xFF then return 0x178 end
+	if c >= 0x100 and c <= 0x17F then
+		if c == 0x130 or c == 0x131 or c == 0x138 or c == 0x149 or c == 0x17F then return c end
+		if (c >= 0x139 and c <= 0x148) or (c >= 0x179 and c <= 0x17E) then
+			return c % 2 == 0 and c - 1 or c
+		end
+		return c % 2 == 1 and c - 1 or c
+	end
+	if c >= 0x430 and c <= 0x44F then return c - 0x20 end
+	if c >= 0x450 and c <= 0x45F then return c - 0x50 end
+	return c
+end
+
+-- A two-byte letter through one of the two above.
+local function Recase(ch, fn)
+	local a, b = ch:byte(1, 2)
+	local c = fn((a - 0xC0) * 64 + (b - 0x80))
+	return string.char(0xC0 + math.floor(c / 64), 0x80 + c % 64)
+end
+local function LowerChar(ch) return Recase(ch, LowerCode) end
+
+-- A name in small letters, to compare names whatever their capitals ("Élise" and "élise" match).
+-- For A to Z it's string.lower's own answer.
+function ns.Fold(s)
+	if type(s) ~= "string" then return s end
+	return (string.lower(s):gsub("[\194-\223][\128-\191]", LowerChar))
+end
+
+-- A table keyed by ns.Fold whose keys may be string.lower's (A to Z only, as kept before 1.2.0):
+-- each such key moves to its folded one (an entry already there wins).
+function ns.FoldKeys(t)
+	local moves = {}
+	for k in pairs(t) do
+		if type(k) == "string" and ns.Fold(k) ~= k then moves[#moves + 1] = k end
+	end
+	for _, k in ipairs(moves) do
+		local to = ns.Fold(k)
+		if t[to] == nil then t[to] = t[k] end
+		t[k] = nil
+	end
+end
+
+-- s with its first letter a capital.
+function ns.UpperFirst(s)
+	if type(s) ~= "string" then return s end
+	local first = ns.FirstChar(s)
+	local rest = s:sub(#first + 1)
+	if #first == 1 then
+		first = string.upper(first)
+	elseif #first == 2 and first:byte(1) <= 223 then
+		first = Recase(first, UpperCode)
+	end
+	return first .. rest
+end
+
+-- Joins DaylightUI's login and /reload fade-in:the frames start unseen and come up with the rest
 -- of the UI (its timing, after the loading screen, only when the player has "fade in" on and
 -- motion allowed). Nothing more: no fade choices of its own, so they stay fully shown after.
 -- Frames whose alpha the part sets itself are never handed over (DaylightUI owns these ones').

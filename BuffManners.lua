@@ -23,12 +23,14 @@
 local _, ns = ...
 if ns.off then return end
 
+local L = ns.L
+
 local API = ns.API
 local KEY = "buffManners"
 local G = ns.Reader(KEY)
 local Safe = ns.Safe
 
-local P = ns.Part({ key = KEY, label = "Buff Manners" })
+local P = ns.Part({ key = KEY, label = L["Buff Manners"] })
 
 P.defaults = {
 	enabled = true,
@@ -53,57 +55,57 @@ local class   -- the player's class token, read at login
 
 -- The lines of thanks ({name} = their name). "custom" is typed with /dui manners line.
 local LINES = {
-	thanks = "Thanks for the buff!",
-	name = "Thank you, {name}!",
-	appreciated = "Much appreciated!",
+	thanks = L["Thanks for the buff!"],
+	name = L["Thank you, {name}!"],
+	appreciated = L["Much appreciated!"],
 }
 
-P.page = { id = KEY, label = "Buff Manners",
-	desc = "One click to buff players who buffed you, and others near you.",
+P.page = { id = KEY, label = L["Buff Manners"],
+	desc = L["One click to buff players who buffed you, and others near you."],
 	groups = {
-		{ label = "Buff Manners",
-		  desc = "Click the prompt, or press its key (Key Bindings, AddOns, Daylight Essentials). Right-click it for Not now and Never offer. Hidden in a fight. Your own missing buffs are left to DaylightUI's buff reminder.",
+		{ label = L["Buff Manners"],
+		  desc = L["Click the prompt, or press its key (Key Bindings, AddOns, Daylight Essentials). Right-click it for Not now and Never offer. Hidden in a fight. Your own missing buffs are left to DaylightUI's buff reminder."],
 		  items = {
-			{ type = "toggle", key = KEY .. ".enabled", label = "On" },
-			{ type = "toggle", key = KEY .. ".buffedYou", label = "Players who buffed me",
-			  desc = "First in line, for a few minutes after their buff lands. Friendly nameplates help it see them." },
-			{ type = "toggle", key = KEY .. ".target", label = "My target" },
-			{ type = "toggle", key = KEY .. ".group", label = "My group",
-			  desc = "Party or raid members missing your buff. Checked again at once on a ready check." },
-			{ type = "dropdown", key = KEY .. ".nearby", label = "Players nearby",
-			  values = { off = "Off", beside = "Right beside me", range = "In spell range" },
-			  desc = "Passers-by missing your buff, seen through friendly nameplates and the mouse. Right beside me: about 10 yards. Friends and guildmates come first." },
-			{ type = "toggle", key = KEY .. ".skipFlagged", label = "Skip PvP-flagged players",
-			  desc = "While you aren't flagged yourself: buffing them would flag you." },
-			{ type = "toggle", key = KEY .. ".quietResting", label = "Quiet in towns and inns" },
-			{ type = "toggle", key = KEY .. ".quietInstances", label = "Quiet in dungeons and raids" },
-			{ type = "slider", key = KEY .. ".scale", label = "Size", min = 0.7, max = 2, step = 0.05, unit = "%" },
+			{ type = "toggle", key = KEY .. ".enabled", label = L["On"] },
+			{ type = "toggle", key = KEY .. ".buffedYou", label = L["Players who buffed me"],
+			  desc = L["First in line, for a few minutes after their buff lands. Friendly nameplates help it see them."] },
+			{ type = "toggle", key = KEY .. ".target", label = L["My target"] },
+			{ type = "toggle", key = KEY .. ".group", label = L["My group"],
+			  desc = L["Party or raid members missing your buff. Checked again at once on a ready check."] },
+			{ type = "dropdown", key = KEY .. ".nearby", label = L["Players nearby"],
+			  values = { off = L["Off"], beside = L["Right beside me"], range = L["In spell range"] },
+			  desc = L["Passers-by missing your buff, seen through friendly nameplates and the mouse. Right beside me: about 10 yards. Friends and guildmates come first."] },
+			{ type = "toggle", key = KEY .. ".skipFlagged", label = L["Skip PvP-flagged players"],
+			  desc = L["While you aren't flagged yourself: buffing them would flag you."] },
+			{ type = "toggle", key = KEY .. ".quietResting", label = L["Quiet in towns and inns"] },
+			{ type = "toggle", key = KEY .. ".quietInstances", label = L["Quiet in dungeons and raids"] },
+			{ type = "slider", key = KEY .. ".scale", label = L["Size"], min = 0.7, max = 2, step = 0.05, unit = "%" },
 		} },
-		{ label = "My buffs",
-		  desc = "Mages give Arcane Intellect, priests Fortitude, druids Mark of the Wild, paladins a blessing, warlocks Unending Breath (only while you're swimming). Intellect, Wisdom and Divine Spirit only go to players who use mana.",
+		{ label = L["My buffs"],
+		  desc = L["Mages give Arcane Intellect, priests Fortitude, druids Mark of the Wild, paladins a blessing, warlocks Unending Breath (only while you're swimming). Intellect, Wisdom and Divine Spirit only go to players who use mana."],
 		  items = {
-			{ type = "toggle", key = KEY .. ".priestSpirit", label = "Divine Spirit (priests)" },
-			{ type = "toggle", key = KEY .. ".priestShadow", label = "Shadow Protection (priests)" },
-			{ type = "dropdown", key = KEY .. ".thorns", label = "Thorns (druids)",
-			  values = { tanks = "Tanks", off = "Off" },
-			  desc = "Tanks: only players given the tank role in your group." },
-			{ type = "dropdown", key = KEY .. ".blessing", label = "Blessing (paladins)",
-			  values = { kings = "Kings first", class = "Wisdom or Might" },
-			  desc = "Kings first: Kings when you know it, else Wisdom or Might. Wisdom or Might: Might for warriors and rogues, Wisdom for the rest. Never over a blessing of yours already on them." },
+			{ type = "toggle", key = KEY .. ".priestSpirit", label = L["Divine Spirit (priests)"] },
+			{ type = "toggle", key = KEY .. ".priestShadow", label = L["Shadow Protection (priests)"] },
+			{ type = "dropdown", key = KEY .. ".thorns", label = L["Thorns (druids)"],
+			  values = { tanks = L["Tanks"], off = L["Off"] },
+			  desc = L["Tanks: only players given the tank role in your group."] },
+			{ type = "dropdown", key = KEY .. ".blessing", label = L["Blessing (paladins)"],
+			  values = { kings = L["Kings first"], class = L["Wisdom or Might"] },
+			  desc = L["Kings first: Kings when you know it, else Wisdom or Might. Wisdom or Might: Might for warriors and rogues, Wisdom for the rest. Never over a blessing of yours already on them."] },
 		} },
-		{ label = "Thanks",
-		  desc = "For players who buffed you. When they already have all you can give, or your class has no buffs to give, the prompt shows who buffed you and offers a thank-you on its own: a /thank even with these off. Sent with the buff you give back only when switched on. Never in a dungeon or raid, except a whisper.",
+		{ label = L["Thanks"],
+		  desc = L["For players who buffed you. When they already have all you can give, or your class has no buffs to give, the prompt shows who buffed you and offers a thank-you on its own: a /thank even with these off. Sent with the buff you give back only when switched on. Never in a dungeon or raid, except a whisper."],
 		  items = {
-			{ type = "toggle", key = KEY .. ".emote", label = "Thank them with /thank",
-			  desc = "Also with the buff you give back. A thank-you on its own is always a /thank (plus your line)." },
-			{ type = "dropdown", key = KEY .. ".say", label = "Say a line",
-			  values = { off = "Off", say = "Say", whisper = "Whisper" } },
-			{ type = "dropdown", key = KEY .. ".line", label = "The line",
-			  values = { thanks = "Thanks!", name = "Thank you, Name", appreciated = "Appreciated", custom = "Custom" },
+			{ type = "toggle", key = KEY .. ".emote", label = L["Thank them with /thank"],
+			  desc = L["Also with the buff you give back. A thank-you on its own is always a /thank (plus your line)."] },
+			{ type = "dropdown", key = KEY .. ".say", label = L["Say a line"],
+			  values = { off = L["Off"], say = L["Say"], whisper = L["Whisper"] } },
+			{ type = "dropdown", key = KEY .. ".line", label = L["The line"],
+			  values = { thanks = L["Thanks!"], name = L["Thank you, Name"], appreciated = L["Appreciated"], custom = L["Custom"] },
 			  disabled = function(get) return get(KEY .. ".say") == "off" end,
-			  desc = "Thanks!: \"Thanks for the buff!\" Thank you, Name: \"Thank you, Glowey!\" Appreciated: \"Much appreciated!\" Custom: your own, typed with /dui manners line Your words ({name} for their name)." },
-			{ type = "button", label = "Clear my Never list",
-			  desc = "Everyone you chose Never offer for is offered again.",
+			  desc = L["Thanks!: \"Thanks for the buff!\" Thank you, Name: \"Thank you, Glowey!\" Appreciated: \"Much appreciated!\" Custom: your own, typed with /dui manners line Your words ({name} for their name)."] },
+			{ type = "button", label = L["Clear my Never list"],
+			  desc = L["Everyone you chose Never offer for is offered again."],
 			  func = function() P.ClearNever() end },
 		} },
 	} }
@@ -296,6 +298,7 @@ end
 local tried, snoozed = {}, {}   -- GUID -> time: just tried (skip a while), "Not now" (skip longer)
 local TRIED, SNOOZE = 20, 600
 
+local neverFolded = false
 local function NeverDB()
 	local db = _G.DaylightEssentialsDB
 	if type(db) ~= "table" then
@@ -303,6 +306,11 @@ local function NeverDB()
 		_G.DaylightEssentialsDB = db
 	end
 	if type(db.mannersNever) ~= "table" then db.mannersNever = {} end
+	-- (Names kept before 1.2.0 were lowered A to Z only: once a session they move to ns.Fold's key.)
+	if not neverFolded then
+		neverFolded = true
+		ns.FoldKeys(db.mannersNever)
+	end
 	return db.mannersNever
 end
 
@@ -323,7 +331,7 @@ local function Candidate(unit)
 	local now = GetTime()
 	if tried[guid] and now - tried[guid] < TRIED then return nil end
 	if snoozed[guid] and now - snoozed[guid] < SNOOZE then return nil end
-	if NeverDB()[string.lower(name)] then return nil end
+	if NeverDB()[ns.Fold(name)] then return nil end
 	return guid, name
 end
 
@@ -385,7 +393,8 @@ local DEFAULT = { "CENTER", UIParent, "CENTER", 0, -170 }
 local offer          -- what the prompt offers now: { guid, unit, name, short, class, spell, reason, thanks }
 local previewing = false
 
-local REASON = { buffed = "buffed you", target = "your target", group = "your group", nearby = "nearby" }
+-- (Whole lines: "%s" is the player's name, in their class color.)
+local REASON = { buffed = L["%s  buffed you"], target = L["%s  your target"], group = L["%s  your group"], nearby = L["%s  nearby"] }
 
 local function Say(msg) print("|cff73a0ffBuff Manners|r: " .. msg) end
 
@@ -410,6 +419,10 @@ local function ThanksWanted(inInstance, onlyThanks)
 	return emote, say
 end
 
+-- A macro holds 255 bytes, and a letter in another language takes two to four of them: the words
+-- of thanks get the room the rest leaves, cut at the end of a whole letter.
+local MACRO_MAX = 255
+
 local function Macro(o)
 	local lines = {}
 	local inInstance = IsInInstance and IsInInstance() or false
@@ -427,11 +440,16 @@ local function Macro(o)
 		end
 	end
 	if emote then lines[#lines + 1] = "/thank" end
-	if say == "say" then lines[#lines + 1] = "/s " .. Line(o.short)
-	elseif say == "whisper" then lines[#lines + 1] = "/w " .. o.name .. " " .. Line(o.short) end
-	if swap then
-		lines[#lines + 1] = Read(UnitExists, "target") and "/targetlasttarget" or "/cleartarget"
+	local chat
+	if say == "say" then chat = "/s "
+	elseif say == "whisper" then chat = "/w " .. o.name .. " " end
+	local back = swap and (Read(UnitExists, "target") and "/targetlasttarget" or "/cleartarget") or nil
+	if chat then
+		local used = #table.concat(lines, "\n") + (#lines > 0 and 1 or 0) + #chat + (back and #back + 1 or 0)
+		local words = ns.CutBytes(Line(o.short), MACRO_MAX - used)
+		if words ~= "" then lines[#lines + 1] = chat .. words end
 	end
+	if back then lines[#lines + 1] = back end
 	return table.concat(lines, "\n")
 end
 
@@ -439,11 +457,11 @@ local sizedAs   -- the box's last size and scale (skinned again only when they c
 local function Paint(o)
 	local spell = o.spell
 	icon:SetTexture(spell and spell.icon or o.icon or 136243)
-	title:SetText(spell and spell.name or ("Thank " .. o.short))
+	title:SetText(spell and spell.name or L["Thank %s"]:format(o.short))
 	local r, g, b = 1, 1, 1
 	if o.class then r, g, b = API.ClassColor(o.class) end
-	sub:SetFormattedText("|cff%02x%02x%02x%s|r  %s", math.floor(r * 255), math.floor(g * 255), math.floor(b * 255),
-		o.short or o.name, REASON[o.reason] or "")
+	sub:SetText((REASON[o.reason] or "%s  "):format(("|cff%02x%02x%02x%s|r"):format(math.floor(r * 255),
+		math.floor(g * 255), math.floor(b * 255), o.short or o.name)))
 	ns.Ink(title, "TITLE")
 	ns.Ink(sub, "LABEL")
 	-- The box fits its words: nothing is cut short.
@@ -456,7 +474,7 @@ local function Paint(o)
 	body:SetSize(w, H)
 	body:SetScale(scale)
 	frame:SetSize(w * scale, H * scale)
-	API.Skin(body, { window = true })
+	ns.SkinWindow(body)
 end
 
 -- The secure part over the body (out of a fight only).
@@ -687,13 +705,13 @@ end
 
 function P.ClearNever()
 	wipe(NeverDB())
-	Say("your Never list is empty again.")
+	Say(L["your Never list is empty again."])
 	LookSoon()
 end
 
 local function Never(name, on)
 	local db = NeverDB()
-	if on then db[string.lower(name)] = name else db[string.lower(name)] = nil end
+	if on then db[ns.Fold(name)] = name else db[ns.Fold(name)] = nil end
 	LookSoon()
 end
 
@@ -702,14 +720,14 @@ local function Menu(owner)
 	if not o or not (MenuUtil and MenuUtil.CreateContextMenu) then return end
 	MenuUtil.CreateContextMenu(owner, function(_, root)
 		root:CreateTitle(o.name)
-		root:CreateButton("Not now", function()
+		root:CreateButton(L["Not now"], function()
 			if o.guid then snoozed[o.guid] = GetTime() end
 			buffedBy[o.guid or ""] = nil
 			LookSoon()
 		end)
-		root:CreateButton("Never offer " .. (o.short or o.name), function()
+		root:CreateButton(L["Never offer %s"]:format(o.short or o.name), function()
 			Never(o.name, true)
-			Say((o.short or o.name) .. " won't be offered again (/dui manners allow " .. o.name .. " to undo).")
+			Say(L["%s won't be offered again (/dui manners allow %s to undo)."]:format(o.short or o.name, o.name))
 		end)
 	end)
 end
@@ -721,29 +739,29 @@ local function Command(rest)
 	if word == "never" or word == "allow" then
 		local name = arg ~= "" and arg or (UnitExists("target") and FullName("target"))
 		if not name then
-			Say("/dui manners " .. word .. " Name (or target a player).")
+			Say(word == "never" and L["/dui manners never Name (or target a player)."] or L["/dui manners allow Name (or target a player)."])
 		else
 			Never(name, word == "never")
-			Say(word == "never" and (name .. " won't be offered.") or (name .. " can be offered again."))
+			Say((word == "never" and L["%s won't be offered."] or L["%s can be offered again."]):format(name))
 		end
 	elseif word == "list" then
 		local names = {}
 		for _, n in pairs(NeverDB()) do names[#names + 1] = n end
 		table.sort(names)
-		Say(#names == 0 and "your Never list is empty." or ("Never offer: " .. table.concat(names, ", ")))
+		Say(#names == 0 and L["your Never list is empty."] or L["Never offer: %s"]:format(table.concat(names, L[", "])))
 	elseif word == "line" then
 		-- One line, no links or slash commands in it.
 		local text = arg:gsub("[\r\n|]", ""):gsub("^/+", "")
-		text = text:sub(1, 200)
+		text = ns.CutBytes(text, 200)
 		if text == "" then
-			Say("your line: " .. Line("Name") .. ". Type /dui manners line Your words ({name} for their name).")
+			Say(L["your line: %s. Type /dui manners line Your words ({name} for their name)."]:format(Line(L["Name"])))
 		else
 			NeverDB()
 			_G.DaylightEssentialsDB.mannersLine = text
-			Say("your line is now: " .. text .. " (pick Custom under Thanks to use it).")
+			Say(L["your line is now: %s (pick Custom under Thanks to use it)."]:format(text))
 		end
 	else
-		Say("/dui manners never Name, /dui manners allow Name, /dui manners list, /dui manners line Your words.")
+		Say(L["/dui manners never Name, /dui manners allow Name, /dui manners list, /dui manners line Your words."])
 	end
 end
 
@@ -851,20 +869,20 @@ local function Build()
 	end)
 	button:SetScript("OnEnter", function(self)
 		GameTooltip:SetOwner(self, "ANCHOR_TOP")
-		GameTooltip:SetText("Buff Manners")
-		GameTooltip:AddLine("Click (or its key) to give the buff. Right-click: Not now or Never offer.", 1, 1, 1, true)
+		GameTooltip:SetText(L["Buff Manners"])
+		GameTooltip:AddLine(L["Click (or its key) to give the buff. Right-click: Not now or Never offer."], 1, 1, 1, true)
 		GameTooltip:Show()
 	end)
 	button:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
 	frame:SetPoint(unpack(DEFAULT))
-	ns.me.RegisterMover(frame, KEY, "Buff prompt", DEFAULT)
+	ns.me.RegisterMover(frame, KEY, L["Buff prompt"], DEFAULT)
 	-- Comes up with DaylightUI's fade-in on login and /reload (the inner box: the frame's own alpha is left alone).
 	ns.FadeIn(KEY, function() return { body } end)
-	ns.me.RegisterTestPart(KEY, "Buff prompt")
+	ns.me.RegisterTestPart(KEY, L["Buff prompt"])
 	-- When the prompt is moved (a profile, the mover), the secure part follows it.
 	hooksecurefunc(frame, "SetPoint", function() LookSoon() end)
-	ns.me.RegisterCommand("manners", Command, "manners never|allow|list Name, manners line Words: Buff Manners")
+	ns.me.RegisterCommand("manners", Command, L["manners never|allow|list Name, manners line Words: Buff Manners"])
 
 	frame:SetScript("OnEvent", OnEvent)
 end
@@ -889,7 +907,7 @@ end
 
 -- The key binding's words (Key Bindings, AddOns).
 _G.BINDING_HEADER_DAYLIGHTESSENTIALS = "Daylight Essentials"
-_G["BINDING_NAME_CLICK DaylightEssentialsBuffMannersButton:LeftButton"] = "Buff Manners: give the offered buff"
+_G["BINDING_NAME_CLICK DaylightEssentialsBuffMannersButton:LeftButton"] = L["Buff Manners: give the offered buff"]
 
 function P.Login()
 	local _, token = UnitClass("player")
