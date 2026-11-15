@@ -33,12 +33,12 @@ P.page = { id = KEY, label = L["Combat Alert"],
 	groups = {
 		{ label = L["Combat Alert"], items = {
 			{ type = "toggle", key = KEY .. ".enabled", label = L["On"] },
-			{ type = "toggle", key = KEY .. ".onLeave", label = L["Also when a fight ends"] },
-			{ type = "dropdown", key = KEY .. ".words", label = L["Words"],
+			{ type = "toggle", key = KEY .. ".onLeave", label = L["When Combat Ends"] },
+			{ type = "dropdown", key = KEY .. ".words", label = L["Alert Style"],
 			  values = { plus = L["+/- Combat"], words = L["Entering, leaving"], short = L["Combat, Safe"] },
 			  desc = L["+/- Combat: \"+ Combat\" and \"- Combat\". Entering, leaving: \"Entering combat\" and \"Leaving combat\". Combat, Safe: \"Combat\" and \"Safe\". Move it with /dui unlock."] },
 			{ type = "slider", key = KEY .. ".hold", label = L["Stays for (seconds)"], min = 0.5, max = 3, step = 0.25 },
-			{ type = "toggle", key = KEY .. ".sound", label = L["A sound as a fight starts"] },
+			{ type = "toggle", key = KEY .. ".sound", label = L["Sound on Combat Start"] },
 			{ type = "slider", key = KEY .. ".scale", label = L["Size"], min = 0.7, max = 2, step = 0.05, unit = "%" },
 		} },
 	} }

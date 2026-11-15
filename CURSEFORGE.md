@@ -56,11 +56,19 @@ For hunters and warlocks: "No pet" or "Pet is passive" until it's sorted. Quiet 
 - Fill the slots by dragging spells, items or macros onto them in **Edit Halos** (a tab per Halo, or `/dui halo edit`).
 - Choose the shape (circle or arc), the number of slots (2 to 12), the Halo's size, the icon size and where it opens (around the cursor or the screen's center).
 
+### Nameplate Dmg Text (new in 1.3.0)
+- **Damage numbers pop off enemy nameplates** as they're hit, in DaylightUI's font, colored by school (fire orange, frost blue...), crits bigger with a quick pop, misses, dodges and parries as words.
+- **Quieter off your target:** numbers on other enemies are smaller and fainter, or show on your target only.
+- **Motion:** Fountain, Rise, Fall or Rainfall, set apart for hits, crits and misses; how long they stay, their height, size, and short (1.2K) or full numbers.
+- **See and place it:** a live preview on its page shows a nameplate with numbers coming off it as you change the settings; in Design mode, drag where the numbers start.
+- **Turn Off DaylightUI's Combat Text:** all of DaylightUI's combat text (damage numbers and the scrolling text around you) switches off while it's on, so no hit shows twice, and comes back as it was when it's off.
+- The game gives addons no combat log on Forever, only each hit on a nameplate without who struck it: in a group, everyone's hits show. Off to start: turn it on on its page.
+
 ---
 
 ## Also new in 1.2.0
-- **In your language:** Daylight Essentials speaks German, French, Spanish, Russian, Korean and Simplified Chinese (machine drafts, corrections welcome), with fixes for non-English clients (Cursor Cooldowns, Kill on Sight, Buff Manners, Secondary Stats).
-- **Window opacity** follows DaylightUI's, or set your own on the options page.
+- **In your language:** Daylight Essentials speaks German, French, Spanish, Russian, Korean and Simplified Chinese (machine drafts, corrections welcome; words the game already translates use the game's own wording), with fixes for non-English clients (Cursor Cooldowns, Kill on Sight, Buff Manners, Secondary Stats).
+- **Window opacity** follows DaylightUI's, or set your own on each part's page.
 
 ## Also new in 1.1.0
 - **Fades in with DaylightUI** on login and /reload, instead of popping in (when DaylightUI's fade-in is on).

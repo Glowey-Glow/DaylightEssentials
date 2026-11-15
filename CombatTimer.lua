@@ -28,13 +28,13 @@ P.page = { id = KEY, label = L["Combat Timer"],
 	groups = {
 		{ label = L["Combat Timer"], items = {
 			{ type = "toggle", key = KEY .. ".enabled", label = L["On"] },
-			{ type = "slider", key = KEY .. ".hold", label = L["Keep the last fight's time (seconds)"], min = 0, max = 15, step = 1,
+			{ type = "slider", key = KEY .. ".hold", label = L["Display Time After Combat"], min = 0, max = 15, step = 1,
 			  desc = L["Seconds the fight's length stays after it ends. 0 hides it at once."] },
 			{ type = "toggle", key = KEY .. ".tenths", label = L["Tenths of a second"],
 			  desc = L["1:23.4 instead of 1:23."] },
 		} },
 		{ label = L["Look"], items = {
-			{ type = "toggle", key = KEY .. ".ground", label = L["Window ground"],
+			{ type = "toggle", key = KEY .. ".ground", label = L["Show Background"],
 			  desc = L["The timer on a small DaylightUI window. Off: the time alone."] },
 			{ type = "slider", key = KEY .. ".scale", label = L["Size"], min = 0.7, max = 2, step = 0.05, unit = "%" },
 		} },
@@ -92,7 +92,7 @@ local function Look()
 	body:SetScale(scale)
 	frame:SetSize(W * scale, H * scale)
 	if G("ground") then
-		shell = ns.SkinWindow(body)
+		shell = ns.SkinWindow(body, nil, KEY)
 		if shell then shell:Show() end
 	elseif shell then
 		ns.ForgetWindow(body)

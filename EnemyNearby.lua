@@ -196,15 +196,15 @@ P.page = { id = KEY, label = L["Enemy Nearby"],
 			{ type = "toggle", label = L["Show enemy nameplates"],
 			  desc = L["The game's own setting (V by default). The list sees players through their nameplates, your target, focus and mouseover, so enemy nameplates have to be shown. It can't be switched in a fight. Move the list with /dui unlock."],
 			  get = PlatesShown, set = ShowPlates },
-			{ type = "toggle", key = KEY .. ".inInstances", label = L["Also in battlegrounds and dungeons"],
+			{ type = "toggle", key = KEY .. ".inInstances", label = L["Display in Battlegrounds and Dungeons"],
 			  desc = L["Off: the list rests while you're inside an instance."], disabled = Off },
 		} },
-		{ label = L["The list"], items = {
-			{ type = "slider", key = KEY .. ".keep", label = L["Seconds a name stays once unseen"], min = 15, max = 300, step = 15,
-			  desc = L["A name fades as the time passes, and leaves the list at the end. In a fight names stay until it ends."],
+		{ label = L["List Configuration"], items = {
+			{ type = "slider", key = KEY .. ".keep", label = L["Display Time After Enemy Out of Sight"], min = 15, max = 300, step = 15,
+			  desc = L["In seconds. A name fades as the time passes, and leaves the list at the end. In a fight names stay until it ends."],
 			  disabled = Off },
-			{ type = "slider", key = KEY .. ".maxRows", label = L["Names listed"], min = 3, max = 15, step = 1, disabled = Off },
-			{ type = "toggle", key = KEY .. ".alwaysShow", label = L["Show it when nobody's listed"], disabled = Off },
+			{ type = "slider", key = KEY .. ".maxRows", label = L["Max Names Shown"], min = 3, max = 15, step = 1, disabled = Off },
+			{ type = "toggle", key = KEY .. ".alwaysShow", label = L["Display List While Empty"], disabled = Off },
 			{ type = "toggle", key = KEY .. ".windowless", label = L["Windowless"], disabled = Off,
 			  desc = L["Just the names, with no window behind them. Click and right-click work the same."] },
 			{ type = "slider", key = KEY .. ".width", label = L["Width"], min = 160, max = 320, step = 5, unit = "px", disabled = Off,
@@ -212,14 +212,14 @@ P.page = { id = KEY, label = L["Enemy Nearby"],
 			{ type = "slider", key = KEY .. ".scale", label = L["Size"], min = 0.7, max = 1.6, step = 0.05, unit = "%", disabled = Off },
 		} },
 		{ label = L["Alerts"], items = {
-			{ type = "toggle", key = KEY .. ".alertKos", label = L["When someone on my Kill on Sight list shows up"], disabled = Off },
+			{ type = "toggle", key = KEY .. ".alertKos", label = L["Alert Kill on Sight Targets"], disabled = Off },
 			{ type = "toggle", key = KEY .. ".soundKos", label = L["Kill on Sight sound"],
 			  disabled = function(get) return Off(get) or get(KEY .. ".alertKos") == false end },
-			{ type = "toggle", key = KEY .. ".alertNew", label = L["When any new enemy shows up"], disabled = Off },
-			{ type = "toggle", key = KEY .. ".soundNew", label = L["New enemy sound"],
+			{ type = "toggle", key = KEY .. ".alertNew", label = L["Alert on All Enemies"], disabled = Off },
+			{ type = "toggle", key = KEY .. ".soundNew", label = L["New Enemy Contact"],
 			  disabled = function(get) return Off(get) or get(KEY .. ".alertNew") == false end },
-			{ type = "slider", key = KEY .. ".throttle", label = L["Seconds before the same player alerts again"], min = 30, max = 600, step = 30,
-			  disabled = Off },
+			{ type = "slider", key = KEY .. ".throttle", label = L["Time Until Same Enemy Alerts"], min = 30, max = 600, step = 30,
+			  desc = L["Seconds before the same player can alert you again."], disabled = Off },
 			{ type = "slider", key = KEY .. ".alertScale", label = L["Alert size"], min = 0.7, max = 2, step = 0.05, unit = "%", disabled = Off },
 		} },
 		{ label = L["Kill on Sight"], items = {
@@ -458,7 +458,7 @@ local function Size(n, force)
 		body:SetScale(scale)
 		frame:SetSize(w * scale, h * scale)
 	end
-	ns.SkinWindow(shell)
+	ns.SkinWindow(shell, nil, KEY)
 	return true
 end
 

@@ -98,24 +98,27 @@ function ns.Ink(fs, role)
 	if type(c) == "table" then fs:SetTextColor(c[1], c[2], c[3]) end
 end
 
--- A box of ours in DaylightUI's window shell: its background at DaylightUI's window opacity, or
--- at our own ("look.opacity") with "Use DaylightUI's opacity" off. extra: the shell's other opts
+-- A box of ours in DaylightUI's window shell: its background at DaylightUI's window opacity, or at
+-- its part's own ("<key>.opacity") with that part's "Use DaylightUI's opacity" off (each part with
+-- a box has the two on its page: Options.lua adds them). extra: the shell's other opts
 -- (borderPx...). Each box is remembered (weakly) with them, so a change to either setting, or to
--- DaylightUI's look, dresses them all again (Options.lua's Look part). A box whose shell is put
--- away (the combat timer without its ground) is let go with ns.ForgetWindow. Returns API.Skin's.
+-- DaylightUI's look, dresses them all again. A box whose shell is put away (the combat timer without
+-- its ground) is let go with ns.ForgetWindow. Returns API.Skin's.
 local windows = setmetatable({}, { __mode = "k" })
-function ns.SkinWindow(frame, extra)
-	windows[frame] = extra or false
+function ns.SkinWindow(frame, extra, key)
+	windows[frame] = { extra = extra, key = key }
 	local opts = { window = true }
 	if extra then for k, v in pairs(extra) do opts[k] = v end end
-	if ns.Get("look.duiOpacity") == false and not opts.noBackground then opts.bgAlpha = ns.Get("look.opacity") end
+	if key and ns.Get(key .. ".duiOpacity") == false and not opts.noBackground then
+		opts.bgAlpha = ns.Get(key .. ".opacity")
+	end
 	return API.Skin(frame, opts)
 end
 
 function ns.ForgetWindow(frame) windows[frame] = nil end
 
 function ns.ReskinWindows()
-	for frame, extra in pairs(windows) do ns.SkinWindow(frame, extra or nil) end
+	for frame, w in pairs(windows) do ns.SkinWindow(frame, w.extra, w.key) end
 end
 
 -- Whether a value can be read (the game keeps some values secret from addons in a fight).
@@ -315,6 +318,8 @@ ns.me.On("SettingChanged", function(scope, path)
 	if scope ~= ADDON then return end
 	ns.Forget()
 	path = type(path) == "string" and path or ""
+	-- (A part's window opacity: its boxes are dressed again.)
+	if path:find("%.duiOpacity$") or path:find("%.opacity$") then ns.ReskinWindows() end
 	for _, part in ipairs(ns.parts) do
 		if type(part.Setting) == "function"
 			and (path == "" or path == part.key or string.sub(path, 1, #part.key + 1) == part.key .. ".") then
@@ -326,6 +331,7 @@ end)
 
 ns.me.On("StyleChanged", function()
 	colors = nil
+	ns.ReskinWindows()
 	ns.Each("Style")
 end)
 

@@ -25,4 +25,5 @@ EnemyNearby.lua
 Stats.lua
 BuffManners.lua
 Halo.lua
+NameplateText.lua
 Options.lua

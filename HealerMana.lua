@@ -34,7 +34,7 @@ P.defaults = {
 	enabled = true,
 	inParty = true,
 	inRaid = true,
-	noRoles = "classes",      -- "classes" or "none": who counts when the group set no roles
+	allClasses = true,        -- with no roles set in the group: every healing class counts (off: nobody)
 	includeSelf = false,
 	maxRaid = 5,
 	colorByMana = true,
@@ -50,23 +50,22 @@ P.page = { id = KEY, label = L["Healer Mana"],
 			{ type = "toggle", key = KEY .. ".enabled", label = L["On"] },
 		} },
 		{ label = L["When it shows"], items = {
-			{ type = "toggle", key = KEY .. ".inParty", label = L["In a party"] },
-			{ type = "toggle", key = KEY .. ".inRaid", label = L["In a raid"] },
-			{ type = "slider", key = KEY .. ".maxRaid", label = L["Healers listed in a raid"], min = 1, max = 10, step = 1,
+			{ type = "toggle", key = KEY .. ".inParty", label = L["In Party"] },
+			{ type = "toggle", key = KEY .. ".inRaid", label = L["In Raid"] },
+			{ type = "slider", key = KEY .. ".maxRaid", label = L["Raid Healer List Count"], min = 1, max = 10, step = 1,
 			  desc = L["The first healers of the raid, in its order."],
 			  disabled = function(get) return get(KEY .. ".inRaid") == false end },
-			{ type = "toggle", key = KEY .. ".includeSelf", label = L["List me too"],
+			{ type = "toggle", key = KEY .. ".includeSelf", label = L["Show Self"],
 			  desc = L["Your own mana in the list when you're one of the healers."] },
 		} },
-		{ label = L["Who's a healer"], items = {
-			{ type = "dropdown", key = KEY .. ".noRoles", label = L["When the group has no roles"],
-			  values = { classes = L["Healing classes"], none = L["Nobody"] },
-			  desc = L["Players the group gave the healer role (the group finder or a role check) are always the healers. With no roles set: Healing classes lists every priest, druid, shaman and paladin; Nobody lists only players given the healer role."] },
+		{ label = L["Set Healer"], items = {
+			{ type = "toggle", key = KEY .. ".allClasses", label = L["Show All Healing Classes"],
+			  desc = L["Players the group gave the healer role (the group finder or a role check) are always the healers. When the group has set no roles: on lists every priest, druid, shaman and paladin; off lists only players given the healer role."] },
 		} },
 		{ label = L["Look"], items = {
-			{ type = "toggle", key = KEY .. ".colorByMana", label = L["Color the mana by what's left"],
+			{ type = "toggle", key = KEY .. ".colorByMana", label = L["Color Mana Percent"],
 			  desc = L["Red when nearly out, yellow when low, bright above. Works in a fight too."] },
-			{ type = "toggle", key = KEY .. ".drinking", label = L["Show when they're drinking"],
+			{ type = "toggle", key = KEY .. ".drinking", label = L["Show Drinking Status"],
 			  desc = L["While a healer drinks, their line becomes their mana bar, filling as they drink, with \"Drinking\" on it."] },
 			{ type = "slider", key = KEY .. ".width", label = L["Width"], min = 130, max = 260, step = 5, unit = "px",
 			  desc = L["At least this wide: it grows to fit a long name."] },
@@ -123,7 +122,7 @@ local function FindHealers()
 			break
 		end
 	end
-	local byClass = not any and G("noRoles") == "classes"
+	local byClass = not any and G("allClasses") ~= false
 	for _, unit in ipairs(units) do
 		if #healers >= max then break end
 		if UnitExists(unit) and (withSelf or not UnitIsUnit(unit, "player")) then
@@ -390,7 +389,7 @@ local function Size(n)
 	body:SetSize(w, h)
 	body:SetScale(scale)
 	frame:SetSize(w * scale, h * scale)
-	ns.SkinWindow(body)
+	ns.SkinWindow(body, nil, KEY)
 end
 
 -- The per-unit events: each listed healer's row hears its own unit only (RegisterUnitEvent), and
@@ -569,7 +568,22 @@ local function Build()
 	ns.me.RegisterTestPart(KEY, L["Healer mana"])
 end
 
+-- 1.2.0's "When the group has no roles" (Healing classes / Nobody) is the switch now: Nobody
+-- carries over as off, once.
+local function MoveNoRoles()
+	local db = _G.DaylightEssentialsDB
+	if type(db) ~= "table" then
+		db = {}
+		_G.DaylightEssentialsDB = db
+	end
+	if db.noRolesMoved then return end
+	db.noRolesMoved = true
+	local ok, old = pcall(API.GetSetting, ns.ADDON, KEY .. ".noRoles")
+	if ok and old == "none" then pcall(ns.DUI.Set, ns.DUI, ns.ADDON, KEY .. ".allClasses", false) end
+end
+
 function P.Login()
+	MoveNoRoles()
 	Build()
 	previewing = G("enabled") and ns.Previewing(KEY)
 	Rebuild()

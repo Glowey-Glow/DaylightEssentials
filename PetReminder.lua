@@ -31,10 +31,10 @@ P.page = { id = KEY, label = L["Pet Reminder"],
 	groups = {
 		{ label = L["Pet Reminder"], items = {
 			{ type = "toggle", key = KEY .. ".enabled", label = L["On"] },
-			{ type = "toggle", key = KEY .. ".missing", label = L["When I have no pet out"],
+			{ type = "toggle", key = KEY .. ".missing", label = L["Pet Missing"],
 			  desc = L["Not for a warlock under Demonic Sacrifice's buff (the demon given up on purpose)."] },
-			{ type = "toggle", key = KEY .. ".passive", label = L["When my pet is set to passive"] },
-			{ type = "toggle", key = KEY .. ".notResting", label = L["Quiet in towns and inns"],
+			{ type = "toggle", key = KEY .. ".passive", label = L["Pet on Passive"] },
+			{ type = "toggle", key = KEY .. ".notResting", label = L["Mute in Towns and Inns"],
 			  desc = L["No warning while you're resting."] },
 			{ type = "slider", key = KEY .. ".scale", label = L["Size"], min = 0.7, max = 2, step = 0.05, unit = "%" },
 		} },

@@ -11,6 +11,9 @@ globals = {
 
 -- The WoW client's API, frames and constants this addon reads.
 read_globals = {
+	"AbbreviateNumbers",
+	"BreakUpLargeNumbers",
+	"bit",
 	"CLASS_ICON_TCOORDS",
 	"C_CVar",
 	"C_Container",

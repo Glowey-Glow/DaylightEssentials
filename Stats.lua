@@ -284,9 +284,9 @@ P.page = { id = KEY, label = L["Secondary Stats"],
 			  values = { auto = L["Auto"], BOTTOMLEFT = L["Bottom-left"],
 				BOTTOMRIGHT = L["Bottom-right"], TOPLEFT = L["Top-left"], TOPRIGHT = L["Top-right"] },
 			  order = { "auto", "BOTTOMLEFT", "BOTTOMRIGHT", "TOPLEFT", "TOPRIGHT" } },
-			{ type = "slider", key = KEY .. ".nudgeX", label = L["Nudge sideways"], min = -60, max = 60, step = 1, unit = "px",
+			{ type = "slider", key = KEY .. ".nudgeX", label = L["Horizontal Shift"], min = -60, max = 60, step = 1, unit = "px",
 			  disabled = Free, desc = L["Fine-tunes the docked spot: right is more."] },
-			{ type = "slider", key = KEY .. ".nudgeY", label = L["Nudge up or down"], min = -60, max = 60, step = 1, unit = "px",
+			{ type = "slider", key = KEY .. ".nudgeY", label = L["Vertical Shift"], min = -60, max = 60, step = 1, unit = "px",
 			  disabled = Free, desc = L["Up is more."] },
 			{ type = "toggle", key = KEY .. ".windowless", label = L["Windowless"], disabled = Off,
 			  desc = L["Just the text, with no window behind it, docked or free. Docked, the fold tab stays."] },
@@ -296,17 +296,17 @@ P.page = { id = KEY, label = L["Secondary Stats"],
 		{ label = L["Look"], items = {
 			{ type = "dropdown", key = KEY .. ".layout", label = L["Layout"], disabled = Off,
 			  values = { list = L["A list"], line = L["One line"] }, order = { "list", "line" } },
-			{ type = "dropdown", key = KEY .. ".nameColors", label = L["Name colors"], disabled = Off,
+			{ type = "dropdown", key = KEY .. ".nameColors", label = L["Stat Colors"], disabled = Off,
 			  values = { stat = L["Per stat"], class = L["Class color"], plain = L["Plain"] },
 			  order = { "stat", "class", "plain" },
 			  desc = L["Per stat: crits gold, hit blue, haste green, attack power orange, spell power violet, and so on."] },
-			{ type = "toggle", key = KEY .. ".colorValues", label = L["Numbers in the same color"], disabled = Off },
-			{ type = "toggle", key = KEY .. ".hitCap", label = L["Hit in green when it's enough"], disabled = Off,
+			{ type = "toggle", key = KEY .. ".colorValues", label = L["Match Numbers to Stat Color"], disabled = Off },
+			{ type = "toggle", key = KEY .. ".hitCap", label = L["Green when Hit Capped"], disabled = Off,
 			  desc = L["Melee, ranged and spell hit turn green when you have enough to never miss your current target, by its level: the same numbers as the game's Hit Chance tooltip (5% melee and 4% spells at your level, 8% and 17% against raid bosses)."] },
 			{ type = "slider", key = KEY .. ".shadow", label = L["Text shadow"], min = 0, max = 4, step = 1, unit = "px", disabled = Off,
 			  desc = L["How far the dark shadow under the text reaches. 0 for none."] },
-			{ type = "slider", key = KEY .. ".decimals", label = L["Decimals on percents"], min = 0, max = 2, step = 1, disabled = Off },
-			{ type = "toggle", key = KEY .. ".dim", label = L["Dim numbers from before the fight"], disabled = Off,
+			{ type = "slider", key = KEY .. ".decimals", label = L["Number of Decimal Places"], min = 0, max = 2, step = 1, disabled = Off },
+			{ type = "toggle", key = KEY .. ".dim", label = L["Desaturate Numbers in Fight"], disabled = Off,
 			  desc = L["Attack power, hit, defense and mana regen can't be worked out in a fight; their last numbers stay, dimmed."] },
 			{ type = "slider", key = KEY .. ".scale", label = L["Size"], min = 0.7, max = 1.6, step = 0.05, unit = "%", disabled = Off },
 		} },
@@ -522,7 +522,7 @@ local function Size(n, oneLine)
 	body:SetScale(scale)
 	fullW, fullH = w * scale, h * scale
 	frame:SetSize(fullW, fullH)   -- docked, the slide narrows it again (Present)
-	ns.SkinWindow(shell)
+	ns.SkinWindow(shell, nil, KEY)
 	placeDirty = true
 end
 

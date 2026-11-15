@@ -131,9 +131,9 @@ P.page = { id = KEY, label = L["Halo"],
 			{ type = "slider", key = KEY .. ".radius", label = L["Halo size"], min = 50, max = 220, step = 5, unit = "px",
 			  desc = L["From the middle of the Halo to the middle of each icon."] },
 			{ type = "slider", key = KEY .. ".iconSize", label = L["Icon size"], min = 20, max = 72, step = 1, unit = "px" },
-			{ type = "toggle", key = KEY .. ".names", label = L["Name in the middle"],
+			{ type = "toggle", key = KEY .. ".names", label = L["Text In Middle"],
 			  desc = L["The name of the action you point at, in the middle of the Halo."] },
-			{ type = "toggle", key = KEY .. ".dim", label = L["Dim what isn't ready"],
+			{ type = "toggle", key = KEY .. ".dim", label = L["Dim Icon on Cooldown"],
 			  desc = L["Spells cooling down or out of reach (no mana, no rage) and items you have none of."] },
 		} },
 	} }
@@ -798,7 +798,7 @@ local function BoxLayout()
 		if text and text ~= "" then h = h + math.ceil(fs:GetStringHeight() or 14) + 6 end
 	end
 	box:SetHeight(h + 40)
-	ns.SkinWindow(box)
+	ns.SkinWindow(box, nil, KEY)
 end
 
 local function Take(key)
@@ -933,7 +933,7 @@ local function EditLayout()
 	end
 	local need = math.ceil(ns.TextWidth(editor.hint) or 0) + 24
 	editor:SetSize(math.max(size, tabsW, need), size + TOP - 8 + 10)
-	ns.SkinWindow(editor)
+	ns.SkinWindow(editor, nil, KEY)
 	editor.title:SetText(RINGS[editRing].name)
 	if not editor.label:HasFocus() then editor.label:SetText(RingLabel(editRing) or "") end
 	local cy = (-TOP + 10) / 2

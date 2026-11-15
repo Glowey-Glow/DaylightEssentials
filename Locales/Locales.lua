@@ -22,8 +22,63 @@
 local _, ns = ...
 
 ns.LOCALE = GetLocale and GetLocale() or "enUS"
-ns.L = setmetatable({}, { __index = function(_, key) return key end })
 local ENGLISH = ns.LOCALE:sub(1, 2) == "en"
+
+-- Keys whose English is word for word one of the game's global strings (same case, punctuation
+-- and holes), in the same sense: on a non-English client the game's own translation stands in
+-- for ours, which stays as the fallback when the client lacks the global. English clients keep
+-- ours. Left out on purpose: same words in another sense (Clear, Slots, Base, Chat, Left, Top),
+-- globals the game leaves in English (Crit, Hit, Def, Regen) or writes in lower case (the spell
+-- schools in Russian), and spots too narrow for a longer game word (Offline, Dead in the mana
+-- column; the stats' short tags).
+local GAME = {
+	["Always"] = "ALWAYS",
+	["Armor"] = "STAT_ARMOR",
+	["Auto"] = "SELF_CAST_AUTO",
+	["Block"] = "STAT_BLOCK",
+	["Circle"] = "SELF_HIGHLIGHT_MODE_CIRCLE",
+	["Colors"] = "COLORS",
+	["Combat"] = "COMBAT",
+	["Custom"] = "CUSTOM",
+	["Defense"] = "DEFENSE",
+	["Dispels"] = "DISPELS",
+	["Dodge"] = "STAT_DODGE",
+	["Expertise"] = "STAT_EXPERTISE",
+	["Haste"] = "STAT_HASTE",
+	["Healer"] = "HEALER",
+	["In Party"] = "AGGRO_WARNING_IN_PARTY",
+	["Item"] = "HELPFRAME_ITEM_TITLE",
+	["Macro"] = "MACRO",
+	["Melee"] = "STAT_CATEGORY_MELEE",
+	["Minimap"] = "MINIMAP_LABEL",
+	["Misses"] = "MISSES",
+	["Name"] = "NAME",
+	["None"] = "NONE",
+	["Off"] = "OFF",
+	["Opacity"] = "OPACITY",
+	["Parry"] = "STAT_PARRY",
+	["Ranged"] = "STAT_CATEGORY_RANGED",
+	["Say"] = "SAY",
+	["Show Background"] = "HUD_EDIT_MODE_SETTING_UNIT_FRAME_SHOW_PARTY_FRAME_BACKGROUND",
+	["Size"] = "HUD_EDIT_MODE_SETTING_BAGS_SIZE",
+	["Tank"] = "TANK",
+	["Whisper"] = "WHISPER",
+	["Width"] = "HUD_EDIT_MODE_SETTING_CHAT_FRAME_WIDTH",
+}
+
+-- The game's text for a key in GAME, on a non-English client that has it; else nil.
+local function Game(key)
+	local global = not ENGLISH and GAME[key]
+	local v = global and _G[global]
+	if type(v) == "string" and v ~= "" then return v end
+	return nil
+end
+
+-- A language file's line for a key in GAME is kept only where the game has no text for it.
+ns.L = setmetatable({}, {
+	__index = function(_, key) return Game(key) or key end,
+	__newindex = function(t, key, value) rawset(t, key, Game(key) or value) end,
+})
 
 -- The game's own string (a global such as STAT_DODGE) on a non-English client, when it has it;
 -- else ours (an L[...] value). English clients always keep ours.
@@ -33,6 +88,27 @@ function ns.GameText(global, ours)
 		if type(v) == "string" and v ~= "" then return v end
 	end
 	return ours
+end
+
+-- "Name (Class)" in the game's words on a non-English client: a spell's name (by its ID, or a
+-- word already translated) and a class's (by its token, as LOCALIZED_CLASS_NAMES_MALE has it).
+-- English clients, and a client missing either name, keep ours (an English key of L).
+function ns.GameTagged(key, spellID, class)
+	if ENGLISH then return ns.L[key] end
+	local name
+	if type(spellID) == "string" then
+		name = spellID
+	elseif spellID and C_Spell and C_Spell.GetSpellName then
+		local ok, n = pcall(C_Spell.GetSpellName, spellID)
+		if ok then name = n end
+	elseif spellID and GetSpellInfo then
+		local ok, n = pcall(GetSpellInfo, spellID)
+		if ok then name = n end
+	end
+	local names = LOCALIZED_CLASS_NAMES_MALE
+	local who = class and type(names) == "table" and names[class]
+	if type(name) ~= "string" or name == "" or type(who) ~= "string" or who == "" then return ns.L[key] end
+	return ns.L["%s (%s)"]:format(name, who)
 end
 
 local FORM
