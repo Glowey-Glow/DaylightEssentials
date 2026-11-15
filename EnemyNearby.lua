@@ -381,7 +381,7 @@ local function LevelColor(level)
 	return 1, 1, 1
 end
 
-local function FillRow(row, name, class, level, guild, kos, age)
+local function FillRow(row, name, class, level, _, kos, age)
 	row.name:SetText(name)
 	local r, g, b = 1, 1, 1
 	if class then r, g, b = API.ClassColor(class) end
@@ -455,12 +455,10 @@ end
 -- ---------------------------------------------------------------------------------------------
 
 local overlays = {}
-local placePending = false
 local version, placedVersion = 0, -1   -- version: bumped whenever the list's names or order change
 
 -- The secure buttons wait for the fight's end (heard even with the part switched off meanwhile).
 local function Pending()
-	placePending = true
 	if frame then pcall(frame.RegisterEvent, frame, "PLAYER_REGEN_ENABLED") end
 end
 
@@ -488,7 +486,6 @@ local function PlaceOverlays()
 		Pending()
 		return
 	end
-	placePending = false
 	placedVersion = version
 	if frame and not G("enabled") then pcall(frame.UnregisterEvent, frame, "PLAYER_REGEN_ENABLED") end
 	local n = (frame and frame:IsShown() and not previewing) and #list or 0
@@ -776,7 +773,7 @@ local function OnEvent(_, event, unit)
 		version = version + 1
 		Tidy()
 		Paint(true)
-	elseif event == "PLAYER_REGEN_DISABLED" then
+	elseif event == "PLAYER_REGEN_DISABLED" then -- luacheck: ignore 542
 		-- Nothing to do: the list holds its order from here on.
 	elseif event == "UI_SCALE_CHANGED" or event == "DISPLAY_SIZE_CHANGED" then
 		PlaceSoon()

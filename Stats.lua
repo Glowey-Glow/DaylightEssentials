@@ -520,9 +520,15 @@ local function Size(n, oneLine)
 	placeDirty = true
 end
 
+-- A whisper conversation is open: DaylightUI's conversation card slides out beside the whisper
+-- tiles, over where the box sits. The box steps aside while it's up and comes back once it has slid
+-- away.
+local talking = false
+
 -- Whether the box shows now (outside unlock).
 local function Wanted()
 	if not G("enabled") then return false end
+	if talking then return false end
 	local shows = G("shows")
 	if shows == "combat" then return inFight end
 	if shows == "calm" then return not inFight end
@@ -1210,6 +1216,32 @@ function P.Login()
 		ns.Forget()
 	end
 	Build()
+	-- DaylightUI's conversation card (made the first time a conversation opens): followed from its
+	-- opening (a hook on DaylightUI's own function, through its API), then by its own show and hide.
+	local okMod, chat = pcall(ns.DUI.GetModule, ns.DUI, "Chat")
+	local convo = okMod and type(chat) == "table" and type(chat.ns) == "table" and chat.ns.Convo
+	if type(convo) == "table" and type(convo.Open) == "function" and ns.me.Hook then
+		local watched = false
+		local function Follow()
+			local card = _G.DaylightUIChatTalk
+			if type(card) ~= "table" or not card.HookScript then return end
+			if not watched then
+				watched = true
+				card:HookScript("OnShow", function()
+					talking = true
+					C_Timer.After(0, Refresh)
+				end)
+				card:HookScript("OnHide", function()
+					talking = false
+					C_Timer.After(0, Refresh)
+				end)
+			end
+			local before = talking
+			talking = card:IsShown() == true
+			if talking ~= before then Refresh() end
+		end
+		pcall(ns.me.Hook, convo, "Open", Follow)
+	end
 	-- The meter detached or put back, the chat or the panel shown or hidden: docked again.
 	for _, name in ipairs({ "DaylightUIDamageMeter", "DaylightUIChatPanel", "DaylightUIInfoPanelBody" }) do
 		local f = _G[name]

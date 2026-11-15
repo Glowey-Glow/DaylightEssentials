@@ -1,5 +1,9 @@
 # Daylight Essentials
 
+## 1.1.5
+- Pet Reminder's sample (unlock and test mode) takes turns showing both warnings, "No pet" and "Pet is passive", and shows on every class, so it can be placed from any character (the warnings themselves stay for hunters and warlocks).
+- Secondary Stats steps aside while a whisper conversation is open (DaylightUI's conversation card slides out over where it sits) and comes back once the card has slid away.
+
 ## 1.1.4
 - Buff Manners no longer offers to thank someone for a passive aura that's there while they're near (a paladin's auras, Trueshot Aura); only buffs cast on you that run out count.
 

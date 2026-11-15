@@ -116,12 +116,35 @@ local function Show(word)
 	end
 end
 
+-- The sample (unlock or test mode) takes turns with both warnings, a few seconds each.
+local SAMPLES = { "No pet", "Pet is passive" }
+local sampleTicker, sampleAt = nil, 1
+
+local function StopSample()
+	if sampleTicker then
+		sampleTicker:Cancel()
+		sampleTicker = nil
+	end
+end
+
 local function Look()
 	looking = false
 	if ns.Previewing(KEY) and G("enabled") then
-		Show("No pet")
+		Show(SAMPLES[sampleAt])
+		if not sampleTicker then
+			sampleTicker = C_Timer.NewTicker(2.5, function()
+				if not (ns.Previewing(KEY) and G("enabled")) then
+					StopSample()
+					return
+				end
+				sampleAt = sampleAt % #SAMPLES + 1
+				text:SetText(SAMPLES[sampleAt])
+			end)
+		end
 		return
 	end
+	StopSample()
+	sampleAt = 1
 	Show(Warning())
 end
 
@@ -141,11 +164,11 @@ local function OnEvent(_, event, unit)
 	LookSoon()
 end
 
-function P.Login()
-	local _, token = UnitClass("player")
-	class = token
-	-- Only a class with a pet has anything here: no frame, mover or sample for the others.
-	if not CALLS[class] then return end
+-- The line, its mover and its test part. Made at login for a class with a pet; for any other class
+-- only when unlock or test mode asks for the sample (so it can be placed from any character), and
+-- then it never warns: Warning() has nothing for a class without a pet.
+local function Build()
+	if frame then return end
 	frame = CreateFrame("Frame", "DaylightEssentialsPetReminder", UIParent)
 	frame:SetSize(W, H)
 	frame:SetFrameStrata("MEDIUM")
@@ -169,10 +192,28 @@ function P.Login()
 	ns.me.RegisterMover(frame, KEY, "Pet reminder", DEFAULT)
 	-- Comes up with DaylightUI's fade-in on login and /reload (the inner box: the frame's own alpha is its pulse).
 	ns.FadeIn(KEY, function() return { body } end)
-	ns.me.RegisterTestPart(KEY, "Pet reminder")
 	frame:SetScript("OnEvent", OnEvent)
-	for _, e in ipairs(EVENTS) do pcall(frame.RegisterEvent, frame, e) end
-	if class == "WARLOCK" then frame:RegisterUnitEvent("UNIT_AURA", "player") end
+	-- (The game's events only matter to a class with a pet.)
+	if CALLS[class] then
+		for _, e in ipairs(EVENTS) do pcall(frame.RegisterEvent, frame, e) end
+		if class == "WARLOCK" then frame:RegisterUnitEvent("UNIT_AURA", "player") end
+	end
+end
+
+function P.Login()
+	local _, token = UnitClass("player")
+	class = token
+	-- The test part for every class (test mode lists it, and its sample can be placed from anyone).
+	ns.me.RegisterTestPart(KEY, "Pet reminder")
+	if not CALLS[class] then
+		-- (Unlock mode: the sample too, so it can be moved from any character.)
+		if ns.Previewing(KEY) then
+			Build()
+			Look()
+		end
+		return
+	end
+	Build()
 	LookSoon()
 end
 
@@ -181,5 +222,6 @@ function P.Setting()
 end
 
 function P.Preview()
+	if not frame and ns.Previewing(KEY) then Build() end
 	if frame then Look() end
 end
