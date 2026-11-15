@@ -6,8 +6,11 @@
 -- it the way Nameplate SCT's do. The game still reports each hit on a unit it shows (UNIT_COMBAT,
 -- for every nameplate): what happened (a hit, a miss...), a crit or not, and the school, all
 -- readable; the amount is secret, so it's only handed whole to the game's own number formatting
--- and to a font string, never read. That report doesn't say who struck: in a group, everyone's
--- hits on a mob show on its plate, not only yours ("Your target only" keeps it to one plate).
+-- and to a font string, never read. That report doesn't say who struck, and the combat log (which
+-- would) is closed to addons here (COMBAT_LOG_EVENT_UNFILTERED is restricted in the Forever API).
+-- Alone, the hits on a hostile plate are yours and your pet's. In a group they'd be everyone's, so
+-- there "In a Group: the Game's Numbers" (on to start) pauses ours and turns the game's own damage
+-- numbers on: the game draws only yours and your pet's, which no addon here can tell apart.
 --
 -- Turn Off DaylightUI's Combat Text (on to start): while Nameplate Dmg Text is on, all of
 -- DaylightUI's combat text is off: the game's own damage numbers (the ones DaylightUI's Damage
@@ -40,6 +43,7 @@ local P = ns.Part({ key = KEY, label = L["Nameplate Dmg Text"] })
 P.defaults = {
 	enabled = false,
 	replace = true,
+	groupGame = true,
 	plates = "all",
 	font = "general",
 	size = 20,
@@ -88,7 +92,9 @@ P.page = { id = KEY, label = L["Nameplate Dmg Text"],
 	groups = {
 		{ label = L["Nameplate Dmg Text"], items = {
 			{ type = "toggle", key = KEY .. ".enabled", label = L["On"],
-			  desc = L["Numbers over enemy nameplates as they're hit. The game doesn't tell addons who struck, so in a group everyone's hits show. Keep enemy nameplates shown."] },
+			  desc = L["Numbers over enemy nameplates as they're hit: yours and your pet's while you're alone. Keep enemy nameplates shown."] },
+			{ type = "toggle", key = KEY .. ".groupGame", label = L["In a Group: the Game's Numbers"], disabled = Off,
+			  desc = L["The game doesn't tell addons who struck a hit, so in a party or raid the nameplates would show everyone's. On: in a group these pause and the game's own damage numbers show instead, which are only yours and your pet's. Off: everyone's hits show."] },
 			{ type = "toggle", key = KEY .. ".replace", label = L["Turn Off DaylightUI's Combat Text"], disabled = Off,
 			  desc = L["While this is on, all of DaylightUI's combat text is off: the damage numbers (its Damage numbers page) and its scrolling combat text around your character. They come back as they were when this is off."] },
 			{ type = "dropdown", key = KEY .. ".plates", label = L["Show On"], disabled = Off,
@@ -304,7 +310,10 @@ local function Spawn(stage, plate, unit, value, color, crit, anim, quiet)
 	if stage == world then world.frame:SetScript("OnUpdate", WorldStep) end
 end
 
+local handed = false   -- in a group: ours paused, the game's own numbers (yours and your pet's) on
+
 local function OnCombat(unit, action, flag, amount, school)
+	if handed then return end
 	if Secret(unit) or type(unit) ~= "string" or unit:sub(1, 9) ~= "nameplate" then return end
 	if Secret(action) or type(action) ~= "string" then return end
 	local avoided = AVOIDED[action]
@@ -361,13 +370,20 @@ local function ApplyReplace()
 	end
 	waiting = false
 	local saved = Saved()
-	local want = G("enabled") == true and G("replace") ~= false
+	local on = G("enabled") == true
+	-- (Changed only out of combat, with the switches: ours keep showing until the game's are on.)
+	handed = on and G("groupGame") ~= false and IsInGroup() == true
+	local want = on and G("replace") ~= false and not handed
 	for _, name in ipairs(GAME_NUMBERS) do
 		local ok, now = pcall(C_CVar.GetCVar, name)
 		if ok and now ~= nil then
 			if want then
 				if saved[name] == nil then saved[name] = now end
 				if now ~= "0" then pcall(C_CVar.SetCVar, name, "0") end
+			elseif handed then
+				-- In a group: the game's own numbers on (what they were is still given back later).
+				if saved[name] == nil then saved[name] = now end
+				if now ~= "1" then pcall(C_CVar.SetCVar, name, "1") end
 			elseif saved[name] ~= nil then
 				if now ~= saved[name] then pcall(C_CVar.SetCVar, name, saved[name]) end
 				saved[name] = nil
@@ -501,9 +517,11 @@ local function Listen()
 	if G("enabled") == true then
 		events:RegisterEvent("UNIT_COMBAT")
 		events:RegisterEvent("NAME_PLATE_UNIT_REMOVED")
+		events:RegisterEvent("GROUP_ROSTER_UPDATE")
 	else
 		events:UnregisterEvent("UNIT_COMBAT")
 		events:UnregisterEvent("NAME_PLATE_UNIT_REMOVED")
+		events:UnregisterEvent("GROUP_ROSTER_UPDATE")
 		DropAll(world)
 	end
 end
@@ -522,6 +540,9 @@ function P.Login()
 			if not Secret(a) then OnPlateGone(a) end
 		elseif event == "PLAYER_REGEN_ENABLED" then
 			if waiting then ApplyReplace() end
+		elseif event == "GROUP_ROSTER_UPDATE" then
+			-- Joining or leaving a group: ours or the game's numbers (after the fight, if in one).
+			if handed ~= (G("groupGame") ~= false and IsInGroup() == true) then ApplyReplace() end
 		end
 	end)
 	events:RegisterEvent("PLAYER_REGEN_ENABLED")

@@ -1,5 +1,8 @@
 # Daylight Essentials
 
+## 1.3.1
+- Nameplate Dmg Text shows only your and your pet's damage. This game doesn't tell addons who struck a hit, so in a party or raid the plates also showed your group's hits. New In a Group: the Game's Numbers (on to start): in a group the nameplate numbers pause and the game's own damage numbers show instead, which are only yours and your pet's (DaylightUI's Damage numbers page styles them). Alone, nothing changes. Turn it off to see everyone's hits in a group.
+
 ## 1.3.0
 - On German, French, Spanish, Russian, Korean and Chinese clients, words the game already translates (like Size, Opacity, Off, Dodge, class and spell names) use the game's own translation instead of our draft.
 - Buff Manners: What to Say can be picked any time (it was grayed out, showing your saved line, while How to Thank was Off); it's used once How to Thank is Say or Whisper.

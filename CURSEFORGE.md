@@ -62,7 +62,7 @@ For hunters and warlocks: "No pet" or "Pet is passive" until it's sorted. Quiet 
 - **Motion:** Fountain, Rise, Fall or Rainfall, set apart for hits, crits and misses; how long they stay, their height, size, and short (1.2K) or full numbers.
 - **See and place it:** a live preview on its page shows a nameplate with numbers coming off it as you change the settings; in Design mode, drag where the numbers start.
 - **Turn Off DaylightUI's Combat Text:** all of DaylightUI's combat text (damage numbers and the scrolling text around you) switches off while it's on, so no hit shows twice, and comes back as it was when it's off.
-- The game gives addons no combat log on Forever, only each hit on a nameplate without who struck it: in a group, everyone's hits show. Off to start: turn it on on its page.
+- **Only yours and your pet's:** the game gives addons no combat log on Forever, only each hit on a nameplate without who struck it. Alone, that's yours and your pet's; in a group (new in 1.3.1) the nameplate numbers pause and the game's own damage numbers show instead, which are only yours and your pet's. Off to start: turn it on on its page.
 
 ---
 
