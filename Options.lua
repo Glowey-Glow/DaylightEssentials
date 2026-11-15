@@ -65,6 +65,7 @@ end
 
 local ok, err = pcall(function()
 	ns.DUI:RegisterPlugin(ADDON, {
+		icon = "Interface\\AddOns\\" .. ADDON .. "\\Media\\icon-glyph.png",
 		needs = { 1, 1 },
 		short = L["Essentials"],
 		color = { 0.45, 0.6, 1 },

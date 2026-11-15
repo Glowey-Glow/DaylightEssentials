@@ -1,5 +1,8 @@
 # Daylight Essentials
 
+## 1.3.2
+- Its own icon: in the game's AddOns list and other menus (instead of the blank "?"), and on its page in DaylightUI's options.
+
 ## 1.3.1
 - Nameplate Dmg Text shows only your and your pet's damage. This game doesn't tell addons who struck a hit, so in a party or raid the plates also showed your group's hits. New In a Group: the Game's Numbers (on to start): in a group the nameplate numbers pause and the game's own damage numbers show instead, which are only yours and your pet's (DaylightUI's Damage numbers page styles them). Alone, nothing changes. Turn it off to see everyone's hits in a group.
 
