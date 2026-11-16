@@ -9,7 +9,7 @@ Requires **DaylightUI**.
 ## What's in it
 
 ### Healer Mana
-Your group's healers and the mana each has left, with class icon, name in class color and mana in percent (yellow when low, red when nearly out). It keeps working in a fight, when the game hides other players' mana from addons. Healers are the players given the healer role; with no roles set, it lists priests, druids, shamans and paladins (or nobody, if you prefer). The box widens to fit long names, so nothing is cut off. **While a healer drinks**, their line becomes their mana bar, filling as they drink, with "Drinking" on it; a dead or offline healer's line is grayed out with "Dead" or "Offline".
+Your group's healers and the mana each has left, with class icon, name in class color and mana in percent (yellow when low, red when nearly out). It keeps working in a fight, when the game hides other players' mana from addons. Healers are the players given the healer role; with no roles set, it lists priests, druids, shamans and paladins (or nobody, if you prefer). **New in 1.4.0:** a healer's line glows red below 20% mana. The box widens to fit long names, so nothing is cut off. **While a healer drinks**, their line becomes their mana bar, filling as they drink, with "Drinking" on it; a dead or offline healer's line is grayed out with "Dead" or "Offline".
 
 ### Combat Timer
 How long you've been fighting, and the last fight's length for a few seconds after. Tenths of a second and the window behind it are your choice.
@@ -18,16 +18,17 @@ How long you've been fighting, and the last fight's length for a few seconds aft
 "+ Combat" as a fight starts and "- Combat" as it ends, in the middle of the screen. Other words, a sound and the size are your choice.
 
 ### Pet Reminder
-For hunters and warlocks: "No pet" or "Pet is passive" until it's sorted. Quiet while you're mounted, flying, dead, resting in a town (your choice) or under Demonic Sacrifice. Its sample shows on every character in test mode, so you can place it from anyone.
+For hunters and warlocks: "No pet" or "Pet is passive" until it's sorted. Quiet while you're mounted, flying, dead, resting in a town (your choice) or under Demonic Sacrifice. Its sample shows on every character in test mode, so you can place it from anyone. **New in 1.4.0:** it glows while it shows.
 
 ### Cursor Cooldowns
 - Your taunt and dispel cooldowns as small icons beside the mouse pointer while they cool down, with the game's own sweep and countdown.
-- **Ready at the cursor (new):** pick up to six abilities, and their icons show in a line beside the pointer while each is ready to cast (off cooldown and usable now). Choose the side (top left through left, 8 spots) and the icon size (24 px to start). Picks are kept per class.
+- **Ready at the cursor (new):** pick up to six abilities, and their icons show in a line beside the pointer while each is ready to cast (off cooldown and usable now). Choose the side (top left through left, 8 spots) and the icon size (24 px to start). Picks are kept per class. **New in 1.4.0:** an icon glows for a moment as it becomes ready.
 
 ### Enemy Nearby (new)
 - A small list of enemy players seen near you lately: level and name in class color, newest at the top. Names fade while unseen and leave after a minute (your choice).
 - **Click a name to target that player.** In a fight the list keeps its order, and players seen during it are added below.
 - **Kill on Sight:** right-click a name, or use `/dui kos add Name`, `/dui kos remove Name`, `/dui kos list`. Shared by all your characters, and marked in red.
+- **New in 1.4.0:** the alert glows while it's up, red for Kill on Sight.
 - **Alerts:** a line mid-screen and a sound when someone on your Kill on Sight list shows up, and, if you like, when any new enemy does.
 - **Windowless** if you prefer just the names. Rests in battlegrounds and dungeons unless you ask otherwise.
 - It sees players through nameplates, your target, focus and mouseover, so keep enemy nameplates shown (the switch is on its page).
@@ -39,6 +40,7 @@ For hunters and warlocks: "No pet" or "Pet is passive" until it's sorted. Quiet 
 - **Hit turns green** when it's enough to never miss your current target, matching the game's Hit Chance tooltip (5% melee and 4% spells at your level, 8% and 17% against raid bosses).
 - **Dock it** flush against the minimap (the default), the damage meters or DaylightUI's chat, at the corner you pick. It slides out of that edge and back in from a fold tab, like DaylightUI's damage meter. By the minimap it slides DaylightUI's buffs aside at a top corner and its debuffs at a bottom one (new in 1.3.5); by the damage meters it steps out of the threat meter's way as your group grows; by the chat it can fade with the chat window. Or set it free anywhere.
 - **Windowless** (just the text) docked or free. Per-stat name colors (crit gold, hit blue, haste green...), your class color or plain; a heavier outline and a text shadow you can size; one list or one line.
+- **Fold away in combat (new in 1.4.0):** docked, it folds when a fight starts and comes back after.
 - **Whisper windows:** it steps aside while a whisper conversation is open, and comes back when it closes.
 
 ### Buff Manners (new)
