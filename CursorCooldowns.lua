@@ -47,6 +47,7 @@ P.defaults = {
 	readyOnlyCombat = true,
 	readyAnchor = "TOP",
 	readySize = 24,
+	readyGlow = true,
 }
 
 -- ---------------------------------------------------------------------------------------------
@@ -200,6 +201,8 @@ P.page = { id = KEY, label = L["Cursor Cooldowns"],
 			  order = { "TOPLEFT", "TOP", "TOPRIGHT", "RIGHT", "BOTTOMRIGHT", "BOTTOM", "BOTTOMLEFT", "LEFT" },
 			  desc = L["The line runs away from the pointer: leftward on the left side, rightward on the right, centered for Top and Bottom. Bottom right sits under the cooldown icons."] },
 			{ type = "slider", key = KEY .. ".readySize", label = L["Icon size"], min = 16, max = 48, step = 1, unit = "px", disabled = ReadyOff },
+			{ type = "toggle", key = KEY .. ".readyGlow", label = L["Glow When Ready"], disabled = ReadyOff,
+			  desc = L["DaylightUI's glow runs round an icon for a moment as it comes ready."] },
 		  } },
 	} }
 
@@ -543,6 +546,18 @@ local function ReadyTrack()
 	ReadyEvents(next(readyIds) ~= nil)
 end
 
+-- An icon that just came ready: DaylightUI's glow round it for a moment (a newer show restarts it).
+local READY_GLOW = 1
+local function ReadyFlash(icon)
+	if G("readyGlow") == false then return end
+	icon.flash = (icon.flash or 0) + 1
+	local mine = icon.flash
+	ns.Glow(icon, true)
+	C_Timer.After(READY_GLOW, function()
+		if icon.flash == mine then ns.Glow(icon, false) end
+	end)
+end
+
 function RefreshReady(retrack)
 	if not readyHolder then return end
 	if retrack then ReadyTrack() end
@@ -555,8 +570,11 @@ function RefreshReady(retrack)
 		local icon = readyIcons[slot]
 		if on and not icon:IsShown() then
 			icon:Show()
+			ReadyFlash(icon)
 			changed = true
 		elseif not on and icon and icon:IsShown() then
+			icon.flash = (icon.flash or 0) + 1
+			ns.Glow(icon, false)
 			icon:Hide()
 			changed = true
 		end

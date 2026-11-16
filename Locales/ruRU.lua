@@ -450,3 +450,14 @@ L["While this is on, all of DaylightUI's combat text is off: the damage numbers 
 L["In a Group: the Game's Numbers"] = "В группе: числа игры"
 L["Numbers over enemy nameplates as they're hit: yours and your pet's while you're alone. Keep enemy nameplates shown."] = "Числа над индикаторами врагов при попаданиях: ваши и вашего питомца, пока вы одни. Держите индикаторы врагов включёнными."
 L["The game doesn't tell addons who struck a hit, so in a party or raid the nameplates would show everyone's. On: in a group these pause and the game's own damage numbers show instead, which are only yours and your pet's. Off: everyone's hits show."] = "Игра не сообщает аддонам, кто нанёс удар, поэтому в группе или рейде индикаторы показывали бы удары всех. Вкл.: в группе эти числа приостанавливаются, а вместо них показываются числа урона самой игры — только ваши и вашего питомца. Выкл.: видны удары всех."
+
+-- 1.4.0 additions
+L["Glow"] = "Свечение"
+L["DaylightUI's glow runs round the warning while it shows."] = "Свечение DaylightUI бежит вокруг предупреждения, пока оно видно."
+L["DaylightUI's glow runs round the alert, in its color, while it's up."] = "Свечение DaylightUI её цвета бежит вокруг оповещения, пока оно видно."
+L["Glow When Low"] = "Свечение при нехватке"
+L["DaylightUI's glow runs round a healer's line below 20% mana."] = "Свечение DaylightUI бежит вокруг строки лекаря, у которого меньше 20% маны."
+L["Glow When Ready"] = "Свечение при готовности"
+L["DaylightUI's glow runs round an icon for a moment as it comes ready."] = "Свечение DaylightUI ненадолго обегает значок, когда он готов."
+L["Fold away in combat"] = "Сворачивать в бою"
+L["Docked, it folds away when a fight starts and comes back when it ends."] = "При стыковке сворачивается в начале боя и возвращается после него."

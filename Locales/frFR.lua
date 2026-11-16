@@ -450,3 +450,14 @@ L["While this is on, all of DaylightUI's combat text is off: the damage numbers 
 L["In a Group: the Game's Numbers"] = "En groupe : nombres du jeu"
 L["Numbers over enemy nameplates as they're hit: yours and your pet's while you're alone. Keep enemy nameplates shown."] = "Des nombres au-dessus des barres de nom ennemies quand elles sont touchées : les vôtres et ceux de votre familier quand vous êtes seul. Gardez les barres de nom ennemies affichées."
 L["The game doesn't tell addons who struck a hit, so in a party or raid the nameplates would show everyone's. On: in a group these pause and the game's own damage numbers show instead, which are only yours and your pet's. Off: everyone's hits show."] = "Le jeu ne dit pas aux addons qui a porté un coup : en groupe ou en raid, les barres de nom montreraient ceux de tous. Activé : en groupe, ces nombres se mettent en pause et ceux du jeu s'affichent à la place, qui ne montrent que les vôtres et ceux de votre familier. Désactivé : les coups de tous s'affichent."
+
+-- 1.4.0 additions
+L["Glow"] = "Lueur"
+L["DaylightUI's glow runs round the warning while it shows."] = "La lueur de DaylightUI fait le tour de l'avertissement tant qu'il s'affiche."
+L["DaylightUI's glow runs round the alert, in its color, while it's up."] = "La lueur de DaylightUI fait le tour de l'alerte, dans sa couleur, tant qu'elle s'affiche."
+L["Glow When Low"] = "Lueur si mana bas"
+L["DaylightUI's glow runs round a healer's line below 20% mana."] = "La lueur de DaylightUI fait le tour de la ligne d'un soigneur sous 20 % de mana."
+L["Glow When Ready"] = "Lueur quand prêt"
+L["DaylightUI's glow runs round an icon for a moment as it comes ready."] = "La lueur de DaylightUI fait un instant le tour d'une icône quand elle devient prête."
+L["Fold away in combat"] = "Replier en combat"
+L["Docked, it folds away when a fight starts and comes back when it ends."] = "Ancré, il se replie au début d'un combat et revient à la fin."

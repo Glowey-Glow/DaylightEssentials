@@ -53,6 +53,7 @@ P.defaults = {
 	width = 210,
 	scale = 1,
 	alertScale = 1,
+	alertGlow = true,
 }
 
 -- ---------------------------------------------------------------------------------------------
@@ -221,6 +222,8 @@ P.page = { id = KEY, label = L["Enemy Nearby"],
 			{ type = "slider", key = KEY .. ".throttle", label = L["Time Until Same Enemy Alerts"], min = 30, max = 600, step = 30,
 			  desc = L["Seconds before the same player can alert you again."], disabled = Off },
 			{ type = "slider", key = KEY .. ".alertScale", label = L["Alert size"], min = 0.7, max = 2, step = 0.05, unit = "%", disabled = Off },
+			{ type = "toggle", key = KEY .. ".alertGlow", label = L["Glow"], disabled = Off,
+			  desc = L["DaylightUI's glow runs round the alert, in its color, while it's up."] },
 		} },
 		{ label = L["Kill on Sight"], items = {
 			{ type = "text", label = L["Right-click a name in the list to add or remove it, or type /dui kos add Name, /dui kos remove Name or /dui kos list. The list is shared by all your characters; its names show in red, with a mark."] },
@@ -297,6 +300,9 @@ local function ShowAlert(msg, role, hold)
 	alertFrame:SetAlpha(0)
 	alertFrame:Show()
 	API.Fade(alertFrame, 1, "FAST")
+	-- (In the alert's own color: red for Kill on Sight, the warning ink for any enemy.)
+	local c = ns.Colors()[role or "TEXT"]
+	ns.Glow(alertFrame, G("alertGlow") ~= false, type(c) == "table" and { r = c[1], g = c[2], b = c[3] } or nil)
 	if hold then C_Timer.After(hold, function() AlertFade(t) end) end
 end
 
@@ -921,6 +927,7 @@ local function Build()
 	alertText:SetPoint("CENTER", alertBody, "CENTER", 0, 0)
 	AlertLook()
 	alertFrame:SetPoint(unpack(ALERT_HOME))
+	alertFrame:HookScript("OnHide", function(self) ns.Glow(self, false) end)
 	ns.me.RegisterMover(alertFrame, KEY .. "Alert", L["Enemy alert"], ALERT_HOME)
 
 	ns.me.RegisterTestPart(KEY, L["Enemies nearby"])

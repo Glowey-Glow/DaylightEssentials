@@ -450,3 +450,14 @@ L["While this is on, all of DaylightUI's combat text is off: the damage numbers 
 L["In a Group: the Game's Numbers"] = "在队伍中：游戏自带数字"
 L["Numbers over enemy nameplates as they're hit: yours and your pet's while you're alone. Keep enemy nameplates shown."] = "敌人被击中时在其姓名板上方显示数字：独自一人时显示你和宠物的伤害。请保持敌方姓名板显示。"
 L["The game doesn't tell addons who struck a hit, so in a party or raid the nameplates would show everyone's. On: in a group these pause and the game's own damage numbers show instead, which are only yours and your pet's. Off: everyone's hits show."] = "游戏不会告诉插件是谁造成的伤害，所以在小队或团队中姓名板会显示所有人的伤害。开启：在队伍中暂停显示，改为显示游戏自带的伤害数字，只有你和宠物的。关闭：显示所有人的伤害。"
+
+-- 1.4.0 additions
+L["Glow"] = "光效"
+L["DaylightUI's glow runs round the warning while it shows."] = "警告显示时，DaylightUI 的光效会环绕它。"
+L["DaylightUI's glow runs round the alert, in its color, while it's up."] = "警报显示时，DaylightUI 的光效以同色环绕它。"
+L["Glow When Low"] = "法力低时发光"
+L["DaylightUI's glow runs round a healer's line below 20% mana."] = "治疗者法力低于 20% 时，DaylightUI 的光效会环绕其所在行。"
+L["Glow When Ready"] = "就绪时发光"
+L["DaylightUI's glow runs round an icon for a moment as it comes ready."] = "图标就绪时，DaylightUI 的光效会短暂环绕它。"
+L["Fold away in combat"] = "战斗中收起"
+L["Docked, it folds away when a fight starts and comes back when it ends."] = "停靠时，战斗开始时收起，结束后恢复。"

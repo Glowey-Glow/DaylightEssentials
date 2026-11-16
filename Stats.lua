@@ -228,6 +228,7 @@ P.defaults = {
 	colorValues = false,
 	hitCap = true,
 	shadow = 1,
+	foldInCombat = false,
 }
 
 local SLOT_VALUES, SLOT_ORDER = { none = L["None"] }, { "none" }
@@ -288,6 +289,8 @@ P.page = { id = KEY, label = L["Secondary Stats"],
 			  disabled = Free, desc = L["Fine-tunes the docked spot: right is more."] },
 			{ type = "slider", key = KEY .. ".nudgeY", label = L["Vertical Shift"], min = -60, max = 60, step = 1, unit = "px",
 			  disabled = Free, desc = L["Up is more."] },
+			{ type = "toggle", key = KEY .. ".foldInCombat", label = L["Fold away in combat"], disabled = Free,
+			  desc = L["Docked, it folds away when a fight starts and comes back when it ends."] },
 			{ type = "toggle", key = KEY .. ".windowless", label = L["Windowless"], disabled = Off,
 			  desc = L["Just the text, with no window behind it, docked or free. Docked, the fold tab stays."] },
 		} },
@@ -593,6 +596,9 @@ local function DB()
 	return db
 end
 local function Folded() return DB().statsFolded == true end
+-- Folded for this fight only ("Fold away in combat"): the saved choice (Folded) is left as it is.
+local combatFold = false
+local function Shut() return combatFold or Folded() end
 
 -- The frame it docks to, or nil (free, or that frame isn't there). For the minimap that's
 -- DaylightUI's panel round it (its border and the data texts under the map), else the map itself.
@@ -704,7 +710,7 @@ end
 -- the box is out (click to fold it in), away from it while folded (click to bring it out).
 local function TurnChevron()
 	if not (tab and tab.icon) then return end
-	local towardDock = not Folded()
+	local towardDock = not Shut()
 	local pointRight = (goesLeft and towardDock) or (not goesLeft and not towardDock)
 	tab.icon:SetRotation(pointRight and math.pi / 2 or -math.pi / 2)
 end
@@ -757,6 +763,15 @@ local function BuildTab()
 	end
 	PaintGrip(false)
 	tab:SetScript("OnClick", function()
+		-- Folded for the fight: a click brings it back for the rest of this one (the saved choice
+		-- stays).
+		if combatFold then
+			combatFold = false
+			GameTooltip:Hide()
+			TurnChevron()
+			SlideTo(Folded() and 0 or 1)
+			return
+		end
 		local open = Folded()
 		DB().statsFolded = (not open) or nil
 		GameTooltip:Hide()
@@ -766,7 +781,7 @@ local function BuildTab()
 	tab:SetScript("OnEnter", function(self)
 		PaintGrip(true)
 		GameTooltip:SetOwner(self, goesLeft and "ANCHOR_LEFT" or "ANCHOR_RIGHT")
-		GameTooltip:SetText(Folded() and L["Show your stats"] or L["Fold your stats away"])
+		GameTooltip:SetText(Shut() and L["Show your stats"] or L["Fold your stats away"])
 		GameTooltip:Show()
 	end)
 	tab:SetScript("OnLeave", function()
@@ -859,7 +874,7 @@ local function BarsMakeRoom()
 	local top, bottom = 0, 0
 	local panel = _G.DaylightUIInfoPanelBody
 	if frame and frame:IsShown() and suspended and goesLeft and dockNow ~= nil and dockNow == panel
-		and (slideP or 1) > 0 then
+		and not combatFold and (slideP or 1) > 0 then
 		local ratio = frame:GetEffectiveScale() / UIParent:GetEffectiveScale()
 		local out = (frame:GetWidth() + DOCK_GAP - (G("nudgeX") or 0)) * ratio
 		local push = math.max(0, math.floor(out + 0.5))
@@ -977,7 +992,7 @@ local function Present(on)
 		if docked then
 			if not tab then BuildTab() end
 			PlaceDocked(dock)
-			if slideP == nil then slideP = Folded() and 0 or 1 end
+			if slideP == nil then slideP = Shut() and 0 or 1 end
 			if not slideT then ApplySlide() end
 		else
 			body:ClearAllPoints()
@@ -1252,12 +1267,31 @@ local function Listen(on, roles)
 	end
 end
 
+-- "Fold away in combat": docked and out, it folds as a fight starts and comes back as it ends. The
+-- game sends PLAYER_REGEN_DISABLED just before the fight's lockdown, so DaylightUI's buff or debuff
+-- bar this box had moved aside (BarsMakeRoom) is put back right then, while that's still allowed.
+local function CombatFold(fighting)
+	if fighting then
+		if combatFold or G("foldInCombat") ~= true or not suspended or Folded() or not tab then return end
+		combatFold = true
+		BarsMakeRoom()
+		TurnChevron()
+		SlideTo(0)
+	elseif combatFold then
+		combatFold = false
+		TurnChevron()
+		SlideTo(Folded() and 0 or 1)
+	end
+end
+
 local function OnEvent(_, event)
 	if event == "PLAYER_REGEN_DISABLED" then
 		inFight = true
+		CombatFold(true)
 		Paint()
 	elseif event == "PLAYER_REGEN_ENABLED" then
 		inFight = false
+		CombatFold(false)
 		Paint()   -- everything readable again: a full paint, the sums and the hidden-at-0 ones too
 	elseif event == "GROUP_ROSTER_UPDATE" or event == "PLAYER_ROLES_ASSIGNED" then
 		Choose()

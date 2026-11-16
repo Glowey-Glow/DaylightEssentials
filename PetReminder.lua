@@ -23,6 +23,7 @@ P.defaults = {
 	missing = true,
 	passive = true,
 	notResting = true,
+	glow = true,
 	scale = 1,
 }
 
@@ -36,6 +37,8 @@ P.page = { id = KEY, label = L["Pet Reminder"],
 			{ type = "toggle", key = KEY .. ".passive", label = L["Pet on Passive"] },
 			{ type = "toggle", key = KEY .. ".notResting", label = L["Mute in Towns and Inns"],
 			  desc = L["No warning while you're resting."] },
+			{ type = "toggle", key = KEY .. ".glow", label = L["Glow"],
+			  desc = L["DaylightUI's glow runs round the warning while it shows."] },
 			{ type = "slider", key = KEY .. ".scale", label = L["Size"], min = 0.7, max = 2, step = 0.05, unit = "%" },
 		} },
 	} }
@@ -112,7 +115,9 @@ local function Show(word)
 			frame:Show()
 			pulse:Play()
 		end
+		ns.Glow(frame, G("glow") ~= false)
 	elseif frame:IsShown() then
+		ns.Glow(frame, false)
 		pulse:Stop()
 		frame:Hide()
 	end

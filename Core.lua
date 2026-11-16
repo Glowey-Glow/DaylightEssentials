@@ -292,6 +292,26 @@ function ns.MotionOn()
 	return not ok or on ~= false
 end
 
+-- DaylightUI's animated glow (API.GlowAround, 1.9) round a frame of ours, in the style the player
+-- picked for DaylightUI's main buttons (none at all when that's "None"); on = false takes it away. It
+-- eases in and out, and stays away while the player has motion off. Nothing with an older
+-- DaylightUI. opts: GlowAround's (inset, thick, size, r, g, b); style is filled in here.
+local glowing = setmetatable({}, { __mode = "k" })
+function ns.Glow(frame, on, opts)
+	if type(API.GlowAround) ~= "function" or type(frame) ~= "table" then return end
+	on = on and true or false
+	local o = {}
+	if type(opts) == "table" then for k, v in pairs(opts) do o[k] = v end end
+	if on and o.style == nil then
+		local ok, style = pcall(API.GetSetting, "general", "buttonGlow")
+		if ok and style == "none" then on = false end
+		if ok and type(style) == "string" and style ~= "none" then o.style = style end
+	end
+	if not on and not glowing[frame] then return end
+	glowing[frame] = on or nil
+	pcall(API.GlowAround, frame, on, o)
+end
+
 -- A file in DaylightUI's media folder (its art, used where it is, never copied), or nil.
 function ns.DaylightMedia(file)
 	return type(DUI.MEDIA) == "string" and (DUI.MEDIA .. file) or nil

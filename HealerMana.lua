@@ -39,6 +39,7 @@ P.defaults = {
 	maxRaid = 5,
 	colorByMana = true,
 	drinking = true,
+	lowGlow = true,
 	scale = 1,
 	width = 170,
 }
@@ -67,6 +68,8 @@ P.page = { id = KEY, label = L["Healer Mana"],
 			  desc = L["Red when nearly out, yellow when low, bright above. Works in a fight too."] },
 			{ type = "toggle", key = KEY .. ".drinking", label = L["Show Drinking Status"],
 			  desc = L["While a healer drinks, their line becomes their mana bar, filling as they drink, with \"Drinking\" on it."] },
+			{ type = "toggle", key = KEY .. ".lowGlow", label = L["Glow When Low"],
+			  desc = L["DaylightUI's glow runs round a healer's line below 20% mana."] },
 			{ type = "slider", key = KEY .. ".width", label = L["Width"], min = 130, max = 260, step = 5, unit = "px",
 			  desc = L["At least this wide: it grows to fit a long name."] },
 			{ type = "slider", key = KEY .. ".scale", label = L["Size"], min = 0.7, max = 1.6, step = 0.05, unit = "%" },
@@ -172,6 +175,52 @@ local function SetPct(fs, unit)
 	fs:SetFormattedText("%.0f%%", UnitPowerPercent(unit, MANA, false, CurveConstants.ScaleTo100))
 end
 
+-- Below 20% mana: DaylightUI's glow round the healer's line, in the low red (row.glow, a frame over
+-- the line that holds it). Readable mana is compared here. Secret mana (in a fight) never is: it
+-- goes through a step curve the game reads it through, whose answer (full below 20%, nothing above)
+-- becomes the holder's alpha, so the glow runs all along and only shows below 20%. If the game
+-- won't take that answer as an alpha, the line keeps the glow it had when the mana was last read.
+-- Not while the healer drinks (their mana is coming back), is dead or offline.
+local LOW_AT = 0.2
+local LOW_GLOW = { r = LOW[1], g = LOW[2], b = LOW[3] }
+local lowCurve
+local function LowCurve()
+	if lowCurve ~= nil then return lowCurve or nil end
+	lowCurve = false
+	if not (C_CurveUtil and C_CurveUtil.CreateColorCurve and CreateColor) then return nil end
+	local ok, c = pcall(C_CurveUtil.CreateColorCurve)
+	if not ok or not c then return nil end
+	if c.SetType and Enum and Enum.LuaCurveType and Enum.LuaCurveType.Step then
+		pcall(c.SetType, c, Enum.LuaCurveType.Step)
+	end
+	c:AddPoint(0, CreateColor(1, 1, 1, 1))
+	c:AddPoint(LOW_AT, CreateColor(1, 1, 1, 0))
+	lowCurve = c
+	return c
+end
+
+local function PaintLow(row, unit)
+	local holder = row.glow
+	if not holder then return end
+	if G("lowGlow") == false or row.dead or row.off or row.drinking or not unit then
+		ns.Glow(holder, false)
+		holder:SetAlpha(1)
+		return
+	end
+	local cur, max = UnitPower(unit, MANA), UnitPowerMax(unit, MANA)
+	if Safe(cur) and Safe(max) and type(cur) == "number" and type(max) == "number" and max > 0 then
+		holder:SetAlpha(1)
+		ns.Glow(holder, cur / max < LOW_AT, LOW_GLOW)
+		return
+	end
+	local curve = UnitPowerPercent and LowCurve()
+	if not curve then return end
+	local ok, col = pcall(UnitPowerPercent, unit, MANA, false, curve)
+	if not (ok and type(col) == "table" and col.GetRGBA) then return end
+	local okA, _, _, _, a = pcall(col.GetRGBA, col)
+	if okA and pcall(holder.SetAlpha, holder, a) then ns.Glow(holder, true, LOW_GLOW) end
+end
+
 local function PaintMana(fs, unit)
 	if UnitPowerPercent and CurveConstants then
 		-- Formatted by the game itself: a secret percent is fine here.
@@ -247,6 +296,10 @@ local function Row(i)
 	row.name:SetPoint("LEFT", row.icon, "RIGHT", GAP, 0)
 	row.name:SetPoint("RIGHT", row.mana, "LEFT", -GAP, 0)
 	row.name:SetWordWrap(false)
+	-- (Holds the low-mana glow: PaintLow.)
+	row.glow = CreateFrame("Frame", nil, row)
+	row.glow:SetAllPoints()
+	row.glow:SetFrameLevel(top:GetFrameLevel() + 1)
 	rows[i] = row
 	return row
 end
@@ -297,6 +350,7 @@ end
 
 -- A dead or offline healer: the whole line grayed (name and class icon), so it reads at a glance.
 local function GrayLine(row)
+	PaintLow(row, nil)
 	row.bar:Hide()
 	ns.Ink(row.name, "OFF")
 	row.icon:SetDesaturated(true)
@@ -315,6 +369,7 @@ local function PaintDrink(row, unit)
 		row.bar:Hide()
 		PaintMana(row.mana, unit)
 	end
+	PaintLow(row, unit)
 end
 
 -- One healer's line: its name, class and state, then its mana.
@@ -444,6 +499,9 @@ local function Rebuild()
 				local c = p.pct <= 20 and LOW or p.pct <= 50 and WARN or ns.Colors().VALUE
 				row.mana:SetTextColor(c[1], c[2], c[3])
 			end
+			-- (The sample's low healer glows too.)
+			row.glow:SetAlpha(1)
+			ns.Glow(row.glow, G("lowGlow") ~= false and not row.drinking and p.pct < LOW_AT * 100, LOW_GLOW)
 			row:Show()
 		end
 		for i = #PREVIEW + 1, #rows do rows[i]:Hide() end
@@ -499,6 +557,7 @@ function OnEvent(_, event, unit, kind)
 				pcall(row.bar.SetValue, row.bar, UnitPower(unit, MANA))
 			else
 				PaintMana(row.mana, unit)
+				PaintLow(row, unit)
 			end
 		end
 	elseif event == "UNIT_HEALTH" then

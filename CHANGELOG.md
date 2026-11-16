@@ -1,5 +1,13 @@
 # Daylight Essentials
 
+## 1.4.0
+- Glows, with DaylightUI 1.8.4 or later: DaylightUI's animated glow, in the style you picked for its main buttons, now marks the moments that matter. Each one has its own switch, on by default, and all of them follow DaylightUI's Motion setting.
+  - Cursor Cooldowns: a "Ready at the cursor" icon glows for a moment as it comes ready.
+  - Pet Reminder: the warning glows while it shows.
+  - Enemy Nearby: the alert glows in its own color while it's up, red for Kill on Sight.
+  - Healer Mana: a healer's line glows red below 20% mana, but not while they drink. This works in a fight too, as far as the game allows reading their mana.
+- Secondary Stats: new "Fold away in combat" (off by default). While docked, Stats folds away when a fight starts and comes back when it ends, and your own folded choice stays as it was. A buff or debuff bar it had moved aside goes back just before the fight locks it. Click the tab mid-fight to bring Stats back for the rest of that fight.
+
 ## 1.3.5
 - Secondary Stats: docked to the minimap on the panel's left side, it now makes room for DaylightUI's bars at both corners. At a top corner the buffs slide aside, and at a bottom corner the debuffs do. They slide back as Stats folds away, and a bar you moved yourself stays where you put it. A bar waits for the fight to end before it moves. This works through two anchor frames that aren't part of DaylightUI's plugin API, so a future DaylightUI update could stop the bars from moving. Nothing breaks if that happens.
 

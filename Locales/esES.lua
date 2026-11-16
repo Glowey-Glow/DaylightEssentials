@@ -450,3 +450,14 @@ L["While this is on, all of DaylightUI's combat text is off: the damage numbers 
 L["In a Group: the Game's Numbers"] = "En grupo: números del juego"
 L["Numbers over enemy nameplates as they're hit: yours and your pet's while you're alone. Keep enemy nameplates shown."] = "Números sobre las placas de nombre enemigas al recibir golpes: los tuyos y los de tu mascota mientras estás solo. Mantén visibles las placas de nombre enemigas."
 L["The game doesn't tell addons who struck a hit, so in a party or raid the nameplates would show everyone's. On: in a group these pause and the game's own damage numbers show instead, which are only yours and your pet's. Off: everyone's hits show."] = "El juego no dice a los addons quién dio un golpe, así que en grupo o banda las placas mostrarían los de todos. Activado: en grupo se pausan y se muestran los números de daño del propio juego, que son solo tuyos y de tu mascota. Desactivado: se muestran los golpes de todos."
+
+-- 1.4.0 additions
+L["Glow"] = "Brillo"
+L["DaylightUI's glow runs round the warning while it shows."] = "El brillo de DaylightUI recorre el aviso mientras se muestra."
+L["DaylightUI's glow runs round the alert, in its color, while it's up."] = "El brillo de DaylightUI recorre el aviso, en su color, mientras se muestra."
+L["Glow When Low"] = "Brillo con poco maná"
+L["DaylightUI's glow runs round a healer's line below 20% mana."] = "El brillo de DaylightUI recorre la línea de un sanador por debajo del 20 % de maná."
+L["Glow When Ready"] = "Brillo al estar listo"
+L["DaylightUI's glow runs round an icon for a moment as it comes ready."] = "El brillo de DaylightUI recorre un momento un icono cuando queda listo."
+L["Fold away in combat"] = "Plegar en combate"
+L["Docked, it folds away when a fight starts and comes back when it ends."] = "Acoplado, se pliega al empezar un combate y vuelve al terminar."

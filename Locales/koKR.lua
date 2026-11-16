@@ -450,3 +450,14 @@ L["While this is on, all of DaylightUI's combat text is off: the damage numbers 
 L["In a Group: the Game's Numbers"] = "파티에서: 게임 숫자"
 L["Numbers over enemy nameplates as they're hit: yours and your pet's while you're alone. Keep enemy nameplates shown."] = "적 이름표가 맞을 때 그 위에 숫자를 표시합니다: 혼자일 때는 자신과 소환수의 공격만. 적 이름표를 켜 두세요."
 L["The game doesn't tell addons who struck a hit, so in a party or raid the nameplates would show everyone's. On: in a group these pause and the game's own damage numbers show instead, which are only yours and your pet's. Off: everyone's hits show."] = "게임이 누가 공격했는지 애드온에 알려주지 않아, 파티나 공격대에서는 이름표에 모두의 공격이 표시됩니다. 켬: 그룹에서는 이 숫자를 멈추고 대신 게임 자체 피해 숫자를 표시하며, 이는 자신과 소환수의 것뿐입니다. 끔: 모두의 공격이 표시됩니다."
+
+-- 1.4.0 additions
+L["Glow"] = "빛"
+L["DaylightUI's glow runs round the warning while it shows."] = "경고가 보이는 동안 DaylightUI의 빛이 그 둘레를 돕니다."
+L["DaylightUI's glow runs round the alert, in its color, while it's up."] = "경보가 떠 있는 동안 DaylightUI의 빛이 같은 색으로 그 둘레를 돕니다."
+L["Glow When Low"] = "마나 부족 시 빛"
+L["DaylightUI's glow runs round a healer's line below 20% mana."] = "마나가 20% 미만인 치유사의 줄 둘레를 DaylightUI의 빛이 돕니다."
+L["Glow When Ready"] = "준비되면 빛"
+L["DaylightUI's glow runs round an icon for a moment as it comes ready."] = "아이콘이 준비되면 잠시 DaylightUI의 빛이 그 둘레를 돕니다."
+L["Fold away in combat"] = "전투 중 접기"
+L["Docked, it folds away when a fight starts and comes back when it ends."] = "고정 시 전투가 시작되면 접히고 끝나면 돌아옵니다."
