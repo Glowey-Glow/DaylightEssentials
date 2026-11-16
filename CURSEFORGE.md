@@ -60,8 +60,10 @@ For hunters and warlocks: "No pet" or "Pet is passive" until it's sorted. Quiet 
 
 ### Nameplate Dmg Text (new in 1.3.0)
 - **Damage numbers pop off enemy nameplates** as they're hit, in DaylightUI's font, colored by school (fire orange, frost blue...), crits bigger with a quick pop, misses, dodges and parries as words.
+- **Spell icons (new in 1.5.0):** the spell's icon left or right of each number, at the size you pick. The game doesn't say which spell landed a hit, so it's worked out from your own and your pet's casts: right nearly always, a guess now and then.
+- **On You (new in 1.5.0):** damage taken and healing received in the same look, left and right of the screen's middle or on your player frame, with a minus or plus. They keep showing in a group.
 - **Quieter off your target:** numbers on other enemies are smaller and fainter, or show on your target only.
-- **Motion:** Fountain, Rise, Fall or Rainfall, set apart for hits, crits and misses; how long they stay, their height, size, and short (1.2K) or full numbers.
+- **Motion:** Fountain, Rise, Fall or Rainfall, set apart for hits, crits and misses, each starting above, below, left or right of the plate (new in 1.5.0); how long they stay, their height, size, and short (1.2K) or full numbers.
 - **See and place it:** a live preview on its page shows a nameplate with numbers coming off it as you change the settings; in Design mode, drag where the numbers start.
 - **Turn Off DaylightUI's Combat Text:** all of DaylightUI's combat text (damage numbers and the scrolling text around you) switches off while it's on, so no hit shows twice, and comes back as it was when it's off.
 - **Only yours and your pet's:** the game gives addons no combat log on Forever, only each hit on a nameplate without who struck it. Alone, that's yours and your pet's; in a group (new in 1.3.1) the nameplate numbers pause and the game's own damage numbers show instead, which are only yours and your pet's. Off to start: turn it on on its page.
