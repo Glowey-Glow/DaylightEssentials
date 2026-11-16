@@ -782,6 +782,94 @@ local function BuildTab()
 	tab:Hide()
 end
 
+-- Docked by the minimap on the panel's left side, the box sits where DaylightUI's bars start, just
+-- left of the panel: its buffs at the top corner, its debuffs at the bottom one. Those bars hang off
+-- two anchors of DaylightUI's (DaylightUIBuffsAnchor, DaylightUIDebuffsAnchor), so the one at the
+-- box's corner slides left by however far the box is out, and back as it folds away, the way
+-- DaylightUI slides its buffs aside for the threat meter. A bar the player moved doesn't hang off
+-- its anchor and stays put. Those anchors aren't in DaylightUI's API: if a version doesn't have
+-- them, nothing happens. DaylightUI places them again now and then (login, icon size): a hook on
+-- their SetPoint takes its new spot as the base and puts the shift back on. Out of combat only (the
+-- bars' aura containers are locked in a fight): a shift wanted in one waits for it to end.
+local BAR_ANCHORS = { top = "DaylightUIBuffsAnchor", bottom = "DaylightUIDebuffsAnchor" }
+local barWant = { top = 0, bottom = 0 }   -- px each bar should be out of the way now
+local barBase, barPush = {}, {}           -- [anchor] = DaylightUI's own point; px shifted now
+local barSetting, barWaiter = false, nil
+local ApplyBars
+
+local function BarSideOf(a)
+	for side, name in pairs(BAR_ANCHORS) do
+		if _G[name] == a then return side end
+	end
+	return nil
+end
+
+local function KeepBase(a)
+	if a:GetNumPoints() < 1 then return false end
+	local p, rel, rp, x, y = a:GetPoint(1)
+	barBase[a] = { p, rel, rp, x or 0, y or 0 }
+	barPush[a] = 0
+	return true
+end
+
+local function Hook(a)
+	if barBase[a] ~= nil then return true end
+	if not KeepBase(a) then return false end
+	hooksecurefunc(a, "SetPoint", function(self)
+		if barSetting then return end
+		KeepBase(self)
+		local side = BarSideOf(self)
+		if side and barWant[side] ~= 0 then C_Timer.After(0, ApplyBars) end
+	end)
+	return true
+end
+
+ApplyBars = function()
+	local waiting = false
+	for side, name in pairs(BAR_ANCHORS) do
+		local a = _G[name]
+		if type(a) == "table" and a.GetPoint and Hook(a) and barWant[side] ~= barPush[a] then
+			if InCombatLockdown() then
+				waiting = true
+			else
+				local b = barBase[a]
+				barSetting = true
+				a:ClearAllPoints()
+				a:SetPoint(b[1], b[2], b[3], b[4] - barWant[side], b[5])
+				barSetting = false
+				barPush[a] = barWant[side]
+			end
+		end
+	end
+	if waiting then
+		if not barWaiter then
+			barWaiter = CreateFrame("Frame")
+			barWaiter:SetScript("OnEvent", function(self)
+				self:UnregisterEvent("PLAYER_REGEN_ENABLED")
+				ApplyBars()
+			end)
+		end
+		barWaiter:RegisterEvent("PLAYER_REGEN_ENABLED")
+	end
+end
+
+-- How far the box reaches out of the panel's left edge now (its slide included), in the anchors'
+-- units, for the bar at its corner; nothing for the other bar, or when it isn't there.
+local function BarsMakeRoom()
+	local top, bottom = 0, 0
+	local panel = _G.DaylightUIInfoPanelBody
+	if frame and frame:IsShown() and suspended and goesLeft and dockNow ~= nil and dockNow == panel
+		and (slideP or 1) > 0 then
+		local ratio = frame:GetEffectiveScale() / UIParent:GetEffectiveScale()
+		local out = (frame:GetWidth() + DOCK_GAP - (G("nudgeX") or 0)) * ratio
+		local push = math.max(0, math.floor(out + 0.5))
+		if goesDown then bottom = push else top = push end
+	end
+	if top == barWant.top and bottom == barWant.bottom then return end
+	barWant.top, barWant.bottom = top, bottom
+	ApplyBars()
+end
+
 -- Docked: flush against the frame's side, level with its corner (for a top-right minimap: against
 -- the panel's left edge, bottoms together), so it grows up and outward and slides out of that
 -- edge as DaylightUI's meter slides out of the panel. The box rides the clip's outer edge, and the
@@ -805,6 +893,7 @@ local function PlaceDocked(dock)
 		tab.icon:SetPoint("CENTER", tab, "CENTER", (goesLeft and -TUCK or TUCK) / 2, 0)
 	end
 	TurnChevron()
+	BarsMakeRoom()
 end
 
 -- Docked to the damage meters, the threat meter slides out of the same edge from the top and
@@ -908,6 +997,7 @@ local function Present(on)
 	end
 	shell:SetShown(G("windowless") ~= true)
 	frame:SetShown(on)
+	BarsMakeRoom()
 end
 
 -- ---------------------------------------------------------------------------------------------
@@ -1255,6 +1345,11 @@ local function Build()
 	line:SetWordWrap(false)
 	line:Hide()
 	frame:SetScript("OnEvent", OnEvent)
+	-- DaylightUI's buff or debuff bar out of the box's way (BarsMakeRoom): as it slides, resizes,
+	-- shows and hides.
+	frame:HookScript("OnSizeChanged", BarsMakeRoom)
+	frame:HookScript("OnShow", BarsMakeRoom)
+	frame:HookScript("OnHide", BarsMakeRoom)
 	inFight = InCombatLockdown() == true
 	Size(1, false)
 	-- Placed now: after a /reload in a fight, the mover only places it once the fight ends.

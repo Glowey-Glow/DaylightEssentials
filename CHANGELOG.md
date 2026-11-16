@@ -1,5 +1,8 @@
 # Daylight Essentials
 
+## 1.3.5
+- Secondary Stats: docked to the minimap on the panel's left side, it now makes room for DaylightUI's bars at both corners. At a top corner the buffs slide aside, and at a bottom corner the debuffs do. They slide back as Stats folds away, and a bar you moved yourself stays where you put it. A bar waits for the fight to end before it moves. This works through two anchor frames that aren't part of DaylightUI's plugin API, so a future DaylightUI update could stop the bars from moving. Nothing breaks if that happens.
+
 ## 1.3.4
 - Translations tidied: lines for text the plugin no longer shows are taken out of all six languages.
 
