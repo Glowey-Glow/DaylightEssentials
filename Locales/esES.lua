@@ -446,3 +446,8 @@ L["Show Misses, Dodges, and Parries"] = "Mostrar fallos, esquivas y paradas"
 L["Color By Element"] = "Color por elemento"
 L["Nameplate Dmg Text"] = "Texto de daño en placas de nombre"
 L["While this is on, all of DaylightUI's combat text is off: the damage numbers (its Damage numbers page) and its scrolling combat text around your character. They come back as they were when this is off."] = "Mientras esto está activo, todo el texto de combate de DaylightUI está desactivado: los números de daño (página Números de daño) y el texto de combate alrededor de tu personaje. Vuelve como estaba al desactivarlo."
+
+-- 2026-11-15 additions
+L["In a Group: the Game's Numbers"] = "En grupo: números del juego"
+L["Numbers over enemy nameplates as they're hit: yours and your pet's while you're alone. Keep enemy nameplates shown."] = "Números sobre las placas de nombre enemigas al recibir golpes: los tuyos y los de tu mascota mientras estás solo. Mantén visibles las placas de nombre enemigas."
+L["The game doesn't tell addons who struck a hit, so in a party or raid the nameplates would show everyone's. On: in a group these pause and the game's own damage numbers show instead, which are only yours and your pet's. Off: everyone's hits show."] = "El juego no dice a los addons quién dio un golpe, así que en grupo o banda las placas mostrarían los de todos. Activado: en grupo se pausan y se muestran los números de daño del propio juego, que son solo tuyos y de tu mascota. Desactivado: se muestran los golpes de todos."

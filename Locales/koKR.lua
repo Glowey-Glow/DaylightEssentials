@@ -446,3 +446,8 @@ L["Show Misses, Dodges, and Parries"] = "빗나감, 회피, 막음 표시"
 L["Color By Element"] = "속성별 색상"
 L["Nameplate Dmg Text"] = "이름표 피해 문자"
 L["While this is on, all of DaylightUI's combat text is off: the damage numbers (its Damage numbers page) and its scrolling combat text around your character. They come back as they were when this is off."] = "이 기능이 켜져 있는 동안 DaylightUI의 모든 전투 문자가 꺼집니다: 피해 숫자(피해 숫자 페이지)와 캐릭터 주변의 전투 문자. 끄면 원래대로 돌아옵니다."
+
+-- 2026-11-15 additions
+L["In a Group: the Game's Numbers"] = "파티에서: 게임 숫자"
+L["Numbers over enemy nameplates as they're hit: yours and your pet's while you're alone. Keep enemy nameplates shown."] = "적 이름표가 맞을 때 그 위에 숫자를 표시합니다: 혼자일 때는 자신과 소환수의 공격만. 적 이름표를 켜 두세요."
+L["The game doesn't tell addons who struck a hit, so in a party or raid the nameplates would show everyone's. On: in a group these pause and the game's own damage numbers show instead, which are only yours and your pet's. Off: everyone's hits show."] = "게임이 누가 공격했는지 애드온에 알려주지 않아, 파티나 공격대에서는 이름표에 모두의 공격이 표시됩니다. 켬: 그룹에서는 이 숫자를 멈추고 대신 게임 자체 피해 숫자를 표시하며, 이는 자신과 소환수의 것뿐입니다. 끔: 모두의 공격이 표시됩니다."

@@ -446,3 +446,8 @@ L["Show Misses, Dodges, and Parries"] = "显示未命中、闪避和招架"
 L["Color By Element"] = "按元素着色"
 L["Nameplate Dmg Text"] = "姓名板伤害文字"
 L["While this is on, all of DaylightUI's combat text is off: the damage numbers (its Damage numbers page) and its scrolling combat text around your character. They come back as they were when this is off."] = "开启时关闭 DaylightUI 的所有战斗文字：伤害数字（伤害数字页面）和角色周围的滚动战斗文字。关闭后恢复原样。"
+
+-- 2026-11-15 additions
+L["In a Group: the Game's Numbers"] = "在队伍中：游戏自带数字"
+L["Numbers over enemy nameplates as they're hit: yours and your pet's while you're alone. Keep enemy nameplates shown."] = "敌人被击中时在其姓名板上方显示数字：独自一人时显示你和宠物的伤害。请保持敌方姓名板显示。"
+L["The game doesn't tell addons who struck a hit, so in a party or raid the nameplates would show everyone's. On: in a group these pause and the game's own damage numbers show instead, which are only yours and your pet's. Off: everyone's hits show."] = "游戏不会告诉插件是谁造成的伤害，所以在小队或团队中姓名板会显示所有人的伤害。开启：在队伍中暂停显示，改为显示游戏自带的伤害数字，只有你和宠物的。关闭：显示所有人的伤害。"

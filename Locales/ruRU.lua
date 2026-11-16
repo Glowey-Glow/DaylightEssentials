@@ -446,3 +446,8 @@ L["Show Misses, Dodges, and Parries"] = "Показывать промахи, у
 L["Color By Element"] = "Цвет по стихии"
 L["Nameplate Dmg Text"] = "Урон на индикаторах"
 L["While this is on, all of DaylightUI's combat text is off: the damage numbers (its Damage numbers page) and its scrolling combat text around your character. They come back as they were when this is off."] = "Пока это включено, весь текст боя DaylightUI выключен: числа урона (страница «Числа урона») и прокручиваемый текст боя вокруг персонажа. Он вернётся как был, когда это выключено."
+
+-- 2026-11-15 additions
+L["In a Group: the Game's Numbers"] = "В группе: числа игры"
+L["Numbers over enemy nameplates as they're hit: yours and your pet's while you're alone. Keep enemy nameplates shown."] = "Числа над индикаторами врагов при попаданиях: ваши и вашего питомца, пока вы одни. Держите индикаторы врагов включёнными."
+L["The game doesn't tell addons who struck a hit, so in a party or raid the nameplates would show everyone's. On: in a group these pause and the game's own damage numbers show instead, which are only yours and your pet's. Off: everyone's hits show."] = "Игра не сообщает аддонам, кто нанёс удар, поэтому в группе или рейде индикаторы показывали бы удары всех. Вкл.: в группе эти числа приостанавливаются, а вместо них показываются числа урона самой игры — только ваши и вашего питомца. Выкл.: видны удары всех."

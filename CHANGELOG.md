@@ -1,5 +1,8 @@
 # Daylight Essentials
 
+## 1.3.3
+- Translations: the new Nameplate Dmg Text setting (In a Group: the Game's Numbers) in German, French, Spanish, Russian, Korean and Simplified Chinese.
+
 ## 1.3.2
 - Its own icon: in the game's AddOns list and other menus (instead of the blank "?"), and on its page in DaylightUI's options.
 
