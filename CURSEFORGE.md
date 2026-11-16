@@ -37,7 +37,7 @@ For hunters and warlocks: "No pet" or "Pet is passive" until it's sorted. Quiet 
 - **Custom:** pick up to six stats of your own, resistances included, in your order.
 - Crit, haste, armor, dodge and the like stay live in a fight; stats the game gives in parts keep their numbers from before it, dimmed (your choice).
 - **Hit turns green** when it's enough to never miss your current target, matching the game's Hit Chance tooltip (5% melee and 4% spells at your level, 8% and 17% against raid bosses).
-- **Dock it** flush against the minimap (the default), the damage meters or DaylightUI's chat, at the corner you pick. It slides out of that edge and back in from a fold tab, like DaylightUI's damage meter. By the damage meters it steps out of the threat meter's way as your group grows; by the chat it can fade with the chat window. Or set it free anywhere.
+- **Dock it** flush against the minimap (the default), the damage meters or DaylightUI's chat, at the corner you pick. It slides out of that edge and back in from a fold tab, like DaylightUI's damage meter. By the minimap it slides DaylightUI's buffs aside at a top corner and its debuffs at a bottom one (new in 1.3.5); by the damage meters it steps out of the threat meter's way as your group grows; by the chat it can fade with the chat window. Or set it free anywhere.
 - **Windowless** (just the text) docked or free. Per-stat name colors (crit gold, hit blue, haste green...), your class color or plain; a heavier outline and a text shadow you can size; one list or one line.
 - **Whisper windows:** it steps aside while a whisper conversation is open, and comes back when it closes.
 
