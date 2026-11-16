@@ -62,6 +62,11 @@ for _, part in ipairs(ns.parts) do
 	ns.defaults[part.key] = part.defaults or {}
 	if part.page then pages[#pages + 1] = part.page end
 end
+-- (The page the welcome's Open Options shows: EssentialsGuide.lua.)
+ns.firstPage = pages[1] and pages[1].id
+
+-- The "Tell me when a newer version is out" switch (Update.lua), on the first page.
+if ns.UpdateGroup and pages[1] then table.insert(pages[1].groups, ns.UpdateGroup()) end
 
 local ok, err = pcall(function()
 	ns.DUI:RegisterPlugin(ADDON, {

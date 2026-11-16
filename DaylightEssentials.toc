@@ -16,6 +16,9 @@ Locales\esES.lua
 Locales\ruRU.lua
 Locales\koKR.lua
 Locales\zhCN.lua
+Update.lua
+Guide.lua
+EssentialsGuide.lua
 Core.lua
 HealerMana.lua
 CombatTimer.lua

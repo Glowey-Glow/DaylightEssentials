@@ -70,6 +70,10 @@ For hunters and warlocks: "No pet" or "Pet is passive" until it's sorted. Quiet 
 
 ---
 
+## New in 1.6.0
+- **A welcome** on first launch: what Essentials adds, what shows from the start, Halo's key to pick, and that Nameplate Dmg Text stands in for DaylightUI's combat text when it's on. **Open Options** takes you to its pages.
+- **Update alert:** a chat line when a newer version is out (once a session; switch it off under Updates).
+
 ## Also new in 1.2.0
 - **In your language:** Daylight Essentials speaks German, French, Spanish, Russian, Korean and Simplified Chinese (machine drafts, corrections welcome; words the game already translates use the game's own wording), with fixes for non-English clients (Cursor Cooldowns, Kill on Sight, Buff Manners, Secondary Stats).
 - **Window opacity** follows DaylightUI's, or set your own on each part's page.
