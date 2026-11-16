@@ -1,5 +1,8 @@
 # Daylight Essentials
 
+## 1.3.4
+- Translations tidied: lines for text the plugin no longer shows are taken out of all six languages.
+
 ## 1.3.3
 - Translations: the new Nameplate Dmg Text setting (In a Group: the Game's Numbers) in German, French, Spanish, Russian, Korean and Simplified Chinese.
 
