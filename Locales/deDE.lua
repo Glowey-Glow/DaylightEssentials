@@ -528,3 +528,17 @@ L["What it takes over (you can go back any time with Revert in its options):"] =
 L["What it takes over:"] = "Was es übernimmt:"
 L["What's new"] = "Was neu ist"
 L["What's new in %s"] = "Neu in %s"
+
+-- Stance text (Stance.lua)
+L["Stance/Aura/Form"] = "Haltung/Aura"
+L["Stance / Aura / Form"] = "Haltung / Aura / Gestalt"
+L["On my player frame"] = "Auf meinem Spielerrahmen"
+L["Your stance, form or paladin aura by name, on your player frame."] = "Eure Haltung, Gestalt oder Paladin-Aura mit Namen, auf Eurem Spielerrahmen."
+L["Adds it to your player frame as one of DaylightUI's extra texts. Move it in Frames, Player, with Design mode on. Its color is white or dark, whichever reads best on your health bar."] = "Fügt ihn Eurem Spielerrahmen als einen der Zusatztexte von DaylightUI hinzu. Verschiebt ihn unter Rahmen, Spieler, mit eingeschaltetem Designmodus. Seine Farbe ist Weiß oder Dunkel, je nachdem, was auf Eurem Gesundheitsbalken besser lesbar ist."
+L["All four extra texts on your player frame are in use: remove one first."] = "Alle vier Zusatztexte auf Eurem Spielerrahmen sind belegt: entfernt zuerst einen."
+L["Position"] = "Position"
+L["Text left / right"] = "Text links / rechts"
+L["Text up / down"] = "Text hoch / runter"
+L["Where it sits on your player frame, or just outside it."] = "Wo er auf Eurem Spielerrahmen sitzt, oder knapp außerhalb."
+L["Nudges it sideways from its position."] = "Schiebt ihn seitlich von seiner Position."
+L["Nudges it up or down from its position."] = "Schiebt ihn nach oben oder unten von seiner Position."

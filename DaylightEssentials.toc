@@ -30,4 +30,5 @@ Stats.lua
 BuffManners.lua
 Halo.lua
 NameplateText.lua
+Stance.lua
 Options.lua

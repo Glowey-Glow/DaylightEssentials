@@ -528,3 +528,17 @@ L["What it takes over (you can go back any time with Revert in its options):"] =
 L["What it takes over:"] = "它接管的内容："
 L["What's new"] = "更新内容"
 L["What's new in %s"] = "%s更新内容"
+
+-- Stance text (Stance.lua)
+L["Stance/Aura/Form"] = "姿态/光环/形态"
+L["Stance / Aura / Form"] = "姿态 / 光环 / 形态"
+L["On my player frame"] = "显示在我的玩家框体上"
+L["Your stance, form or paladin aura by name, on your player frame."] = "在玩家框体上以名称显示你的姿态、形态或圣骑士光环。"
+L["Adds it to your player frame as one of DaylightUI's extra texts. Move it in Frames, Player, with Design mode on. Its color is white or dark, whichever reads best on your health bar."] = "将其作为 DaylightUI 的额外文字之一加到你的玩家框体上。打开设计模式后在 框体 > 玩家 中移动它。颜色为白色或深色，取在你的生命条上更易读的那种。"
+L["All four extra texts on your player frame are in use: remove one first."] = "你的玩家框体上的四个额外文字都已使用：请先移除一个。"
+L["Position"] = "位置"
+L["Text left / right"] = "文字左 / 右"
+L["Text up / down"] = "文字上 / 下"
+L["Where it sits on your player frame, or just outside it."] = "它在玩家框体上或紧挨框体外的位置。"
+L["Nudges it sideways from its position."] = "从其位置左右微调。"
+L["Nudges it up or down from its position."] = "从其位置上下微调。"

@@ -528,3 +528,17 @@ L["What it takes over (you can go back any time with Revert in its options):"] =
 L["What it takes over:"] = "Ce qu'il prend en charge :"
 L["What's new"] = "Nouveautés"
 L["What's new in %s"] = "Nouveautés de %s"
+
+-- Stance text (Stance.lua)
+L["Stance/Aura/Form"] = "Posture/Aura"
+L["Stance / Aura / Form"] = "Posture / Aura / Forme"
+L["On my player frame"] = "Sur mon cadre de joueur"
+L["Your stance, form or paladin aura by name, on your player frame."] = "Votre posture, forme ou aura de paladin par son nom, sur votre cadre de joueur."
+L["Adds it to your player frame as one of DaylightUI's extra texts. Move it in Frames, Player, with Design mode on. Its color is white or dark, whichever reads best on your health bar."] = "L'ajoute à votre cadre de joueur comme l'un des textes supplémentaires de DaylightUI. Déplacez-le dans Cadres, Joueur, avec le mode conception activé. Sa couleur est blanche ou sombre, selon ce qui se lit le mieux sur votre barre de vie."
+L["All four extra texts on your player frame are in use: remove one first."] = "Les quatre textes supplémentaires de votre cadre de joueur sont utilisés : retirez-en un d'abord."
+L["Position"] = "Position"
+L["Text left / right"] = "Texte gauche / droite"
+L["Text up / down"] = "Texte haut / bas"
+L["Where it sits on your player frame, or just outside it."] = "Où il se place sur votre cadre de joueur, ou juste à côté."
+L["Nudges it sideways from its position."] = "Le décale sur le côté depuis sa position."
+L["Nudges it up or down from its position."] = "Le décale vers le haut ou le bas depuis sa position."

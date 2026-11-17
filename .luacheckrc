@@ -26,6 +26,8 @@ read_globals = {
 	"C_SpellBook",
 	"C_Timer",
 	"C_UnitAuras",
+	"GetShapeshiftForm",
+	"GetShapeshiftFormInfo",
 	"CheckInteractDistance",
 	"ClearCursor",
 	"ClearOverrideBindings",

@@ -1,5 +1,8 @@
 # Daylight Essentials
 
+## 1.7.0
+- New: Stance / Aura / Form text on your player frame: your stance, form or paladin aura by name ("Battle Stance"). Turn it on from its page (On my player frame); Position, Text size and the left / right and up / down nudges there move it (it starts on the left of the health bar). Its color is white or dark, whichever reads best across your health bar's colors (the Daylight gradient, your accent, a class gradient or one color). It's also in each frame's extra text parts in DaylightUI.
+
 ## 1.6.0
 - Everyone, including players who had Daylight Essentials before, sees the welcome once with this version.
 - New: a welcome on first launch listing what Daylight Essentials adds: which parts show on your screen from the start, Buff Manners, Halo (pick its key first) and Nameplate Dmg Text (off to start; turned on, it stands in for DaylightUI's combat text). Open Options takes you to its pages.

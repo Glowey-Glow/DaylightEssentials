@@ -58,6 +58,10 @@ For hunters and warlocks: "No pet" or "Pet is passive" until it's sorted. Quiet 
 - Fill the slots by dragging spells, items or macros onto them in **Edit Halos** (a tab per Halo, or `/dui halo edit`).
 - Choose the shape (circle or arc), the number of slots (2 to 12), the Halo's size, the icon size and where it opens (around the cursor or the screen's center).
 
+### Stance / Aura / Form (new in 1.7.0)
+- **Your stance, form or paladin aura by name** on your player frame ("Battle Stance", "Bear Form", "Devotion Aura"). Turn it on from its page, and set its position, size and nudges right there.
+- **Always readable:** white or dark, whichever reads best across your health bar's colors, gradients included.
+
 ### Nameplate Dmg Text (new in 1.3.0)
 - **Damage numbers pop off enemy nameplates** as they're hit, in DaylightUI's font, colored by school (fire orange, frost blue...), crits bigger with a quick pop, misses, dodges and parries as words.
 - **Spell icons (new in 1.5.0):** the spell's icon left or right of each number, at the size you pick. The game doesn't say which spell landed a hit, so it's worked out from your own and your pet's casts: right nearly always, a guess now and then.

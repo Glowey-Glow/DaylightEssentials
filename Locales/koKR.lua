@@ -528,3 +528,17 @@ L["What it takes over (you can go back any time with Revert in its options):"] =
 L["What it takes over:"] = "가져가는 기능:"
 L["What's new"] = "새 소식"
 L["What's new in %s"] = "%s 새 소식"
+
+-- Stance text (Stance.lua)
+L["Stance/Aura/Form"] = "태세/오라/변신"
+L["Stance / Aura / Form"] = "태세 / 오라 / 변신"
+L["On my player frame"] = "내 플레이어 프레임에"
+L["Your stance, form or paladin aura by name, on your player frame."] = "태세, 변신 또는 성기사 오라의 이름을 플레이어 프레임에 표시합니다."
+L["Adds it to your player frame as one of DaylightUI's extra texts. Move it in Frames, Player, with Design mode on. Its color is white or dark, whichever reads best on your health bar."] = "DaylightUI의 추가 문자 중 하나로 플레이어 프레임에 추가합니다. 디자인 모드를 켜고 프레임, 플레이어에서 옮기세요. 색은 생명력 바에서 더 잘 보이는 흰색 또는 어두운 색입니다."
+L["All four extra texts on your player frame are in use: remove one first."] = "플레이어 프레임의 추가 문자 네 개가 모두 사용 중입니다: 먼저 하나를 제거하세요."
+L["Position"] = "위치"
+L["Text left / right"] = "문자 좌 / 우"
+L["Text up / down"] = "문자 위 / 아래"
+L["Where it sits on your player frame, or just outside it."] = "플레이어 프레임 위 또는 바로 바깥의 위치입니다."
+L["Nudges it sideways from its position."] = "위치에서 옆으로 옮깁니다."
+L["Nudges it up or down from its position."] = "위치에서 위나 아래로 옮깁니다."
