@@ -102,6 +102,7 @@ read_globals = {
 	"UnitPowerPercent",
 	"geterrorhandler",
 	"hooksecurefunc",
+	"IsPassiveSpell", "IsHarmfulSpell", "GetInventoryItemTexture",
 	"issecretvalue",
 	"time",
 	"wipe",
