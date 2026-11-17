@@ -1,5 +1,8 @@
 # Daylight Essentials
 
+## 1.7.1
+- Stance / Aura / Form now shows a shaman's weapon imbues too: Rockbiter, Flametongue, Frostbrand or Windfury Weapon, by the spell's name. A different imbue on each hand shows both, and a form comes first ("Ghost Wolf / Windfury Weapon"). Oils, stones and poisons aren't shown.
+
 ## 1.7.0
 - New: Stance / Aura / Form text on your player frame: your stance, form or paladin aura by name ("Battle Stance"). Turn it on from its page (On my player frame); Position, Text size and the left / right and up / down nudges there move it (it starts on the left of the health bar). Its color is white or dark, whichever reads best across your health bar's colors (the Daylight gradient, your accent, a class gradient or one color). It's also in each frame's extra text parts in DaylightUI.
 

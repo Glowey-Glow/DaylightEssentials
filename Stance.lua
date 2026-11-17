@@ -1,4 +1,5 @@
--- Stance text: your stance, form or paladin aura by name ("Battle Stance"), as one of DaylightUI's
+-- Stance text: your stance, form or paladin aura by name ("Battle Stance"), and a shaman's weapon
+-- imbues ("Windfury Weapon"), as one of DaylightUI's
 -- unit frame texts (API's AddText). Its page's switch puts it on your player frame (below); on any
 -- frame it can also be picked as an extra text's part, and is placed like DaylightUI's own texts.
 -- Its color is whichever of white or near-black reads best on that frame's health fill, at both
@@ -45,7 +46,7 @@ local function PaladinAura()
 	end
 end
 
-local function StanceName()
+local function FormName()
 	local form = type(GetShapeshiftForm) == "function" and GetShapeshiftForm() or 0
 	if ns.Safe(form) and type(form) == "number" and form > 0 and type(GetShapeshiftFormInfo) == "function" then
 		local _, _, _, spellID = GetShapeshiftFormInfo(form)
@@ -53,6 +54,89 @@ local function StanceName()
 		if name then return name end
 	end
 	return PaladinAura()
+end
+
+-- A shaman's weapon imbues (Rockbiter, Flametongue, Frostbrand, Windfury): on this client a kind of
+-- weapon enchant of their own (C_Item.GetWeaponEnchantInfo, enchantType 3 "Imbue"; oils, stones and
+-- poisons are 2). The game names one only in the weapon's tooltip, its green line ("Windfury 1"),
+-- which is turned into the spell's name ("Windfury Weapon") when one of the imbue spells starts
+-- with it. Read once per enchant: names are kept by enchant ID.
+local IMBUE_TYPE = 3
+local IMBUE_SPELLS = { 8017, 8024, 8033, 8232 }   -- Rockbiter, Flametongue, Frostbrand, Windfury Weapon
+local HANDS = { { weapon = 0, slot = 16 }, { weapon = 1, slot = 17 } }
+local imbueNames = {}      -- enchant ID -> its name
+local spellNames
+
+local function NameFromTooltip(slot)
+	if not (C_TooltipInfo and C_TooltipInfo.GetInventoryItem) then return nil end
+	local ok, info = pcall(C_TooltipInfo.GetInventoryItem, "player", slot)
+	local lines = ok and type(info) == "table" and info.lines
+	if type(lines) ~= "table" then return nil end
+	if not spellNames then
+		spellNames = {}
+		for _, id in ipairs(IMBUE_SPELLS) do spellNames[#spellNames + 1] = SpellName(id) end
+	end
+	-- Green lines are the weapon's own "Equip:" bonuses too, so only one that names an imbue spell
+	-- counts; else (a language where the line and the spell are worded apart) the green line with a
+	-- time left in brackets, which a temporary enchant has and an equip bonus never does.
+	local timed
+	for i = 2, #lines do
+		local line = lines[i]
+		local text, c = line and line.leftText, line and line.leftColor
+		if type(text) == "string" and ns.Safe(text) and type(c) == "table" then
+			local r, g, bl = c.r, c.g, c.b
+			if ns.Safe(g) and type(g) == "number" and g > 0.9 and (r or 0) < 0.2 and (bl or 0) < 0.2 then
+				-- "Windfury 1 (5 min)" -> "Windfury"
+				local base = text:gsub("%s*%(.-%)%s*$", ""):gsub("%s*%d+$", "")
+				if base ~= "" then
+					for _, name in ipairs(spellNames) do
+						if name:sub(1, #base) == base then return name end
+					end
+					if not timed and text:find("%(.-%)%s*$") then timed = base end
+				end
+			end
+		end
+	end
+	return timed
+end
+
+local function Imbues()
+	if not (C_Item and C_Item.GetWeaponEnchantInfo) then return nil end
+	local out
+	for _, hand in ipairs(HANDS) do
+		local ok, list = pcall(C_Item.GetWeaponEnchantInfo, hand.weapon)
+		if ok and type(list) == "table" then
+			for _, e in ipairs(list) do
+				if type(e) == "table" and e.hasEnchant == true and e.enchantType == IMBUE_TYPE and ns.Safe(e.enchantID) then
+					local id = e.enchantID
+					local name = imbueNames[id]
+					if name == nil then
+						name = NameFromTooltip(hand.slot) or false
+						if name then imbueNames[id] = name end
+					end
+					if name then
+						out = out or {}
+						-- (The same imbue on both hands is said once.)
+						if out[1] ~= name then out[#out + 1] = name end
+					end
+				end
+			end
+		end
+	end
+	return out
+end
+
+local _, playerClass = UnitClass("player")
+
+-- Everything it says: the stance, form or aura, then a shaman's imbues, joined by " / ".
+local function StanceName()
+	local form = FormName()
+	if playerClass ~= "SHAMAN" then return form end
+	local ok, imbues = pcall(Imbues)
+	if not ok then imbues = nil end
+	if not imbues then return form end
+	if form then table.insert(imbues, 1, form) end
+	return table.concat(imbues, " / ")
 end
 
 -- ---------------------------------------------------------------------------------------------
@@ -134,7 +218,7 @@ local SPOT_ORDER = type(Spots) == "table" and type(Spots.ORDER) == "table" and S
 	or { "left", "center", "right" }
 local function off(get) return get(KEY .. ".player") ~= true end
 P.page = { id = KEY, label = L["Stance / Aura / Form"],
-	desc = L["Your stance, form or paladin aura by name, on your player frame."],
+	desc = L["Your stance, form, aura or shaman weapon imbue on your player frame."],
 	groups = {
 		{ label = L["Stance / Aura / Form"], items = {
 			{ type = "toggle", key = KEY .. ".player", label = L["On my player frame"],
@@ -216,7 +300,8 @@ me.AddText("stance", {
 	-- cut too. "health" and "identity" so a gradient that follows your health, or a new color
 	-- pick, gets its ink again.)
 	on = { "identity", "health", "power", "flags" },
-	events = { "UNIT_AURA", "UNIT_DISPLAYPOWER" },
+	-- (A weapon imbue put on or run out: the weapon changes, UNIT_INVENTORY_CHANGED.)
+	events = { "UNIT_AURA", "UNIT_DISPLAYPOWER", "UNIT_INVENTORY_CHANGED" },
 	sample = SpellName(2457) or "Battle Stance",
 	text = function(unit, frame)
 		if unit ~= "player" then return nil end

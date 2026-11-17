@@ -60,6 +60,7 @@ For hunters and warlocks: "No pet" or "Pet is passive" until it's sorted. Quiet 
 
 ### Stance / Aura / Form (new in 1.7.0)
 - **Your stance, form or paladin aura by name** on your player frame ("Battle Stance", "Bear Form", "Devotion Aura"). Turn it on from its page, and set its position, size and nudges right there.
+- **Shaman weapon imbues (new in 1.7.1):** Rockbiter, Flametongue, Frostbrand or Windfury Weapon, both hands when they differ.
 - **Always readable:** white or dark, whichever reads best across your health bar's colors, gradients included.
 
 ### Nameplate Dmg Text (new in 1.3.0)

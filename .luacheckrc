@@ -20,6 +20,7 @@ read_globals = {
 	"C_CurveUtil",
 	"C_FriendList",
 	"C_Item",
+	"C_TooltipInfo",
 	"C_NamePlate",
 	"C_PaperDollInfo",
 	"C_Spell",
