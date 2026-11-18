@@ -35,9 +35,9 @@ P.page = { id = KEY, label = L["Combat Alert"],
 			{ type = "toggle", key = KEY .. ".enabled", label = L["On"] },
 			{ type = "toggle", key = KEY .. ".onLeave", label = L["When Combat Ends"] },
 			{ type = "dropdown", key = KEY .. ".words", label = L["Alert Style"],
-			  values = { plus = L["+/- Combat"], words = L["Entering, leaving"], short = L["Combat, Safe"] },
-			  desc = L["+/- Combat: \"+ Combat\" and \"- Combat\". Entering, leaving: \"Entering combat\" and \"Leaving combat\". Combat, Safe: \"Combat\" and \"Safe\". Move it with /dui unlock."] },
-			{ type = "slider", key = KEY .. ".hold", label = L["Stays for (seconds)"], min = 0.5, max = 3, step = 0.25 },
+			  values = { plus = L["+/- Combat"], words = L["Entering, Leaving"], short = L["Combat, Safe"] },
+			  desc = L["+/- Combat: \"+ Combat\" and \"- Combat\". Entering, Leaving: \"Entering combat\" and \"Leaving combat\". Combat, Safe: \"Combat\" and \"Safe\". Move it with /dui unlock."] },
+			{ type = "slider", key = KEY .. ".hold", label = L["Stays for (Seconds)"], min = 0.5, max = 3, step = 0.25 },
 			{ type = "toggle", key = KEY .. ".sound", label = L["Sound on Combat Start"] },
 			{ type = "slider", key = KEY .. ".scale", label = L["Size"], min = 0.7, max = 2, step = 0.05, unit = "%" },
 		} },
@@ -125,8 +125,8 @@ function P.Login()
 	frame:RegisterEvent("PLAYER_REGEN_ENABLED")
 	-- Placed now: after a /reload in a fight, the mover only places it once the fight ends.
 	frame:SetPoint(unpack(DEFAULT))
-	ns.me.RegisterMover(frame, KEY, L["Combat alert"], DEFAULT)
-	ns.me.RegisterTestPart(KEY, L["Combat alert"])
+	ns.me.RegisterMover(frame, KEY, L["Combat Alert"], DEFAULT)
+	ns.me.RegisterTestPart(KEY, L["Combat Alert"])
 end
 
 function P.Setting()

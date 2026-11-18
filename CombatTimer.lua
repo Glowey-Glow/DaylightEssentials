@@ -30,12 +30,12 @@ P.page = { id = KEY, label = L["Combat Timer"],
 			{ type = "toggle", key = KEY .. ".enabled", label = L["On"] },
 			{ type = "slider", key = KEY .. ".hold", label = L["Display Time After Combat"], min = 0, max = 15, step = 1,
 			  desc = L["Seconds the fight's length stays after it ends. 0 hides it at once."] },
-			{ type = "toggle", key = KEY .. ".tenths", label = L["Tenths of a second"],
+			{ type = "toggle", key = KEY .. ".tenths", label = L["Tenths of a Second"],
 			  desc = L["1:23.4 instead of 1:23."] },
 		} },
 		{ label = L["Look"], items = {
 			{ type = "toggle", key = KEY .. ".ground", label = L["Show Background"],
-			  desc = L["The timer on a small DaylightUI window. Off: the time alone."] },
+			  desc = L["The timer on a small Daylight UI window. Off: the time alone."] },
 			{ type = "slider", key = KEY .. ".scale", label = L["Size"], min = 0.7, max = 2, step = 0.05, unit = "%" },
 		} },
 	} }
@@ -204,10 +204,10 @@ function P.Login()
 	frame:RegisterEvent("PLAYER_REGEN_ENABLED")
 	-- Placed now: after a /reload in a fight, the mover only places it once the fight ends.
 	frame:SetPoint(unpack(Home()))
-	ns.me.RegisterMover(frame, KEY, L["Combat timer"], Home)
+	ns.me.RegisterMover(frame, KEY, L["Combat Timer"], Home)
 	-- Comes up with DaylightUI's fade-in on login and /reload (the inner box: the frame's own alpha is its own fade).
 	ns.FadeIn(KEY, function() return { body } end)
-	ns.me.RegisterTestPart(KEY, L["Combat timer"])
+	ns.me.RegisterTestPart(KEY, L["Combat Timer"])
 	-- A /reload in a fight: the count starts from the reload.
 	if InCombatLockdown() then Start() end
 end

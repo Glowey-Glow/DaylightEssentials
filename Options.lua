@@ -13,10 +13,10 @@ local WINDOWED = { combatTimer = true, healerMana = true, enemyNearby = true, st
 
 local function OpacityItems(key)
 	return {
-		{ type = "toggle", key = key .. ".duiOpacity", label = L["Use DaylightUI's opacity"],
-		  desc = L["Its background follows DaylightUI's window opacity."] },
-		{ type = "slider", key = key .. ".opacity", label = L["Window opacity"], min = 0.1, max = 1, step = 0.05, unit = "%",
-		  desc = L["How solid its background is, with DaylightUI's opacity off."],
+		{ type = "toggle", key = key .. ".duiOpacity", label = L["Use Daylight UI's Opacity"],
+		  desc = L["Its background follows Daylight UI's window opacity."] },
+		{ type = "slider", key = key .. ".opacity", label = L["Window Opacity"], min = 0.1, max = 1, step = 0.05, unit = "%",
+		  desc = L["How solid its background is, with Daylight UI's opacity off."],
 		  disabled = function(get) return get(key .. ".duiOpacity") ~= false end },
 	}
 end
@@ -65,7 +65,7 @@ end
 -- (The page the welcome's Open Options shows: EssentialsGuide.lua.)
 ns.firstPage = pages[1] and pages[1].id
 
--- The "Tell me when a newer version is out" switch (Update.lua), on the first page.
+-- The "Tell Me When a Newer Version Is Out" switch (Update.lua), on the first page.
 if ns.UpdateGroup and pages[1] then table.insert(pages[1].groups, ns.UpdateGroup()) end
 
 local ok, err = pcall(function()

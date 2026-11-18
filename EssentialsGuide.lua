@@ -19,14 +19,14 @@ Guide.Setup({
 		end
 		return false
 	end,
-	intro = L["Small extras for your screen, each with its own page in DaylightUI's options (Plugins > Essentials): a live preview, its settings and a switch to turn it off."],
-	heading = L["What it adds:"],
+	intro = L["Small extras for your screen, each with its own page in Daylight UI's options (Plugins > Essentials): a live preview, its settings and a switch to turn it off."],
+	heading = L["What It Adds:"],
 	takes = function()
 		return {
 			L["On your screen from the start: Healer Mana, Combat Timer, Combat Alert, Pet Reminder (hunters and warlocks), Cursor Cooldowns, Enemy Nearby and Secondary Stats. Move any of them with /dui unlock."],
 			L["Buff Manners: one click to buff players who buffed you, and others near you."],
 			L["Halo: hold a key for a ring of your actions, point at one and let go to use it. Pick its key on the Halo page first."],
-			L["Nameplate Dmg Text (off to start): damage numbers that pop off enemy nameplates. Turned on, it stands in for DaylightUI's combat text and the game's floating numbers, so nothing shows twice."],
+			L["Nameplate Dmg Text (off to start): damage numbers that pop off enemy nameplates. Turned on, it stands in for Daylight UI's combat text and the game's floating numbers, so nothing shows twice."],
 		}
 	end,
 	-- (2026-11-16: everyone gets the welcome once more with this release.)

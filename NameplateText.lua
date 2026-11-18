@@ -23,7 +23,7 @@
 -- Seeing and placing it: its options page has a live preview at the top, the way DaylightUI's own
 -- nameplate pages do (DaylightUI's sample strip): a training dummy's nameplate in DaylightUI's
 -- look with numbers coming off it from the current settings, redrawn as they change. Click a
--- piece to jump to its settings; in Design mode drag "Where the numbers start" (or select it and
+-- piece to jump to its settings; in Design mode drag "Where the Numbers Start" (or select it and
 -- nudge it with the arrow keys) to set the Sideways and Height spot over every plate.
 --
 -- Spell icons: the hit report doesn't name the spell either, so the icon beside a number is worked
@@ -31,8 +31,9 @@
 -- for those two). A cast at a plate waits up to 1.5 s for its hit (travel time); a cast with no
 -- enemy targeted (an area spell) takes the first hit on each plate in the next 0.4 s. The first hit
 -- of a spell teaches its school, so a later cast only takes a hit of that school. A hit nothing
--- claims takes the last spell of its school that hit that plate in the past 20 s (a damage over
--- time tick), except physical ones: those are melee, shown with your main-hand weapon's icon (no
+-- claims takes the last damage over time spell of yours of its school that hit that plate in the
+-- past 20 s (a tick; direct hits never stand in, or your pet's hits took their icon), else your
+-- pet's last spell of that school in the past 12 s (pet out), except physical ones: those are melee, shown with your main-hand weapon's icon (no
 -- icon while your pet is out: its swings and yours can't be told apart). So it's a good guess, not
 -- a record: casts that overlap, or a spell that applies a bleed and deals nothing at first, can put
 -- the wrong icon on a hit now and then. Misses show an icon only when a cast claims them.
@@ -91,7 +92,7 @@ local function Off(get) return get(KEY .. ".enabled") ~= true end
 
 local ANIMS = { up = L["Rise"], down = L["Fall"], fountain = L["Fountain"], rain = L["Rainfall"] }
 local ANIM_ORDER = { "fountain", "up", "down", "rain" }
-local ANCHORS = { above = L["Above plate"], below = L["Below plate"], left = L["Plate's left"], right = L["Plate's right"] }
+local ANCHORS = { above = L["Above Plate"], below = L["Below Plate"], left = L["Plate's Left"], right = L["Plate's Right"] }
 local ANCHOR_ORDER = { "above", "below", "left", "right" }
 
 local fontRow
@@ -103,7 +104,7 @@ if API.FontRow then
 	end
 end
 
-local SPOTS = { player = L["Player frame"], left = L["Left of center"], right = L["Right of center"] }
+local SPOTS = { player = L["Player Frame"], left = L["Left of Center"], right = L["Right of Center"] }
 local SPOT_ORDER = { "player", "left", "right" }
 local function SelfOff(get)
 	return Off(get) or (get(KEY .. ".selfDamage") == false and get(KEY .. ".selfHeal") == false)
@@ -120,7 +121,7 @@ local SELF_ITEMS = {
 	{ type = "dropdown", key = KEY .. ".selfAnim", label = L["Motion"], values = ANIMS, order = ANIM_ORDER, disabled = SelfOff },
 	{ type = "toggle", key = KEY .. ".selfSigns", label = L["Show + and -"], disabled = SelfOff,
 	  desc = L["A minus before damage taken and a plus before healing."] },
-	{ type = "slider", key = KEY .. ".selfSize", label = L["Text size"], min = 10, max = 40, step = 1, disabled = SelfOff },
+	{ type = "slider", key = KEY .. ".selfSize", label = L["Text Size"], min = 10, max = 40, step = 1, disabled = SelfOff },
 	{ type = "slider", key = KEY .. ".selfX", label = L["Distance From Center"], min = 40, max = 600, step = 5, unit = "px",
 	  disabled = SelfOff, desc = L["How far the left and right spots are from the middle of the screen."] },
 	{ type = "slider", key = KEY .. ".selfY", label = L["Vertical Shift"], min = -300, max = 300, step = 5, unit = "px",
@@ -128,13 +129,13 @@ local SELF_ITEMS = {
 }
 
 local looks = {
-	{ type = "slider", key = KEY .. ".size", label = L["Text size"], min = 10, max = 40, step = 1, disabled = Off },
-	{ type = "slider", key = KEY .. ".critScale", label = L["Crit size"], min = 1, max = 2.5, step = 0.05, unit = "%",
+	{ type = "slider", key = KEY .. ".size", label = L["Text Size"], min = 10, max = 40, step = 1, disabled = Off },
+	{ type = "slider", key = KEY .. ".critScale", label = L["Crit Size"], min = 1, max = 2.5, step = 0.05, unit = "%",
 	  disabled = Off, desc = L["How much bigger a critical hit is."] },
-	{ type = "toggle", key = KEY .. ".schools", label = L["Color By Element"], disabled = Off,
-	  desc = L["Fire orange, frost blue, nature green, shadow violet... Off: DaylightUI's value ink."] },
+	{ type = "toggle", key = KEY .. ".schools", label = L["Color by Element"], disabled = Off,
+	  desc = L["Fire orange, frost blue, nature green, shadow violet... Off: Daylight UI's value ink."] },
 	{ type = "dropdown", key = KEY .. ".icons", label = L["Spell Icons"], disabled = Off,
-	  values = { left = L["Left of number"], right = L["Right of number"], off = L["Off"] },
+	  values = { left = L["Left of Number"], right = L["Right of Number"], off = L["Off"] },
 	  order = { "left", "right", "off" },
 	  desc = L["The spell behind each hit, worked out from your own and your pet's casts: now and then a guess."] },
 	{ type = "slider", key = KEY .. ".iconScale", label = L["Spell Icon Size"], min = 0.5, max = 2, step = 0.05, unit = "%",
@@ -153,10 +154,10 @@ P.page = { id = KEY, label = L["Nameplate Dmg Text"],
 			  desc = L["Numbers over enemy nameplates as they're hit: yours and your pet's while you're alone. Keep enemy nameplates shown."] },
 			{ type = "toggle", key = KEY .. ".groupGame", label = L["In a Group: the Game's Numbers"], disabled = Off,
 			  desc = L["The game doesn't tell addons who struck a hit, so in a party or raid the nameplates would show everyone's. On: in a group these pause and the game's own damage numbers show instead, which are only yours and your pet's. Off: everyone's hits show."] },
-			{ type = "toggle", key = KEY .. ".replace", label = L["Turn Off DaylightUI's Combat Text"], disabled = Off,
-			  desc = L["While this is on, all of DaylightUI's combat text is off: the damage numbers (its Damage numbers page) and its scrolling combat text around your character. They come back as they were when this is off."] },
+			{ type = "toggle", key = KEY .. ".replace", label = L["Turn Off Daylight UI's Combat Text"], disabled = Off,
+			  desc = L["While this is on, all of Daylight UI's combat text is off: the damage numbers (its Damage numbers page) and its scrolling combat text around your character. They come back as they were when this is off."] },
 			{ type = "dropdown", key = KEY .. ".plates", label = L["Show On"], disabled = Off,
-			  values = { all = L["Every enemy nameplate"], target = L["Your target only"] }, order = { "all", "target" } },
+			  values = { all = L["Every Enemy Nameplate"], target = L["Your Target Only"] }, order = { "all", "target" } },
 			{ type = "toggle", key = KEY .. ".misses", label = L["Show Misses, Dodges, and Parries"], disabled = Off },
 		} },
 		{ label = L["Look"], items = looks },
@@ -177,7 +178,7 @@ P.page = { id = KEY, label = L["Nameplate Dmg Text"],
 			{ type = "slider", key = KEY .. ".height", label = L["Vertical Shift"], min = -40, max = 80, step = 1, unit = "px", disabled = Off,
 			  desc = L["Or drag it in the preview above, in Design mode."] },
 		} },
-		{ label = L["Other enemies"], items = {
+		{ label = L["Other Enemies"], items = {
 			{ type = "toggle", key = KEY .. ".offTarget", label = L["Display on Off Targets"], disabled = Off,
 			  desc = L["Numbers on enemies you aren't targeting are smaller and fainter."] },
 			{ type = "slider", key = KEY .. ".offScale", label = L["Size"], min = 0.4, max = 1, step = 0.05, unit = "%",
@@ -261,7 +262,36 @@ local CAST_WAIT, AREA_WAIT, TICK_WAIT = 1.5, 0.4, 20
 local MAX_CASTS = 16
 local casts = {}                                         -- oldest first: { tex, id, t, plate, used }
 local schoolOf = {}                                      -- [spellID] = the school mask its hits had
-local lastHit = setmetatable({}, { __mode = "k" })       -- [plate] = { [school] = { tex, t } }
+local lastHit = setmetatable({}, { __mode = "k" })       -- [plate] = { [school] = { tex, t } }: your DoTs
+local petLast = {}                                       -- [school] = { tex, t }: your pet's spells
+local PET_WAIT = 12        -- a pet's spell of a school stands for its unclaimed hits this long (autocasts repeat)
+local periodic = {}        -- [spellID] = true/false: deals damage over time (its description says so)
+
+-- Whether a spell deals damage over time, from its description: Daylight UI's DoT tracker reads it
+-- in every language it knows (DaylightUI.Dots.Parse, guarded), else the English wording. Only those
+-- stand for a later hit nothing claims (a tick); a direct hit never does, or your pet's hits of the
+-- same school took your last spell's icon.
+local function Periodic(spellID)
+	if type(spellID) ~= "number" then return false end
+	local v = periodic[spellID]
+	if v ~= nil then return v end
+	v = false
+	local getDesc = C_Spell and C_Spell.GetSpellDescription
+	local ok, desc = pcall(getDesc, spellID)
+	if ok and type(desc) == "string" and not Secret(desc) and desc ~= "" then
+		local D = _G.DaylightUI and _G.DaylightUI.Dots
+		if type(D) == "table" and type(D.Parse) == "function" then
+			local okP, total = pcall(D.Parse, desc)
+			v = okP and type(total) == "number" and total > 0 or false
+		end
+		if not v then
+			v = desc:find("damage over %d") ~= nil or desc:find("damage every %d") ~= nil
+		end
+	end
+	-- (A description not loaded yet reads empty: asked again next time instead of kept as "no".)
+	if ok and type(desc) == "string" and not Secret(desc) and desc ~= "" then periodic[spellID] = v end
+	return v
+end
 
 local function Texture(spellID)
 	local get = C_Spell and C_Spell.GetSpellTexture or GetSpellTexture
@@ -294,7 +324,7 @@ local function OnCast(unit, spellID)
 	local plate = Plate(at)
 	if plate and Hostile(at) ~= true then plate = nil end
 	if #casts >= MAX_CASTS then table.remove(casts, 1) end
-	casts[#casts + 1] = { tex = tex, id = readable and spellID or nil, t = GetTime(), plate = plate }
+	casts[#casts + 1] = { tex = tex, id = readable and spellID or nil, t = GetTime(), plate = plate, pet = unit == "pet" }
 end
 
 -- A cast whose spell's school is known only claims a hit of that school.
@@ -317,9 +347,13 @@ local function IconFor(plate, school, missed)
 			if c.plate then c.used = true end
 			if c.id and school ~= nil and not missed and schoolOf[c.id] == nil then schoolOf[c.id] = school end
 			if school ~= nil and not missed then
-				local mine = lastHit[plate] or {}
-				lastHit[plate] = mine
-				mine[school] = { tex = c.tex, t = now }
+				if c.pet then
+					petLast[school] = { tex = c.tex, t = now }
+				elseif Periodic(c.id) then
+					local mine = lastHit[plate] or {}
+					lastHit[plate] = mine
+					mine[school] = { tex = c.tex, t = now }
+				end
 			end
 			return c.tex
 		end
@@ -329,11 +363,15 @@ local function IconFor(plate, school, missed)
 		if UnitExists("pet") then return nil end
 		return GetInventoryItemTexture("player", 16)
 	end
+	-- Unclaimed: a tick of one of your DoTs of that school on this plate, else (pet out) your pet's
+	-- spell of that school, else no icon rather than a wrong one.
 	local last = lastHit[plate] and lastHit[plate][school]
 	if last and now - last.t <= TICK_WAIT then
 		last.t = now
 		return last.tex
 	end
+	local pet = petLast[school]
+	if pet and now - pet.t <= PET_WAIT and UnitExists("pet") then return pet.tex end
 	return nil
 end
 
@@ -838,7 +876,7 @@ local function NewSample(parent)
 		return {
 			{ region = plate, label = L["Nameplate Dmg Text"],
 			  keys = { KEY .. ".enabled", KEY .. ".plates", KEY .. ".misses", KEY .. ".offTarget" } },
-			{ region = start, label = L["Where the numbers start"],
+			{ region = start, label = L["Where the Numbers Start"],
 			  keys = { KEY .. ".x", KEY .. ".height", KEY .. ".anim", KEY .. ".critAnim", KEY .. ".missAnim",
 			           KEY .. ".speed", KEY .. ".size", KEY .. ".critScale", KEY .. ".schools", KEY .. ".icons", KEY .. ".iconScale", KEY .. ".anchor", KEY .. ".critAnchor", KEY .. ".missAnchor", KEY .. ".numbers" },
 			  move = { owner = plate, dots = dots, xKey = KEY .. ".x", yKey = KEY .. ".height",

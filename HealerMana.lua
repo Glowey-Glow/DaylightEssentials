@@ -50,7 +50,7 @@ P.page = { id = KEY, label = L["Healer Mana"],
 		{ label = L["Healer Mana"], items = {
 			{ type = "toggle", key = KEY .. ".enabled", label = L["On"] },
 		} },
-		{ label = L["When it shows"], items = {
+		{ label = L["When It Shows"], items = {
 			{ type = "toggle", key = KEY .. ".inParty", label = L["In Party"] },
 			{ type = "toggle", key = KEY .. ".inRaid", label = L["In Raid"] },
 			{ type = "slider", key = KEY .. ".maxRaid", label = L["Raid Healer List Count"], min = 1, max = 10, step = 1,
@@ -69,7 +69,7 @@ P.page = { id = KEY, label = L["Healer Mana"],
 			{ type = "toggle", key = KEY .. ".drinking", label = L["Show Drinking Status"],
 			  desc = L["While a healer drinks, their line becomes their mana bar, filling as they drink, with \"Drinking\" on it."] },
 			{ type = "toggle", key = KEY .. ".lowGlow", label = L["Glow When Low"],
-			  desc = L["DaylightUI's glow runs round a healer's line below 20% mana."] },
+			  desc = L["Daylight UI's glow runs round a healer's line below 20% mana."] },
 			{ type = "slider", key = KEY .. ".width", label = L["Width"], min = 130, max = 260, step = 5, unit = "px",
 			  desc = L["At least this wide: it grows to fit a long name."] },
 			{ type = "slider", key = KEY .. ".scale", label = L["Size"], min = 0.7, max = 1.6, step = 0.05, unit = "%" },
@@ -611,7 +611,7 @@ local function Build()
 	body:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
 	title = API.Text(body, "small", "LEFT")
 	title:SetPoint("TOPLEFT", body, "TOPLEFT", PAD + 1, -PAD)
-	title:SetText(L["Healer mana"])
+	title:SetText(L["Healer Mana"])
 	ns.Ink(title, "LABEL")
 	frame:SetScript("OnEvent", OnEvent)
 	-- (A healer's connection, flags, health and mana: heard by its own row, ListenRow.)
@@ -621,10 +621,10 @@ local function Build()
 	Size(1)
 	-- Placed now: after a /reload in a fight, the mover only places it once the fight ends.
 	frame:SetPoint(unpack(Home()))
-	ns.me.RegisterMover(frame, KEY, L["Healer mana"], Home)
+	ns.me.RegisterMover(frame, KEY, L["Healer Mana"], Home)
 	-- Comes up with DaylightUI's fade-in on login and /reload (the inner box: the frame's own alpha is left alone).
 	ns.FadeIn(KEY, function() return { body } end)
-	ns.me.RegisterTestPart(KEY, L["Healer mana"])
+	ns.me.RegisterTestPart(KEY, L["Healer Mana"])
 end
 
 -- 1.2.0's "When the group has no roles" (Healing classes / Nobody) is the switch now: Nobody

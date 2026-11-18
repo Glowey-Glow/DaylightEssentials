@@ -194,7 +194,7 @@ P.page = { id = KEY, label = L["Enemy Nearby"],
 	groups = {
 		{ label = L["Enemy Nearby"], items = {
 			{ type = "toggle", key = KEY .. ".enabled", label = L["On"] },
-			{ type = "toggle", label = L["Show enemy nameplates"],
+			{ type = "toggle", label = L["Show Enemy Nameplates"],
 			  desc = L["The game's own setting (V by default). The list sees players through their nameplates, your target, focus and mouseover, so enemy nameplates have to be shown. It can't be switched in a fight. Move the list with /dui unlock."],
 			  get = PlatesShown, set = ShowPlates },
 			{ type = "toggle", key = KEY .. ".inInstances", label = L["Display in Battlegrounds and Dungeons"],
@@ -214,16 +214,16 @@ P.page = { id = KEY, label = L["Enemy Nearby"],
 		} },
 		{ label = L["Alerts"], items = {
 			{ type = "toggle", key = KEY .. ".alertKos", label = L["Alert Kill on Sight Targets"], disabled = Off },
-			{ type = "toggle", key = KEY .. ".soundKos", label = L["Kill on Sight sound"],
+			{ type = "toggle", key = KEY .. ".soundKos", label = L["Kill on Sight Sound"],
 			  disabled = function(get) return Off(get) or get(KEY .. ".alertKos") == false end },
 			{ type = "toggle", key = KEY .. ".alertNew", label = L["Alert on All Enemies"], disabled = Off },
 			{ type = "toggle", key = KEY .. ".soundNew", label = L["New Enemy Contact"],
 			  disabled = function(get) return Off(get) or get(KEY .. ".alertNew") == false end },
 			{ type = "slider", key = KEY .. ".throttle", label = L["Time Until Same Enemy Alerts"], min = 30, max = 600, step = 30,
 			  desc = L["Seconds before the same player can alert you again."], disabled = Off },
-			{ type = "slider", key = KEY .. ".alertScale", label = L["Alert size"], min = 0.7, max = 2, step = 0.05, unit = "%", disabled = Off },
+			{ type = "slider", key = KEY .. ".alertScale", label = L["Alert Size"], min = 0.7, max = 2, step = 0.05, unit = "%", disabled = Off },
 			{ type = "toggle", key = KEY .. ".alertGlow", label = L["Glow"], disabled = Off,
-			  desc = L["DaylightUI's glow runs round the alert, in its color, while it's up."] },
+			  desc = L["Daylight UI's glow runs round the alert, in its color, while it's up."] },
 		} },
 		{ label = L["Kill on Sight"], items = {
 			{ type = "text", label = L["Right-click a name in the list to add or remove it, or type /dui kos add Name, /dui kos remove Name or /dui kos list. The list is shared by all your characters; its names show in red, with a mark."] },
@@ -232,7 +232,7 @@ P.page = { id = KEY, label = L["Enemy Nearby"],
 				if #names == 0 then return L["On the list: nobody yet."] end
 				return L["On the list: %s."]:format(table.concat(names, L[", "]))
 			end },
-			{ type = "button", label = L["Add my target"], func = function()
+			{ type = "button", label = L["Add My Target"], func = function()
 				local name = TargetName()
 				if name then KosAdd(name) else Say(L["target a player first."]) end
 			end },
@@ -813,12 +813,12 @@ function P.Menu(owner, key)
 		MenuUtil.CreateContextMenu(owner, function(_, root)
 			root:CreateTitle(name)
 			if kos then
-				root:CreateButton(L["Take off Kill on Sight"], function() KosRemove(name) end)
+				root:CreateButton(L["Take Off Kill on Sight"], function() KosRemove(name) end)
 			else
 				root:CreateButton(L["Add to Kill on Sight"], function() KosAdd(name) end)
 			end
 			if not InCombatLockdown() then
-				root:CreateButton(L["Take off this list"], function()
+				root:CreateButton(L["Take Off This List"], function()
 					if InCombatLockdown() or not byKey[key] then return end
 					for i, x in ipairs(list) do
 						if x.key == key then
@@ -898,7 +898,7 @@ local function Build()
 	content:SetFrameLevel(body:GetFrameLevel() + 5)
 	title = API.Text(content, "small", "LEFT")
 	title:SetPoint("TOPLEFT", body, "TOPLEFT", PAD + 1, -PAD)
-	title:SetText(L["Enemies nearby"])
+	title:SetText(L["Enemies Nearby"])
 	ns.Ink(title, "LABEL")
 	empty = API.Text(content, "small", "LEFT")
 	empty:SetPoint("TOPLEFT", body, "TOPLEFT", PAD + 1, -(PAD + TITLE_H + 3))
@@ -909,7 +909,7 @@ local function Build()
 	Size(1)
 	-- Placed now: after a /reload in a fight, the mover only places it once the fight ends.
 	frame:SetPoint(unpack(Home()))
-	ns.me.RegisterMover(frame, KEY, L["Enemies nearby"], Home)
+	ns.me.RegisterMover(frame, KEY, L["Enemies Nearby"], Home)
 	-- Comes up with DaylightUI's fade-in on login and /reload (the inner box: the frame's own alpha is left alone).
 	ns.FadeIn(KEY, function() return { body } end)
 	-- When the list is moved (a profile, the mover), the secure buttons follow it.
@@ -928,9 +928,9 @@ local function Build()
 	AlertLook()
 	alertFrame:SetPoint(unpack(ALERT_HOME))
 	alertFrame:HookScript("OnHide", function(self) ns.Glow(self, false) end)
-	ns.me.RegisterMover(alertFrame, KEY .. "Alert", L["Enemy alert"], ALERT_HOME)
+	ns.me.RegisterMover(alertFrame, KEY .. "Alert", L["Enemy Alert"], ALERT_HOME)
 
-	ns.me.RegisterTestPart(KEY, L["Enemies nearby"])
+	ns.me.RegisterTestPart(KEY, L["Enemies Nearby"])
 	ns.me.RegisterCommand("kos", Command, L["kos add|remove|list Name: your Kill on Sight list"])
 end
 

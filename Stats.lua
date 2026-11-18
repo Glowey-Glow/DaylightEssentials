@@ -89,7 +89,7 @@ end
 -- Each: id, label, short (for one line), kind ("pct", "int", "sec", "mp5"), sample (for unlock),
 --   live()  one value straight from the game (maybe secret), or
 --   sum()   a plain number when it can be read, nil while secret, false when it isn't there;
---   zero    hidden at 0 when "Hide stats at 0" is on;
+--   zero    hidden at 0 when "Hide Stats at 0" is on;
 --   shield  shown only with a shield on.
 
 local CR_MELEE = _G.CR_HIT_MELEE or 6
@@ -164,11 +164,11 @@ local CATALOG = {
 
 -- Resistances (base, ?, effective): the effective one, live.
 -- (Each name whole, in the game's words on other clients: RESISTANCE2_NAME is Fire Resistance.)
-for _, r in ipairs({ { 2, "fire", L["Fire resistance"], L["Fire Res"], L["Fire"] },
-	{ 3, "nature", L["Nature resistance"], L["Nature Res"], L["Nature"] },
-	{ 4, "frost", L["Frost resistance"], L["Frost Res"], L["Frost"] },
-	{ 5, "shadow", L["Shadow resistance"], L["Shadow Res"], L["Shadow"] },
-	{ 6, "arcane", L["Arcane resistance"], L["Arcane Res"], L["Arcane"] } }) do
+for _, r in ipairs({ { 2, "fire", L["Fire Resistance"], L["Fire Res"], L["Fire"] },
+	{ 3, "nature", L["Nature Resistance"], L["Nature Res"], L["Nature"] },
+	{ 4, "frost", L["Frost Resistance"], L["Frost Res"], L["Frost"] },
+	{ 5, "shadow", L["Shadow Resistance"], L["Shadow Res"], L["Shadow"] },
+	{ 6, "arcane", L["Arcane Resistance"], L["Arcane Res"], L["Arcane"] } }) do
 	local school = r[1]
 	CATALOG[#CATALOG + 1] = { id = "res_" .. r[2], label = ns.GameText("RESISTANCE" .. school .. "_NAME", r[3]), tag = r[4], short = r[5], kind = "int", sample = 35,
 		live = function() return Third("UnitResistance", "player", school) end }
@@ -253,60 +253,60 @@ P.page = { id = KEY, label = L["Secondary Stats"],
 	desc = L["The stats that matter for how you play, by role, class or your own pick."],
 	groups = {
 		{ label = L["Secondary Stats"],
-		  desc = L["Crit, haste, armor and the like stay live in a fight; stats the game gives in parts (attack power, hit, defense, mana regen) keep their numbers from before the fight. DaylightUI's info bar has small Crit, AP, SP and Hit texts too, if you'd rather have something smaller."],
+		  desc = L["Crit, haste, armor and the like stay live in a fight; stats the game gives in parts (attack power, hit, defense, mana regen) keep their numbers from before the fight. Daylight UI's info bar has small Crit, AP, SP and Hit texts too, if you'd rather have something smaller."],
 		  items = {
 			{ type = "toggle", key = KEY .. ".enabled", label = L["On"] },
-			{ type = "dropdown", key = KEY .. ".role", label = L["Stats for"], disabled = Off,
+			{ type = "dropdown", key = KEY .. ".role", label = L["Stats For"], disabled = Off,
 			  values = { auto = L["Auto"], melee = L["Melee"], ranged = L["Ranged"], caster = L["Caster"],
 				healer = L["Healer"], tank = L["Tank"], custom = L["Custom"] },
 			  order = { "auto", "melee", "ranged", "caster", "healer", "tank", "custom" },
 			  desc = L["Auto: the healer or tank stats when the group gave you that role, else your class's: melee for warriors and rogues, ranged for hunters, caster for mages and warlocks, healer for priests, druids, shamans and paladins. Custom: the six stats you pick below."] },
-			{ type = "toggle", key = KEY .. ".hideZero", label = L["Hide stats at 0"], disabled = Off,
+			{ type = "toggle", key = KEY .. ".hideZero", label = L["Hide Stats at 0"], disabled = Off,
 			  desc = L["Haste, expertise, armor penetration and spell penetration leave the box while you have none. Decided out of a fight and kept through it."] },
 			{ type = "dropdown", key = KEY .. ".shows", label = L["Shows"], disabled = Off,
-			  values = { always = L["Always"], combat = L["In a fight"], calm = L["Out of a fight"] },
+			  values = { always = L["Always"], combat = L["In a Fight"], calm = L["Out of a Fight"] },
 			  order = { "always", "combat", "calm" } },
 		} },
 		{ label = L["Where"], items = {
-			{ type = "dropdown", key = KEY .. ".dock", label = L["Dock to"], disabled = Off,
-			  values = { minimap = L["Minimap"], meters = L["Damage meters"], chat = L["Chat"], free = L["Free"] },
+			{ type = "dropdown", key = KEY .. ".dock", label = L["Dock To"], disabled = Off,
+			  values = { minimap = L["Minimap"], meters = L["Damage Meters"], chat = L["Chat"], free = L["Free"] },
 			  order = { "minimap", "meters", "chat", "free" },
-			  desc = L["Docked, it sits against that frame's side at a corner, level with it, and slides out of it and back in with a tab on its edge. Damage meters: their own window when detached, else the minimap panel they sit in. Chat: DaylightUI's chat window. Free: move it anywhere with /dui unlock."] },
+			  desc = L["Docked, it sits against that frame's side at a corner, level with it, and slides out of it and back in with a tab on its edge. Damage Meters: their own window when detached, else the minimap panel they sit in. Chat: Daylight UI's chat window. Free: move it anywhere with /dui unlock."] },
 			{ type = "dropdown", key = KEY .. ".meterCorner", label = L["Corner"], disabled = Off,
 			  hidden = DockIsNot("meters"),
 			  desc = L["A bottom corner only: the threat meter slides out of the top. When it grows down past the stats, they step down under it, or out beside it when there's no room below."],
-			  values = { BOTTOMLEFT = L["Bottom-left"], BOTTOMRIGHT = L["Bottom-right"] },
+			  values = { BOTTOMLEFT = L["Bottom-Left"], BOTTOMRIGHT = L["Bottom-Right"] },
 			  order = { "BOTTOMLEFT", "BOTTOMRIGHT" } },
-			{ type = "toggle", key = KEY .. ".chatFade", label = L["Fade with the chat"], disabled = Off,
+			{ type = "toggle", key = KEY .. ".chatFade", label = L["Fade with the Chat"], disabled = Off,
 			  hidden = DockIsNot("chat"),
-			  desc = L["The stats fade out and back in along with DaylightUI's chat window."] },
+			  desc = L["The stats fade out and back in along with Daylight UI's chat window."] },
 			{ type = "dropdown", key = KEY .. ".corner", label = L["Corner"], disabled = Free, hidden = DockIs("meters"),
 			  desc = L["Auto: the corner facing the middle of the screen."],
-			  values = { auto = L["Auto"], BOTTOMLEFT = L["Bottom-left"],
-				BOTTOMRIGHT = L["Bottom-right"], TOPLEFT = L["Top-left"], TOPRIGHT = L["Top-right"] },
+			  values = { auto = L["Auto"], BOTTOMLEFT = L["Bottom-Left"],
+				BOTTOMRIGHT = L["Bottom-Right"], TOPLEFT = L["Top-Left"], TOPRIGHT = L["Top-Right"] },
 			  order = { "auto", "BOTTOMLEFT", "BOTTOMRIGHT", "TOPLEFT", "TOPRIGHT" } },
 			{ type = "slider", key = KEY .. ".nudgeX", label = L["Horizontal Shift"], min = -60, max = 60, step = 1, unit = "px",
 			  disabled = Free, desc = L["Fine-tunes the docked spot: right is more."] },
 			{ type = "slider", key = KEY .. ".nudgeY", label = L["Vertical Shift"], min = -60, max = 60, step = 1, unit = "px",
 			  disabled = Free, desc = L["Up is more."] },
-			{ type = "toggle", key = KEY .. ".foldInCombat", label = L["Fold away in combat"], disabled = Free,
+			{ type = "toggle", key = KEY .. ".foldInCombat", label = L["Fold Away in Combat"], disabled = Free,
 			  desc = L["Docked, it folds away when a fight starts and comes back when it ends."] },
 			{ type = "toggle", key = KEY .. ".windowless", label = L["Windowless"], disabled = Off,
 			  desc = L["Just the text, with no window behind it, docked or free. Docked, the fold tab stays."] },
 		} },
-		{ label = L["Custom"], desc = L["Your own list, in this order, when Stats for is Custom."],
+		{ label = L["Custom"], desc = L["Your own list, in this order, when Stats For is Custom."],
 		  items = slotItems },
 		{ label = L["Look"], items = {
 			{ type = "dropdown", key = KEY .. ".layout", label = L["Layout"], disabled = Off,
-			  values = { list = L["A list"], line = L["One line"] }, order = { "list", "line" } },
+			  values = { list = L["A List"], line = L["One Line"] }, order = { "list", "line" } },
 			{ type = "dropdown", key = KEY .. ".nameColors", label = L["Stat Colors"], disabled = Off,
-			  values = { stat = L["Per stat"], class = L["Class color"], plain = L["Plain"] },
+			  values = { stat = L["Per Stat"], class = L["Class Color"], plain = L["Plain"] },
 			  order = { "stat", "class", "plain" },
-			  desc = L["Per stat: crits gold, hit blue, haste green, attack power orange, spell power violet, and so on."] },
+			  desc = L["Per Stat: crits gold, hit blue, haste green, attack power orange, spell power violet, and so on."] },
 			{ type = "toggle", key = KEY .. ".colorValues", label = L["Match Numbers to Stat Color"], disabled = Off },
-			{ type = "toggle", key = KEY .. ".hitCap", label = L["Green when Hit Capped"], disabled = Off,
+			{ type = "toggle", key = KEY .. ".hitCap", label = L["Green When Hit Capped"], disabled = Off,
 			  desc = L["Melee, ranged and spell hit turn green when you have enough to never miss your current target, by its level: the same numbers as the game's Hit Chance tooltip (5% melee and 4% spells at your level, 8% and 17% against raid bosses)."] },
-			{ type = "slider", key = KEY .. ".shadow", label = L["Text shadow"], min = 0, max = 4, step = 1, unit = "px", disabled = Off,
+			{ type = "slider", key = KEY .. ".shadow", label = L["Text Shadow"], min = 0, max = 4, step = 1, unit = "px", disabled = Off,
 			  desc = L["How far the dark shadow under the text reaches. 0 for none."] },
 			{ type = "slider", key = KEY .. ".decimals", label = L["Number of Decimal Places"], min = 0, max = 2, step = 1, disabled = Off },
 			{ type = "toggle", key = KEY .. ".dim", label = L["Desaturate Numbers in Fight"], disabled = Off,
@@ -596,7 +596,7 @@ local function DB()
 	return db
 end
 local function Folded() return DB().statsFolded == true end
--- Folded for this fight only ("Fold away in combat"): the saved choice (Folded) is left as it is.
+-- Folded for this fight only ("Fold Away in Combat"): the saved choice (Folded) is left as it is.
 local combatFold = false
 local function Shut() return combatFold or Folded() end
 
@@ -781,7 +781,7 @@ local function BuildTab()
 	tab:SetScript("OnEnter", function(self)
 		PaintGrip(true)
 		GameTooltip:SetOwner(self, goesLeft and "ANCHOR_LEFT" or "ANCHOR_RIGHT")
-		GameTooltip:SetText(Shut() and L["Show your stats"] or L["Fold your stats away"])
+		GameTooltip:SetText(Shut() and L["Show Your Stats"] or L["Fold Your Stats Away"])
 		GameTooltip:Show()
 	end)
 	tab:SetScript("OnLeave", function()
@@ -796,6 +796,16 @@ local function BuildTab()
 	tab:SetAlpha(0)
 	tab:Hide()
 end
+
+-- The fold on a key too (Key Bindings, AddOns), for a controller: the box sits on the screen like
+-- the rest of the HUD, so a controller's cursor never goes to its tab (that would hold the D-pad and
+-- face buttons while it shows). Only while the tab is out (the box docked).
+local foldKey = CreateFrame("Button", "DaylightEssentialsStatsFold", UIParent)
+foldKey:Hide()
+foldKey:SetScript("OnClick", function()
+	if tab and tab:IsShown() then tab:Click() end
+end)
+_G["BINDING_NAME_CLICK DaylightEssentialsStatsFold:LeftButton"] = L["Secondary Stats: Show or Fold Away"]
 
 -- Docked by the minimap on the panel's left side, the box sits where DaylightUI's bars start, just
 -- left of the panel: its buffs at the top corner, its debuffs at the bottom one. Those bars hang off
@@ -1267,7 +1277,7 @@ local function Listen(on, roles)
 	end
 end
 
--- "Fold away in combat": docked and out, it folds as a fight starts and comes back as it ends. The
+-- "Fold Away in Combat": docked and out, it folds as a fight starts and comes back as it ends. The
 -- game sends PLAYER_REGEN_DISABLED just before the fight's lockdown, so DaylightUI's buff or debuff
 -- bar this box had moved aside (BarsMakeRoom) is put back right then, while that's still allowed.
 local function CombatFold(fighting)
@@ -1343,7 +1353,7 @@ local function Build()
 	frame:SetFrameStrata("MEDIUM")
 	frame:SetClampedToScreen(true)
 	frame:Hide()
-	-- Docked to the chat with "Fade with the chat": as see-through as the chat window is now.
+	-- Docked to the chat with "Fade with the Chat": as see-through as the chat window is now.
 	-- Docked to the damage meters: making way for the threat meter (MakeWay). A small child frame
 	-- does it, shown only for those two (Watching), so nothing runs otherwise.
 	local fadeWait = 0
@@ -1388,11 +1398,11 @@ local function Build()
 	Size(1, false)
 	-- Placed now: after a /reload in a fight, the mover only places it once the fight ends.
 	frame:SetPoint(unpack(Home()))
-	ns.me.RegisterMover(frame, KEY, L["Secondary stats"], Home)
+	ns.me.RegisterMover(frame, KEY, L["Secondary Stats"], Home)
 	-- Comes up with DaylightUI's fade-in on login and /reload: its window and text layers (the
 	-- frame fades with the chat, the box with its slide).
 	ns.FadeIn(KEY, function() return { shell, content } end)
-	ns.me.RegisterTestPart(KEY, L["Secondary stats"])
+	ns.me.RegisterTestPart(KEY, L["Secondary Stats"])
 end
 
 function P.Login()

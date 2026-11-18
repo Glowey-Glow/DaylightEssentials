@@ -30,6 +30,25 @@
 -- other modifier set of the key to a Halo's button where nothing else has it, so a key coming up
 -- with a modifier pressed or let go mid-hold still reaches the button that opened.
 --
+-- Layout: Ring (the slots around the middle) or Bar (the slots in a row, over where it opens). On
+-- a controller (the game's controller mode on, or a Halo's key a controller button) it opens as a
+-- bar in the middle of the screen with nothing picked, whatever the layout ("Bar With a
+-- Controller", on by default), and the mouse doesn't pick there. With the mouse, a bar picks the
+-- icon over or under the mouse once it's moved up past the middle.
+--
+-- Stepping, in a fight too: while a Halo is held open, D-pad Left / Right and LB / RB step its
+-- highlight, B closes it without using anything. The secure snippet binds those keys when it
+-- opens (override bindings owned by a secure "step" button, set from the snippet: the restricted
+-- SetBindingClick) and clears them when it closes; the step button's own snippet moves the
+-- owning button's "pick" just as the mouse wheel does. A key that is a Halo's key, or a
+-- controller button standing in for Shift, Ctrl or Alt, is left alone. The key list (every
+-- modifier set of each, so a controller's Shift held still steps) is written out of a fight.
+--
+-- Choosing without dragging: clicking a slot in the editor (A on a controller) opens a list of
+-- your spells, usable items and macros to pick from; Y on a controller empties the slot. The
+-- editor and the list tell the game's controller mode about themselves (Daylight UI's Pad), so
+-- the D-pad moves through them and LB / RB step their tabs.
+--
 -- What it costs: nothing until you press the key; while the ring is open, a light update each
 -- frame for the highlight and five times a second for the dimming. No timers otherwise.
 
@@ -70,6 +89,8 @@ P.defaults = {
 	colorShift = { 0.3, 0.75, 1 },
 	colorAlt = { 0.4, 0.85, 0.45 },
 	colorCtrl = { 1, 0.55, 0.25 },
+	layout = "ring",
+	padBar = true,
 	shape = "ring",
 	opens = "cursor",
 	radius = 90,
@@ -114,8 +135,8 @@ P.page = { id = KEY, label = L["Halo"],
 		{ label = L["Colors"],
 		  desc = L["Each Halo's color, on the rim around its icons, the one you point at and its label, so you can tell which Halo is open."],
 		  items = {
-			{ type = "toggle", key = KEY .. ".baseAccent", label = L["Base Halo in my accent"],
-			  desc = L["The base Halo follows your DaylightUI accent color."] },
+			{ type = "toggle", key = KEY .. ".baseAccent", label = L["Base Halo in My Accent"],
+			  desc = L["The base Halo follows your Daylight UI accent color."] },
 			{ type = "color", key = KEY .. ".colorBase", label = L["Base Halo"],
 			  disabled = function(get) return get(KEY .. ".baseAccent") ~= false end },
 			{ type = "color", key = KEY .. ".colorShift", label = L["Shift Halo"] },
@@ -123,15 +144,21 @@ P.page = { id = KEY, label = L["Halo"],
 			{ type = "color", key = KEY .. ".colorCtrl", label = L["Ctrl Halo"] },
 		} },
 		{ label = L["Look"], items = {
+			{ type = "dropdown", key = KEY .. ".layout", label = L["Layout"],
+			  values = { ring = L["Ring"], bar = L["Bar"] },
+			  desc = L["Ring: the slots around the middle. Bar: the slots in a row; move the mouse up onto one, scroll, or step with the D-pad."] },
+			{ type = "toggle", key = KEY .. ".padBar", label = L["Bar With a Controller"],
+			  desc = L["With the game's controller mode on, or a Halo's key on a controller, it opens as a bar in the middle of the screen. Step with the D-pad or LB / RB, let go to use it, B closes it."] },
 			{ type = "dropdown", key = KEY .. ".shape", label = L["Shape"],
 			  values = { ring = L["Circle"], arc = L["Arc"] },
-			  desc = L["Circle: all the way around, the first slot at the top. Arc: a half circle over the middle, left to right."] },
+			  desc = L["Circle: all the way around, the first slot at the top. Arc: a half circle over the middle, left to right."],
+			  disabled = function(get) return get(KEY .. ".layout") == "bar" end },
 			{ type = "dropdown", key = KEY .. ".opens", label = L["Opens"],
-			  values = { cursor = L["Around Cursor"], center = L["Screen center"] } },
-			{ type = "slider", key = KEY .. ".radius", label = L["Halo size"], min = 50, max = 220, step = 5, unit = "px",
+			  values = { cursor = L["Around Cursor"], center = L["Screen Center"] } },
+			{ type = "slider", key = KEY .. ".radius", label = L["Halo Size"], min = 50, max = 220, step = 5, unit = "px",
 			  desc = L["From the middle of the Halo to the middle of each icon."] },
-			{ type = "slider", key = KEY .. ".iconSize", label = L["Icon size"], min = 20, max = 72, step = 1, unit = "px" },
-			{ type = "toggle", key = KEY .. ".names", label = L["Text In Middle"],
+			{ type = "slider", key = KEY .. ".iconSize", label = L["Icon Size"], min = 20, max = 72, step = 1, unit = "px" },
+			{ type = "toggle", key = KEY .. ".names", label = L["Text in Middle"],
 			  desc = L["The name of the action you point at, in the middle of the Halo."] },
 			{ type = "toggle", key = KEY .. ".dim", label = L["Dim Icon on Cooldown"],
 			  desc = L["Spells cooling down or out of reach (no mana, no rage) and items you have none of."] },
@@ -301,9 +328,11 @@ local holders = {}            -- holders[r]: a plain frame holding Halo r's icon
 local tiles = {}              -- tiles[r][k]: Halo r's icons, one per filled slot shown
 local shownBy = {}            -- shownBy[r][k] = the slot number (1..MAX) of Halo r's k-th icon
 local anglesBy = {}           -- anglesBy[r][k] = its direction in degrees (0 = right, 90 = up)
+local xBy = {}                -- xBy[r][k] = on a bar, its sideways offset from the middle
 for r = 1, #RINGS do
-	tiles[r], shownBy[r], anglesBy[r] = {}, {}, {}
+	tiles[r], shownBy[r], anglesBy[r], xBy[r] = {}, {}, {}, {}
 end
+local step                    -- the secure button the D-pad steps through while a Halo is open
 local open = 1                -- the Halo open now (read from the ring's "owner" on show)
 local pending = false         -- a change waiting for the end of a fight
 
@@ -354,12 +383,23 @@ end
 -- secure side measures on the whole screen the same way). Settings read every frame while it's
 -- open: kept from the last Apply (which every setting change runs).
 local cIcon, cNames, cDim = 36, true, true
+local cBar, cPad, cHint = false, false, nil   -- a bar; on a controller (no mouse picking); its hint
 
 local function Pointed(dx, dy)
 	local shown, angles = shownBy[open], anglesBy[open]
 	local n = #shown
-	if n == 0 then return nil end
+	if n == 0 or cPad then return nil end
 	local dead = math.max(14, cIcon * 0.6)
+	if cBar then
+		-- A bar: once the mouse is moved up past the middle, the icon nearest it sideways.
+		if dy < dead then return nil end
+		local xs, best, bestD = xBy[open], nil, nil
+		for k = 1, n do
+			local d = math.abs(xs[k] - dx)
+			if not bestD or d < bestD then best, bestD = k, d end
+		end
+		return best
+	end
 	if dx * dx + dy * dy < dead * dead then return nil end
 	local a = math.deg(math.atan2(dy, dx))
 	local best, bestD
@@ -399,10 +439,17 @@ local DOWN_UP = [=[
 		if ring:IsShown() then ring:Hide() end
 		ring:SetAttribute("owner", me)
 		ring:Show()
+		-- The D-pad (and LB / RB, B) for as long as it's held: bound to the step button.
+		local step = self:GetFrameRef("step")
+		step:ClearBindings()
+		for i = 1, step:GetAttribute("nb") or 0 do
+			step:SetBindingClick(true, step:GetAttribute("bk" .. i), step, step:GetAttribute("bv" .. i))
+		end
 		return false
 	end
 	if holder ~= me then return false end
 	ring:SetAttribute("owner", 0)
+	self:GetFrameRef("step"):ClearBindings()
 	if not ring:IsShown() then return false end
 	ring:Hide()
 	local n = self:GetAttribute("n") or 0
@@ -410,14 +457,23 @@ local DOWN_UP = [=[
 	local k = 0
 	if (self:GetAttribute("wheel") or 0) == 1 then
 		k = self:GetAttribute("pick") or 0
-	else
+	elseif not self:GetAttribute("nomouse") then
 		local screen = self:GetFrameRef("screen")
 		local x, y = screen:GetMousePosition()
 		if x and y then
 			local dx = x * screen:GetWidth() - (self:GetAttribute("px") or 0)
 			local dy = y * screen:GetHeight() - (self:GetAttribute("py") or 0)
 			local dead = self:GetAttribute("dead") or 14
-			if dx * dx + dy * dy >= dead * dead then
+			if self:GetAttribute("bar") then
+				-- A bar: moved up past the middle, the icon nearest the mouse sideways.
+				if dy >= dead then
+					local bestD
+					for i = 1, n do
+						local d = math.abs((self:GetAttribute("x" .. i) or 0) - dx)
+						if not bestD or d < bestD then k, bestD = i, d end
+					end
+				end
+			elseif dx * dx + dy * dy >= dead * dead then
 				local a = math.deg(math.atan2(dy, dx))
 				local bestD
 				for i = 1, n do
@@ -444,8 +500,150 @@ local WHEEL = [=[
 	b:SetAttribute("wheel", 1)
 ]=]
 
+-- A stepping key while a Halo is held open (the step button's own snippet; "LEFT" / "RIGHT" /
+-- "CANCEL" are the virtual mouse buttons its bindings click with). Left and right step the
+-- owning button's pick the way the wheel does (from nothing picked, Right goes to the first and
+-- Left to the last); Cancel closes the Halo with nothing used: the owner is let go, so the key
+-- coming up finds nothing to do.
+local STEP = [=[
+	local ring = self:GetFrameRef("ring")
+	local b = ring:GetFrameRef("b" .. (ring:GetAttribute("owner") or 0))
+	if not b or not ring:IsShown() then
+		self:ClearBindings()
+		return
+	end
+	if button == "CANCEL" then
+		ring:SetAttribute("owner", 0)
+		ring:Hide()
+		self:ClearBindings()
+		return
+	end
+	local n = b:GetAttribute("n") or 0
+	if n == 0 then return end
+	local k = (b:GetAttribute("pick") or 0) + (button == "LEFT" and -1 or 1)
+	if k < 1 then k = n elseif k > n then k = 1 end
+	b:SetAttribute("pick", k)
+	b:SetAttribute("wheel", 1)
+]=]
+
 local FIELDS = { "spell", "item", "macro" }   -- the secure button's action fields
 local reskin = false                           -- a style change: every tile skinned again
+
+-- Every modifier set a key can carry, in the order the game writes them ("ALT-CTRL-SHIFT-").
+local CHORDS = { "", "SHIFT-", "CTRL-", "CTRL-SHIFT-", "ALT-", "ALT-SHIFT-", "ALT-CTRL-", "ALT-CTRL-SHIFT-" }
+
+-- A key without its modifiers ("SHIFT-PAD1" -> "PAD1").
+local MOD_PREFIX = { "ALT-", "CTRL-", "SHIFT-", "META-" }
+local function Bare(key)
+	if type(key) ~= "string" then return nil end
+	local again = true
+	while again do
+		again = false
+		for _, m in ipairs(MOD_PREFIX) do
+			if #key > #m and key:sub(1, #m) == m then
+				key = key:sub(#m + 1)
+				again = true
+			end
+		end
+	end
+	return key
+end
+
+-- Every key that opens a Halo: Halo's own and the game's Key Bindings entries, without modifiers.
+local function HaloKeys()
+	local out = {}
+	local own = G("key")
+	if type(own) == "string" and own ~= "" then out[Bare(own)] = true end
+	if GetBindingKey then
+		for r = 1, #RINGS do
+			for _, k in ipairs({ GetBindingKey("CLICK " .. ButtonName(r) .. ":LeftButton") }) do
+				if type(k) == "string" and k ~= "" then out[Bare(k)] = true end
+			end
+		end
+	end
+	return out
+end
+
+-- Whether Halo is played with a controller: the game's controller mode is on (as Daylight UI's
+-- Pad.On() reads it), or a Halo's key is a controller button.
+local function PadUI()
+	local IU = _G.InputUtil
+	if type(IU) == "table" and type(IU.IsGamepadUIEnabled) == "function" then
+		local ok, on = pcall(IU.IsGamepadUIEnabled)
+		if ok and on == true then return true end
+	end
+	local Pad = ns.DUI and ns.DUI.Pad
+	if type(Pad) == "table" and type(Pad.On) == "function" then
+		local ok, on = pcall(Pad.On)
+		if ok and on == true then return true end
+	end
+	return false
+end
+
+local function Controller(keys)
+	if PadUI() then return true end
+	for k in pairs(keys or HaloKeys()) do
+		if k:sub(1, 3) == "PAD" then return true end
+	end
+	return false
+end
+
+-- The keys that step an open Halo: { game's key global, its usual name, what it does }.
+local STEPS = {
+	{ "GAMEPAD_DPAD_LEFT", "PADDLEFT", "LEFT" },
+	{ "GAMEPAD_DPAD_RIGHT", "PADDRIGHT", "RIGHT" },
+	{ "GAMEPAD_SHOULDER_LEFT", "PADLSHOULDER", "LEFT" },
+	{ "GAMEPAD_SHOULDER_RIGHT", "PADRSHOULDER", "RIGHT" },
+	{ "GAMEPAD_FACE_RIGHT", "PAD2", "CANCEL" },
+}
+local EMULATE = { "GamePadEmulateShift", "GamePadEmulateCtrl", "GamePadEmulateAlt" }
+
+local function StepKey(def)
+	local k = _G[def[1]]
+	return type(k) == "string" and k ~= "" and k or def[2]
+end
+
+-- A controller button's picture for text (the game's own glyph), or its name.
+local function Glyph(key)
+	local g = _G["KEY_ABBR_" .. key]
+	if type(g) == "string" and g ~= "" then return g end
+	if GetBindingText then
+		local ok, text = pcall(GetBindingText, key)
+		if ok and type(text) == "string" and text ~= "" then return text end
+	end
+	return key
+end
+
+-- The stepping keys Halo may take while open: none that opens a Halo or stands in for Shift,
+-- Ctrl or Alt. Returns { { key, what } ... } and a signature of what decides the layout.
+local function StepList(keys)
+	local skip = {}
+	for k in pairs(keys) do skip[k] = true end
+	if _G.GetCVar then
+		for _, cvar in ipairs(EMULATE) do
+			local ok, v = pcall(_G.GetCVar, cvar)
+			if ok and type(v) == "string" and v ~= "" and v ~= "NONE" then skip[v] = true end
+		end
+	end
+	local list, sig = {}, {}
+	for _, def in ipairs(STEPS) do
+		local k = StepKey(def)
+		if not skip[k] then
+			list[#list + 1] = { k, def[3] }
+			sig[#sig + 1] = k
+		end
+	end
+	return list, table.concat(sig, ",")
+end
+
+-- What decides the layout and the stepping keys, as one string (checked when bindings or
+-- settings change, so Halo is only laid out again when it matters).
+local function PadSig()
+	local keys = HaloKeys()
+	local _, sig = StepList(keys)
+	return tostring(Controller(keys)) .. ";" .. sig
+end
+local lastSig
 
 -- Writes every Halo's layout and every slot's action onto its own button. Out of a fight only.
 local function Apply()
@@ -458,17 +656,60 @@ local function Apply()
 	local count = math.min(MAX, G("count") or 8)
 	local size, icon, radius = RingSize(), G("iconSize") or 36, G("radius") or 90
 	cIcon, cNames, cDim = icon, G("names") and true or false, G("dim") and true or false
-	ring:SetSize(size, size)
-	if G("opens") ~= "cursor" then
+	-- Ring or bar, and whether a controller drives it (then it opens in the middle, the mouse
+	-- doesn't pick, and the D-pad does).
+	local keys = HaloKeys()
+	local pad = Controller(keys)
+	local steps, sig = StepList(keys)
+	lastSig = tostring(pad) .. ";" .. sig
+	cPad = pad
+	cBar = G("layout") == "bar" or (pad and G("padBar") ~= false)
+	local atCursor = G("opens") == "cursor" and not pad
+	local dead = math.max(14, icon * 0.6)
+	local stepPx = icon + math.max(6, math.floor(icon * 0.2))
+	local rise = math.floor(dead + icon / 2 + 4)   -- a bar's icons sit this far over the middle
+	if cBar then
+		ring:SetSize(count * stepPx + icon * 2, (rise + icon) * 2 + 40)
+	else
+		ring:SetSize(size, size)
+	end
+	if not atCursor then
 		ring:ClearAllPoints()
 		ring:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
 	end
-	-- The label sits just over the top of the ring, its own width (never cut short).
+	-- The label sits just over the top of the ring (or bar), its own width (never cut short).
 	title:ClearAllPoints()
-	title:SetPoint("BOTTOM", ring, "CENTER", 0, radius + icon / 2 + 8)
+	title:SetPoint("BOTTOM", ring, "CENTER", 0, (cBar and rise or radius) + icon / 2 + 8)
+	-- On a controller, what to press, in the middle while nothing is picked.
+	cHint = nil
+	if pad then
+		local left, right, cancel
+		for _, s in ipairs(steps) do
+			if s[2] == "LEFT" then left = left or s[1]
+			elseif s[2] == "RIGHT" then right = right or s[1]
+			else cancel = cancel or s[1] end
+		end
+		if left and right and cancel then
+			cHint = L["%s or %s to choose, %s to cancel"]:format(Glyph(left), Glyph(right), Glyph(cancel))
+		elseif left and right then
+			cHint = L["%s or %s to choose"]:format(Glyph(left), Glyph(right))
+		end
+	end
+	-- The stepping keys, every modifier set of each, for the snippet to bind while it's open.
+	if step then
+		local nb = 0
+		for _, s in ipairs(steps) do
+			for _, chord in ipairs(CHORDS) do
+				nb = nb + 1
+				step:SetAttribute("bk" .. nb, chord .. s[1])
+				step:SetAttribute("bv" .. nb, s[2])
+			end
+		end
+		step:SetAttribute("nb", nb)
+	end
 	for r = 1, #RINGS do
 		local b = buttons[r]
-		local slots, shown, angles, list = Slots(r), shownBy[r], anglesBy[r], tiles[r]
+		local slots, shown, angles, xs, list = Slots(r), shownBy[r], anglesBy[r], xBy[r], tiles[r]
 		local on = RingOn(r)
 		wipe(shown)
 		for i = 1, count do
@@ -476,6 +717,8 @@ local function Apply()
 		end
 		local n = #shown
 		Angles(angles, n)
+		wipe(xs)
+		for k = 1, n do xs[k] = (k - (n + 1) / 2) * stepPx end
 		for k = 1, math.max(n, #list) do
 			local t = k <= n and Tile(r, k) or list[k]
 			if k <= n then
@@ -483,8 +726,12 @@ local function Apply()
 				t.base = icon
 				t:SetSize(icon, icon)
 				t:ClearAllPoints()
-				local rad = math.rad(angles[k])
-				t:SetPoint("CENTER", ring, "CENTER", math.cos(rad) * radius, math.sin(rad) * radius)
+				if cBar then
+					t:SetPoint("CENTER", ring, "CENTER", xs[k], rise)
+				else
+					local rad = math.rad(angles[k])
+					t:SetPoint("CENTER", ring, "CENTER", math.cos(rad) * radius, math.sin(rad) * radius)
+				end
 				t.art:SetTexture(Texture(a))
 				t.action = a
 				if reskin or t.skinnedAt ~= icon then
@@ -500,11 +747,14 @@ local function Apply()
 		-- The secure side, on this Halo's button: how many, their directions, which slot each is,
 		-- and each slot's action.
 		b:SetAttribute("size", size)
-		b:SetAttribute("dead", math.max(14, icon * 0.6))
-		b:SetAttribute("atcursor", G("opens") == "cursor")
+		b:SetAttribute("dead", dead)
+		b:SetAttribute("atcursor", atCursor)
+		b:SetAttribute("bar", cBar)
+		b:SetAttribute("nomouse", pad)
 		b:SetAttribute("n", n)
 		for k = 1, MAX do
 			b:SetAttribute("a" .. k, angles[k])
+			b:SetAttribute("x" .. k, xs[k])
 			b:SetAttribute("s" .. k, shown[k])
 		end
 		for i = 1, MAX do
@@ -529,9 +779,6 @@ local function Apply()
 	end
 	reskin = false
 end
-
--- Every modifier set a key can carry, in the order the game writes them ("ALT-CTRL-SHIFT-").
-local CHORDS = { "", "SHIFT-", "CTRL-", "CTRL-SHIFT-", "ALT-", "ALT-SHIFT-", "ALT-CTRL-", "ALT-CTRL-SHIFT-" }
 
 -- Halo's own key, as override bindings (the player's saved bindings stay as they are). Out of a
 -- fight only; asked in one, it waits for the fight to end.
@@ -634,7 +881,7 @@ local function OnUpdate()
 	if b:GetAttribute("wheel") == 1 then
 		k = b:GetAttribute("pick")
 		if k == 0 then k = nil end
-	else
+	elseif not cPad then
 		local x, y = GetCursorPosition()
 		local s = screen:GetEffectiveScale()
 		k = Pointed(x / s - (b:GetAttribute("px") or 0), y / s - (b:GetAttribute("py") or 0))
@@ -653,6 +900,8 @@ local function OnUpdate()
 		lastLit = k
 		if cNames and k and list[k] and list[k].action then
 			center:SetText(Label(list[k].action))
+		elseif not k and cHint then
+			center:SetText(cHint)
 		else
 			center:SetText("")
 		end
@@ -749,6 +998,17 @@ local function Build()
 	-- (The handler first, then wrapped: setting it after would replace the wrapper.)
 	SecureHandlerWrapScript(ring, "OnMouseWheel", buttons[1], WHEEL)
 
+	-- The step button: what the D-pad, LB / RB and B click while a Halo is held open (the
+	-- snippet above binds them to it, and owns those bindings through it). A key's press is
+	-- enough; hidden, as a click binding still reaches it.
+	step = CreateFrame("Button", "DaylightEssentialsHaloStep", UIParent, "SecureHandlerClickTemplate")
+	step:RegisterForClicks("AnyDown")
+	step:Hide()
+	step:SetAttribute("nb", 0)
+	step:SetAttribute("_onclick", STEP)
+	SecureHandlerSetFrameRef(step, "ring", ring)
+	for r = 1, #RINGS do SecureHandlerSetFrameRef(buttons[r], "step", step) end
+
 	binder = CreateFrame("Frame")
 end
 
@@ -830,7 +1090,7 @@ local function BuildBox()
 	box:EnableMouse(true)
 	local head = API.Text(box, "head", "LEFT")
 	head:SetPoint("TOPLEFT", box, "TOPLEFT", 12, -12)
-	head:SetText(L["Halo's key"])
+	head:SetText(L["Halo's Key"])
 	ns.Ink(head, "TITLE")
 	box.now = API.Text(box, "body", "LEFT")
 	box.now:SetPoint("TOPLEFT", box, "TOPLEFT", 12, -40)
@@ -864,6 +1124,15 @@ local function BuildBox()
 			Take(key)
 		end
 	end)
+	-- A controller button is taken as the key; the one that opens the game menu (Start, by
+	-- default) closes the box, as Escape does.
+	box:SetScript("OnGamePadButtonDown", function(_, key)
+		if GetBindingAction and GetBindingAction(key) == "TOGGLEGAMEMENU" then
+			P.KeyBox(false)
+		else
+			Take(key)
+		end
+	end)
 	box:SetScript("OnMouseDown", function(_, which)
 		if MOUSE[which] then Take(MOUSE[which]) end
 	end)
@@ -882,10 +1151,15 @@ function P.KeyBox(show)
 		-- Takes every key while it's open (Escape included), so none of them does anything else.
 		box:EnableKeyboard(true)
 		box:SetPropagateKeyboardInput(false)
+		-- A controller's buttons too (the game's own key picker takes them the same way).
+		if box.EnableGamePadButton then box:EnableGamePadButton(true) end
 		box:Show()
 	elseif box and box:IsShown() then
 		box:Hide()
-		if not InCombatLockdown() then box:EnableKeyboard(false) end
+		if not InCombatLockdown() then
+			box:EnableKeyboard(false)
+			if box.EnableGamePadButton then box:EnableGamePadButton(false) end
+		end
 	end
 end
 
@@ -897,6 +1171,285 @@ local editor, editTiles = nil, {}
 local editRing = 1                  -- the ring the editor shows (and "Empty every slot" empties)
 local TAB_W, TAB_H, TAB_GAP = 58, 22, 6
 local TOP = 112                     -- the title, the tabs with their labels and the label box
+
+-- ---------------------------------------------------------------------------------------------
+-- Choosing a slot's action from a list: the way in without dragging (a controller can't drag
+-- from the spellbook). Your spells, the items in your bags and on you that can be used, and your
+-- macros, a page at a time.
+-- ---------------------------------------------------------------------------------------------
+
+local Pad = ns.DUI and ns.DUI.Pad   -- Daylight UI's controller support (nil on an older one)
+local picker
+local pickSlot, pickKind, pickPage = 1, 1, 1
+local PICK_ROWS, PICK_ROW_H, PICK_ICON = 8, 26, 20
+local KINDS = { L["Spells"], L["Items"], L["Macros"] }
+
+local function SpellList()
+	local out, seen = {}, {}
+	local SB = C_SpellBook
+	local bank = Enum and Enum.SpellBookSpellBank and Enum.SpellBookSpellBank.Player
+	local SPELL = Enum and Enum.SpellBookItemType and Enum.SpellBookItemType.Spell
+	if type(SB) ~= "table" or not (SB.GetNumSpellBookSkillLines and SB.GetSpellBookSkillLineInfo
+		and SB.GetSpellBookItemType) or not bank then
+		return out
+	end
+	local okN, lines = pcall(SB.GetNumSpellBookSkillLines)
+	for line = 1, okN and type(lines) == "number" and lines or 0 do
+		local ok, info = pcall(SB.GetSpellBookSkillLineInfo, line)
+		if ok and type(info) == "table" and not info.shouldHide then
+			for i = 1, info.numSpellBookItems or 0 do
+				local index = (info.itemIndexOffset or 0) + i
+				local okT, kind, id = pcall(SB.GetSpellBookItemType, index, bank)
+				local passive = false
+				if SB.IsSpellBookItemPassive then
+					local okP, p = pcall(SB.IsSpellBookItemPassive, index, bank)
+					passive = okP and p == true
+				end
+				if okT and (kind == SPELL or kind == "SPELL") and type(id) == "number" and not passive then
+					local name = SpellName(id)
+					if name and not seen[name] then
+						seen[name] = true
+						out[#out + 1] = { action = { kind = "spell", id = id, name = name }, label = name }
+					end
+				end
+			end
+		end
+	end
+	return out
+end
+
+-- An item with a use: in the bags, or worn (trinkets and the like).
+local function ItemList()
+	local out, seen = {}, {}
+	local function Add(id, link)
+		if type(id) ~= "number" or seen[id] then return end
+		local usable = false
+		if C_Item and C_Item.GetItemSpell then
+			local ok, spell = pcall(C_Item.GetItemSpell, id)
+			usable = ok and spell ~= nil
+		elseif _G.GetItemSpell then
+			local ok, spell = pcall(_G.GetItemSpell, id)
+			usable = ok and spell ~= nil
+		end
+		if not usable then return end
+		seen[id] = true
+		local name = ItemName(id) or (type(link) == "string" and link:match("%[(.-)%]")) or L["Item"]
+		out[#out + 1] = { action = { kind = "item", id = id }, label = name }
+	end
+	if _G.GetInventoryItemID then
+		for slot = 1, 19 do
+			local ok, id = pcall(_G.GetInventoryItemID, "player", slot)
+			if ok and id then
+				local link
+				if _G.GetInventoryItemLink then
+					local okL, l = pcall(_G.GetInventoryItemLink, "player", slot)
+					if okL then link = l end
+				end
+				Add(id, link)
+			end
+		end
+	end
+	if C_Container and C_Container.GetContainerNumSlots and C_Container.GetContainerItemInfo then
+		for bag = 0, _G.NUM_BAG_SLOTS or 4 do
+			local okN, n = pcall(C_Container.GetContainerNumSlots, bag)
+			for slot = 1, okN and type(n) == "number" and n or 0 do
+				local ok, info = pcall(C_Container.GetContainerItemInfo, bag, slot)
+				if ok and type(info) == "table" then Add(info.itemID, info.hyperlink) end
+			end
+		end
+	end
+	return out
+end
+
+local function MacroList()
+	local out = {}
+	if not (_G.GetNumMacros and GetMacroInfo) then return out end
+	local okN, account, mine = pcall(_G.GetNumMacros)
+	if not okN then return out end
+	local first = (type(_G.MAX_ACCOUNT_MACROS) == "number" and _G.MAX_ACCOUNT_MACROS or 120) + 1
+	local function Add(i)
+		local ok, name = pcall(GetMacroInfo, i)
+		if ok and type(name) == "string" and name ~= "" then
+			out[#out + 1] = { action = { kind = "macro", name = name }, label = name }
+		end
+	end
+	for i = 1, type(account) == "number" and account or 0 do Add(i) end
+	for i = first, first + (type(mine) == "number" and mine or 0) - 1 do Add(i) end
+	return out
+end
+
+local LISTS = { SpellList, ItemList, MacroList }
+
+local function PickLayout()
+	local list = picker.list or {}
+	local pages = math.max(1, math.ceil(#list / PICK_ROWS))
+	pickPage = math.max(1, math.min(pickPage, pages))
+	picker.head:SetText(L["Choose for Slot %d"]:format(pickSlot))
+	-- The tabs, as wide as their words, the one shown lit in the accent.
+	local ar, ag, ab = Accent()
+	local x = 10
+	for i, tab in ipairs(picker.tabs) do
+		local w = math.max(TAB_W, math.ceil(ns.TextWidth(tab.word) or 0) + 20)
+		tab:SetSize(w, TAB_H)
+		tab:ClearAllPoints()
+		tab:SetPoint("TOPLEFT", picker, "TOPLEFT", x, -38)
+		tab.line:SetColorTexture(ar, ag, ab, i == pickKind and 1 or 0.45)
+		tab.line:SetHeight(i == pickKind and 3 or 1)
+		ns.Ink(tab.word, i == pickKind and "VALUE" or "LABEL")
+		x = x + w + TAB_GAP
+	end
+	local width = math.max(280, x - TAB_GAP + 10, math.ceil(ns.TextWidth(picker.head) or 0) + 60)
+	-- The rows: as wide as the longest name on the page (nothing cut short).
+	for i, row in ipairs(picker.rows) do
+		local entry = list[(pickPage - 1) * PICK_ROWS + i]
+		row.entry = entry
+		if entry then
+			row.icon:SetTexture(Texture(entry.action))
+			row.text:SetText(entry.label)
+			width = math.max(width, math.ceil(ns.TextWidth(row.text) or 0) + PICK_ICON + 36)
+			row:Show()
+		else
+			row:Hide()
+		end
+	end
+	picker.empty:SetShown(#list == 0)
+	picker.page:SetText(L["Page %d of %d"]:format(pickPage, pages))
+	picker.prev:SetShown(pickPage > 1)
+	picker.next:SetShown(pickPage < pages)
+	width = math.max(width, (picker.prev:GetWidth() or 0) + (picker.next:GetWidth() or 0)
+		+ math.ceil(ns.TextWidth(picker.page) or 0) + 48)
+	picker:SetSize(width, 38 + TAB_H + 12 + PICK_ROWS * PICK_ROW_H + 12 + 24 + 12)
+	ns.SkinWindow(picker, nil, KEY)
+	if Pad then
+		pcall(Pad.Rescan, picker)
+		pcall(Pad.Settle, picker.rows[1]:IsShown() and picker.rows[1] or picker.tabs[pickKind])
+	end
+end
+
+local function PickKind(k)
+	pickKind, pickPage = k, 1
+	picker.list = LISTS[k]()
+	PickLayout()
+end
+
+local function BuildPicker()
+	picker = CreateFrame("Frame", "DaylightEssentialsHaloPicker", UIParent)
+	picker:SetFrameStrata("FULLSCREEN_DIALOG")
+	picker:SetToplevel(true)
+	picker:SetClampedToScreen(true)
+	picker:EnableMouse(true)
+	picker.head = API.Text(picker, "head", "LEFT")
+	picker.head:SetPoint("TOPLEFT", picker, "TOPLEFT", 10, -10)
+	ns.Ink(picker.head, "TITLE")
+	local close = API.Close(picker, function() P.Pick(false) end)
+	if close then close:SetPoint("TOPRIGHT", picker, "TOPRIGHT", -6, -6) end
+	picker.tabs = {}
+	for i, word in ipairs(KINDS) do
+		local tab = CreateFrame("Button", nil, picker)
+		tab.word = API.Text(tab, "body", "CENTER")
+		tab.word:SetPoint("CENTER", tab, "CENTER", 0, 1)
+		tab.word:SetText(word)
+		tab.line = tab:CreateTexture(nil, "ARTWORK")
+		tab.line:SetPoint("BOTTOMLEFT", tab, "BOTTOMLEFT", 4, 0)
+		tab.line:SetPoint("BOTTOMRIGHT", tab, "BOTTOMRIGHT", -4, 0)
+		tab:SetScript("OnClick", function() PickKind(i) end)
+		picker.tabs[i] = tab
+	end
+	picker.rows = {}
+	local top = 38 + TAB_H + 12
+	for i = 1, PICK_ROWS do
+		local row = CreateFrame("Button", nil, picker)
+		row:SetHeight(PICK_ROW_H)
+		row:SetPoint("TOPLEFT", picker, "TOPLEFT", 10, -(top + (i - 1) * PICK_ROW_H))
+		row:SetPoint("TOPRIGHT", picker, "TOPRIGHT", -10, -(top + (i - 1) * PICK_ROW_H))
+		row.icon = row:CreateTexture(nil, "ARTWORK")
+		row.icon:SetSize(PICK_ICON, PICK_ICON)
+		row.icon:SetPoint("LEFT", row, "LEFT", 4, 0)
+		row.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+		row.text = API.Text(row, "body", "LEFT")
+		row.text:SetWordWrap(false)
+		row.text:SetPoint("LEFT", row.icon, "RIGHT", 8, 0)
+		ns.Ink(row.text, "VALUE")
+		row.lit = row:CreateTexture(nil, "BACKGROUND")
+		row.lit:SetAllPoints(row)
+		row.lit:SetColorTexture(1, 1, 1, 0)
+		row:SetScript("OnEnter", function(self)
+			local r, g, b = Accent()
+			self.lit:SetColorTexture(r, g, b, 0.18)
+			local a = self.entry and self.entry.action
+			if not a then return end
+			GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+			if a.kind == "spell" and GameTooltip.SetSpellByID then
+				GameTooltip:SetSpellByID(a.id)
+			elseif a.kind == "item" and GameTooltip.SetItemByID then
+				GameTooltip:SetItemByID(a.id)
+			else
+				GameTooltip:SetText(self.entry.label)
+			end
+			GameTooltip:Show()
+		end)
+		row:SetScript("OnLeave", function(self)
+			self.lit:SetColorTexture(1, 1, 1, 0)
+			GameTooltip:Hide()
+		end)
+		row:SetScript("OnClick", function(self)
+			if not self.entry or InCombatLockdown() then return end
+			Slots(editRing)[pickSlot] = self.entry.action
+			P.Pick(false)
+			P.Changed()
+			if Pad then pcall(Pad.Settle, editTiles[pickSlot]) end
+		end)
+		picker.rows[i] = row
+	end
+	picker.empty = API.Text(picker, "body", "CENTER")
+	picker.empty:SetPoint("TOP", picker, "TOP", 0, -(top + PICK_ROW_H))
+	picker.empty:SetText(L["Nothing to choose here yet."])
+	ns.Ink(picker.empty, "OFF")
+	picker.prev = API.Button(picker, L["Previous Page"], 24)
+	picker.next = API.Button(picker, L["Next Page"], 24)
+	for _, b in ipairs({ picker.prev, picker.next }) do
+		local fs = b.text or (b.GetFontString and b:GetFontString())
+		b:SetWidth(math.max(90, math.ceil(ns.TextWidth(fs) or 60) + 28))
+	end
+	picker.prev:SetPoint("BOTTOMLEFT", picker, "BOTTOMLEFT", 10, 12)
+	picker.next:SetPoint("BOTTOMRIGHT", picker, "BOTTOMRIGHT", -10, 12)
+	picker.prev:SetScript("OnClick", function()
+		pickPage = pickPage - 1
+		PickLayout()
+	end)
+	picker.next:SetScript("OnClick", function()
+		pickPage = pickPage + 1
+		PickLayout()
+	end)
+	picker.page = API.Text(picker, "small", "CENTER")
+	picker.page:SetPoint("BOTTOM", picker, "BOTTOM", 0, 18)
+	ns.Ink(picker.page, "LABEL")
+	picker:Hide()
+	-- On a controller: the D-pad moves through it, LB / RB step its tabs, B closes it.
+	if Pad and type(Pad.Follow) == "function" then
+		picker.padTabs = function() return picker.tabs, pickKind end
+		picker.padFirst = function()
+			return picker.rows[1]:IsShown() and picker.rows[1] or picker.tabs[pickKind]
+		end
+		pcall(Pad.Follow, picker, function() P.Pick(false) end)
+	end
+end
+
+-- Opens the list for one slot of the Halo the editor shows (out of a fight), or closes it.
+function P.Pick(show, slot)
+	if show then
+		if InCombatLockdown() or not editor then return end
+		if not picker then BuildPicker() end
+		pickSlot = slot or 1
+		picker:ClearAllPoints()
+		picker:SetPoint("TOPLEFT", editor, "TOPRIGHT", 8, 0)
+		PickKind(pickKind)
+		picker:Show()
+		picker:Raise()
+	elseif picker and picker:IsShown() then
+		picker:Hide()
+	end
+end
 
 -- The tabs: each ring's name with its color under it, the one shown lit, the ones that are off
 -- dimmed; each ring's label under its tab. As wide as their words: nothing is cut short.
@@ -927,7 +1480,13 @@ local function EditLayout()
 	local size = (radius + icon) * 2 + 20
 	local tabsW = LayoutTabs()
 	if editRing == 1 or G(RINGS[editRing].key) == true then
-		editor.hint:SetText(L["Drag in spells, items or macros. Right-click to empty."])
+		if PadUI() then
+			-- A controller can't drag: A chooses from the list, Y empties.
+			editor.hint:SetText(L["%s on a slot chooses its action, %s empties it."]:format(
+				Glyph(StepKey({ "GAMEPAD_FACE_BOTTOM", "PAD1" })), Glyph(StepKey({ "GAMEPAD_FACE_TOP", "PAD4" }))))
+		else
+			editor.hint:SetText(L["Drag in spells, items or macros. Right-click to empty."])
+		end
 	else
 		editor.hint:SetText(L["%s is off: turn it on on Halo's page to use it."]:format(RINGS[editRing].name))
 	end
@@ -962,8 +1521,11 @@ local function EditLayout()
 					if which == "RightButton" then
 						Slots(editRing)[self.slot] = nil
 						P.Changed()
-					else
+					elseif FromCursor() then
 						Drop(self)
+					else
+						-- Nothing on the mouse (or a controller's A): choose from a list.
+						P.Pick(true, self.slot)
 					end
 				end)
 				t:SetScript("OnEnter", function(self)
@@ -972,6 +1534,7 @@ local function EditLayout()
 					GameTooltip:SetText(a and Label(a) or L["Slot %d"]:format(self.slot))
 					GameTooltip:AddLine(a and L["Right-click to empty it. Drop something else to swap it."]
 						or L["Drag a spell, item or macro here."], 1, 1, 1, true)
+					GameTooltip:AddLine(L["Click to choose from a list."], 1, 1, 1, true)
 					GameTooltip:Show()
 				end)
 				t:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -997,6 +1560,8 @@ local function EditLayout()
 			t:Hide()
 		end
 	end
+	-- (On a controller: the D-pad finds the slots shown now.)
+	if Pad then pcall(Pad.Rescan, editor) end
 end
 
 local function BuildEditor()
@@ -1031,6 +1596,7 @@ local function BuildEditor()
 		tab.lab:SetPoint("TOP", tab, "BOTTOM", 0, -3)
 		tab:SetScript("OnClick", function(self)
 			editRing = self.ring
+			P.Pick(false)
 			if editor.label:HasFocus() then editor.label:ClearFocus() end
 			editor.label:SetText(RingLabel(editRing) or "")
 			EditLayout()
@@ -1069,6 +1635,28 @@ local function BuildEditor()
 	local close = API.Close(editor, function() P.Edit(false) end)
 	if close then close:SetPoint("TOPRIGHT", editor, "TOPRIGHT", -6, -6) end
 	editor:Hide()
+	-- On a controller (Daylight UI's Pad): the D-pad moves through the tabs and slots, A on a
+	-- slot chooses from the list, Y empties it, LB / RB step the Halos, B closes.
+	if Pad and type(Pad.Follow) == "function" then
+		local function IsSlot(stop)
+			return type(stop) == "table" and stop.slot ~= nil and editTiles[stop.slot] == stop
+		end
+		editor.padTabs = function() return editor.tabs, editRing end
+		editor.padFirst = function() return editTiles[1] end
+		editor.padSelect = function(stop)
+			if IsSlot(stop) then return L["Choose"] end
+		end
+		editor.padKeys = {
+			{ key = "Y", follow = true, label = L["Empty Slot"],
+			  when = function(stop) return IsSlot(stop) and Slots(editRing)[stop.slot] ~= nil end,
+			  run = function(stop)
+				if InCombatLockdown() or not IsSlot(stop) then return end
+				Slots(editRing)[stop.slot] = nil
+				P.Changed()
+			  end },
+		}
+		pcall(Pad.Follow, editor, function() P.Edit(false) end)
+	end
 end
 
 function P.Edit(show)
@@ -1082,6 +1670,7 @@ function P.Edit(show)
 		editor:Show()
 		editor:Raise()
 	elseif editor then
+		P.Pick(false)
 		if editor.label:HasFocus() then editor.label:ClearFocus() end
 		editor:Hide()
 	end
@@ -1163,24 +1752,36 @@ end
 
 -- The key binding's words (Key Bindings, AddOns).
 _G.BINDING_HEADER_DAYLIGHTESSENTIALS = _G.BINDING_HEADER_DAYLIGHTESSENTIALS or "Daylight Essentials"
-_G["BINDING_NAME_CLICK DaylightEssentialsHaloButton:LeftButton"] = L["Halo: hold to open it"]
+_G["BINDING_NAME_CLICK DaylightEssentialsHaloButton:LeftButton"] = L["Halo: Hold to Open It"]
 _G["BINDING_NAME_CLICK DaylightEssentialsHaloButton2:LeftButton"] = L["Halo: Shift Halo"]
 _G["BINDING_NAME_CLICK DaylightEssentialsHaloButton3:LeftButton"] = L["Halo: Alt Halo"]
 _G["BINDING_NAME_CLICK DaylightEssentialsHaloButton4:LeftButton"] = L["Halo: Ctrl Halo"]
 
 local events
 local applyQueued = false
+local PAD_EVENTS = { INPUT_DEVICE_INTERFACE_TRANSITION = true, UPDATE_BINDINGS = true, CVAR_UPDATE = true,
+	GAME_PAD_CONNECTED = true, GAME_PAD_DISCONNECTED = true }
 function P.Login()
 	Build()
 	events = CreateFrame("Frame")
 	events:SetScript("OnEvent", function(_, event)
+		if PAD_EVENTS[event] then
+			-- Controller mode, the bindings or the controller's Shift / Ctrl / Alt buttons changed:
+			-- laid out again only if that changes the layout or the stepping keys (Halo's own
+			-- bindings fire this too, every time one opens).
+			if PadSig() == lastSig then return end
+			lastSig = nil
+		end
 		if event == "PLAYER_REGEN_DISABLED" then
 			if editor and editor:IsShown() then P.Edit(false) end
 			P.KeyBox(false)
 		elseif event == "PLAYER_REGEN_ENABLED" then
 			if pending then Apply() end
 			if keysPending then ApplyKeys() end
-			if box and not box:IsShown() then box:EnableKeyboard(false) end
+			if box and not box:IsShown() then
+				box:EnableKeyboard(false)
+				if box.EnableGamePadButton then box:EnableGamePadButton(false) end
+			end
 		elseif not applyQueued then
 			-- Spells learned (a new rank's name and icon), macros changed: once, after the burst.
 			applyQueued = true
@@ -1193,6 +1794,7 @@ function P.Login()
 	for _, e in ipairs({ "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED", "SPELLS_CHANGED", "UPDATE_MACROS" }) do
 		pcall(events.RegisterEvent, events, e)
 	end
+	for e in pairs(PAD_EVENTS) do pcall(events.RegisterEvent, events, e) end
 	ns.me.RegisterCommand("halo", Command, L["halo edit|key|clear|check: your Halos of actions"])
 	Apply()
 	ApplyKeys()

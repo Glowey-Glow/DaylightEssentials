@@ -1,6 +1,6 @@
 # Daylight Essentials
 
-A plugin for DaylightUI on WoW: Forever: small combat aids in the DaylightUI look, each one switched on or off on its own.
+A plugin for Daylight UI on WoW: Forever: small combat aids in the Daylight UI look, each one switched on or off on its own.
 
 - **Healer Mana:** your group's healers and the mana each has left, working in a fight too.
 - **Combat Timer:** how long you've been fighting, and how long the last fight took.
@@ -14,7 +14,7 @@ A plugin for DaylightUI on WoW: Forever: small combat aids in the DaylightUI loo
 
 ## Requirements
 
-- DaylightUI.
+- Daylight UI.
 
 ## Installing
 
@@ -32,7 +32,7 @@ Everything is on from the start and shows by itself when it's needed: the healer
 
 ## Settings
 
-Open the DaylightUI options and go to **Plugins → Essentials**. Each part has its own page with an **On** switch and its choices.
+Open the Daylight UI options and go to **Plugins → Essentials**. Each part has its own page with an **On** switch and its choices.
 
 ## Updates
 

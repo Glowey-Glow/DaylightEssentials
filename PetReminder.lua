@@ -38,7 +38,7 @@ P.page = { id = KEY, label = L["Pet Reminder"],
 			{ type = "toggle", key = KEY .. ".notResting", label = L["Mute in Towns and Inns"],
 			  desc = L["No warning while you're resting."] },
 			{ type = "toggle", key = KEY .. ".glow", label = L["Glow"],
-			  desc = L["DaylightUI's glow runs round the warning while it shows."] },
+			  desc = L["Daylight UI's glow runs round the warning while it shows."] },
 			{ type = "slider", key = KEY .. ".scale", label = L["Size"], min = 0.7, max = 2, step = 0.05, unit = "%" },
 		} },
 	} }
@@ -196,7 +196,7 @@ local function Build()
 	a:SetSmoothing("IN_OUT")
 	-- Placed now: after a /reload in a fight, the mover only places it once the fight ends.
 	frame:SetPoint(unpack(DEFAULT))
-	ns.me.RegisterMover(frame, KEY, L["Pet reminder"], DEFAULT)
+	ns.me.RegisterMover(frame, KEY, L["Pet Reminder"], DEFAULT)
 	-- Comes up with DaylightUI's fade-in on login and /reload (the inner box: the frame's own alpha is its pulse).
 	ns.FadeIn(KEY, function() return { body } end)
 	frame:SetScript("OnEvent", OnEvent)
@@ -211,7 +211,7 @@ function P.Login()
 	local _, token = UnitClass("player")
 	class = token
 	-- The test part for every class (test mode lists it, and its sample can be placed from anyone).
-	ns.me.RegisterTestPart(KEY, L["Pet reminder"])
+	ns.me.RegisterTestPart(KEY, L["Pet Reminder"])
 	if not CALLS[class] then
 		-- (Unlock mode: the sample too, so it can be moved from any character.)
 		if ns.Previewing(KEY) then

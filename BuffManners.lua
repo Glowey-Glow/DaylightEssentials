@@ -64,7 +64,7 @@ P.page = { id = KEY, label = L["Buff Manners"],
 	desc = L["One click to buff players who buffed you, and others near you."],
 	groups = {
 		{ label = L["Buff Manners"],
-		  desc = L["Click the prompt, or press its key (Key Bindings, AddOns, Daylight Essentials). Right-click it for Not now and Never offer. Hidden in a fight. Your own missing buffs are left to DaylightUI's buff reminder."],
+		  desc = L["Click the prompt, or press its key (Key Bindings, AddOns, Daylight Essentials). Right-click it for Not Now and Never Offer. Hidden in a fight. Your own missing buffs are left to Daylight UI's buff reminder."],
 		  items = {
 			{ type = "toggle", key = KEY .. ".enabled", label = L["On"] },
 			{ type = "toggle", key = KEY .. ".buffedYou", label = L["Show Who Buffed Me"],
@@ -73,8 +73,8 @@ P.page = { id = KEY, label = L["Buff Manners"],
 			{ type = "toggle", key = KEY .. ".group", label = L["My Group"],
 			  desc = L["Party or raid members missing your buff. Checked again at once on a ready check."] },
 			{ type = "dropdown", key = KEY .. ".nearby", label = L["Nearby Players"],
-			  values = { off = L["Off"], beside = L["Right beside me"], range = L["In spell range"] },
-			  desc = L["Passers-by missing your buff, seen through friendly nameplates and the mouse. Right beside me: about 10 yards. Friends and guildmates come first."] },
+			  values = { off = L["Off"], beside = L["Right Beside Me"], range = L["In Spell Range"] },
+			  desc = L["Passers-by missing your buff, seen through friendly nameplates and the mouse. Right Beside Me: about 10 yards. Friends and guildmates come first."] },
 			{ type = "toggle", key = KEY .. ".skipFlagged", label = L["Skip Flagged Players"],
 			  desc = L["While you aren't flagged yourself: buffing them would flag you."] },
 			{ type = "toggle", key = KEY .. ".quietResting", label = L["Mute in Towns and Inns"] },
@@ -91,13 +91,13 @@ P.page = { id = KEY, label = L["Buff Manners"],
 			  values = { tanks = L["Tanks"], off = L["Off"] },
 			  desc = L["Tanks: only players given the tank role in your group."] },
 			{ type = "dropdown", key = KEY .. ".blessing", label = ns.GameTagged("Blessing (Paladins)", L["Blessing"], "PALADIN"),
-			  values = { kings = L["Kings first"], class = L["Wisdom or Might"] },
-			  desc = L["Kings first: Kings when you know it, else Wisdom or Might. Wisdom or Might: Might for warriors and rogues, Wisdom for the rest. Never over a blessing of yours already on them."] },
+			  values = { kings = L["Kings First"], class = L["Wisdom or Might"] },
+			  desc = L["Kings First: Kings when you know it, else Wisdom or Might. Wisdom or Might: Might for warriors and rogues, Wisdom for the rest. Never over a blessing of yours already on them."] },
 		} },
 		{ label = L["Thanks"],
 		  desc = L["For players who buffed you. When they already have all you can give, or your class has no buffs to give, the prompt shows who buffed you and offers a thank-you on its own: a /thank even with these off. Sent with the buff you give back only when switched on. Never in a dungeon or raid, except a whisper."],
 		  items = {
-			{ type = "toggle", key = KEY .. ".emote", label = L["Thank them with /thank"],
+			{ type = "toggle", key = KEY .. ".emote", label = L["Thank Them with /thank"],
 			  desc = L["Also with the buff you give back. A thank-you on its own is always a /thank (plus your line)."] },
 			{ type = "dropdown", key = KEY .. ".say", label = L["How to Thank"],
 			  values = { off = L["Off"], say = L["Say"], whisper = L["Whisper"] } },
@@ -105,7 +105,7 @@ P.page = { id = KEY, label = L["Buff Manners"],
 			  values = { thanks = L["Thanks!"], name = L["Thank you, Name"], appreciated = L["Appreciated"], custom = L["Custom"] },
 			  desc = L["Thanks!: \"Thanks for the buff!\" Thank you, Name: \"Thank you, Glowey!\" Appreciated: \"Much appreciated!\" Custom: your own, typed with /dui manners line Your words ({name} for their name). Used when How to Thank is Say or Whisper."] },
 			{ type = "button", label = L["Clear Block List"],
-			  desc = L["Everyone you chose Never offer for is offered again."],
+			  desc = L["Everyone you chose Never Offer for is offered again."],
 			  func = function() P.ClearNever() end },
 		} },
 	} }
@@ -295,7 +295,7 @@ local function Pick(unit, buffs)
 end
 
 -- Whether a unit is a player we may offer anything to (not range: that's per spell).
-local tried, snoozed = {}, {}   -- GUID -> time: just tried (skip a while), "Not now" (skip longer)
+local tried, snoozed = {}, {}   -- GUID -> time: just tried (skip a while), "Not Now" (skip longer)
 local TRIED, SNOOZE = 20, 600
 
 local neverFolded = false
@@ -715,17 +715,20 @@ local function Never(name, on)
 	LookSoon()
 end
 
+local function NotNow(o)
+	if not o then return end
+	if o.guid then snoozed[o.guid] = GetTime() end
+	buffedBy[o.guid or ""] = nil
+	LookSoon()
+end
+
 local function Menu(owner)
 	local o = offer
 	if not o or not (MenuUtil and MenuUtil.CreateContextMenu) then return end
 	MenuUtil.CreateContextMenu(owner, function(_, root)
 		root:CreateTitle(o.name)
-		root:CreateButton(L["Not now"], function()
-			if o.guid then snoozed[o.guid] = GetTime() end
-			buffedBy[o.guid or ""] = nil
-			LookSoon()
-		end)
-		root:CreateButton(L["Never offer %s"]:format(o.short or o.name), function()
+		root:CreateButton(L["Not Now"], function() NotNow(o) end)
+		root:CreateButton(L["Never Offer %s"]:format(o.short or o.name), function()
 			Never(o.name, true)
 			Say(L["%s won't be offered again (/dui manners allow %s to undo)."]:format(o.short or o.name, o.name))
 		end)
@@ -870,16 +873,16 @@ local function Build()
 	button:SetScript("OnEnter", function(self)
 		GameTooltip:SetOwner(self, "ANCHOR_TOP")
 		GameTooltip:SetText(L["Buff Manners"])
-		GameTooltip:AddLine(L["Click (or its key) to give the buff. Right-click: Not now or Never offer."], 1, 1, 1, true)
+		GameTooltip:AddLine(L["Click (or its key) to give the buff. Right-click: Not Now or Never Offer."], 1, 1, 1, true)
 		GameTooltip:Show()
 	end)
 	button:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
 	frame:SetPoint(unpack(DEFAULT))
-	ns.me.RegisterMover(frame, KEY, L["Buff prompt"], DEFAULT)
+	ns.me.RegisterMover(frame, KEY, L["Buff Prompt"], DEFAULT)
 	-- Comes up with DaylightUI's fade-in on login and /reload (the inner box: the frame's own alpha is left alone).
 	ns.FadeIn(KEY, function() return { body } end)
-	ns.me.RegisterTestPart(KEY, L["Buff prompt"])
+	ns.me.RegisterTestPart(KEY, L["Buff Prompt"])
 	-- When the prompt is moved (a profile, the mover), the secure part follows it.
 	hooksecurefunc(frame, "SetPoint", function() LookSoon() end)
 	ns.me.RegisterCommand("manners", Command, L["manners never|allow|list Name, manners line Words: Buff Manners"])
@@ -905,9 +908,18 @@ local function Listen(on)
 	Tick(on and not InCombatLockdown())
 end
 
--- The key binding's words (Key Bindings, AddOns).
+-- "Not Now" on a key too (Key Bindings, AddOns), so the offer can be turned down without a
+-- right-click: a controller's button. The prompt sits on the screen like the rest of the HUD, so a
+-- controller's cursor never goes to it (that would hold the D-pad and face buttons while it shows):
+-- both answers are keys instead. Not a secure button: it only puts the offer off.
+local notNowKey = CreateFrame("Button", "DaylightEssentialsBuffMannersNotNow", UIParent)
+notNowKey:Hide()
+notNowKey:SetScript("OnClick", function() NotNow(offer) end)
+
+-- The key bindings' words (Key Bindings, AddOns).
 _G.BINDING_HEADER_DAYLIGHTESSENTIALS = "Daylight Essentials"
-_G["BINDING_NAME_CLICK DaylightEssentialsBuffMannersButton:LeftButton"] = L["Buff Manners: give the offered buff"]
+_G["BINDING_NAME_CLICK DaylightEssentialsBuffMannersButton:LeftButton"] = L["Buff Manners: Give the Offered Buff"]
+_G["BINDING_NAME_CLICK DaylightEssentialsBuffMannersNotNow:LeftButton"] = L["Buff Manners: Not Now"]
 
 function P.Login()
 	local _, token = UnitClass("player")
