@@ -1,8 +1,8 @@
-# Daylight Essentials
+# Glowey's Essentials (DaylightUI Plugin)
 
 **Small combat and play aids for Daylight UI on WoW: Forever, in the Daylight UI look.** Each one has its own switch and settings page, so you only run what you want.
 
-Requires **Daylight UI**.
+A plugin for Daylight UI, by Glowey (not part of Daylight UI itself: report its bugs here, not to Daylight UI). Requires **Daylight UI**.
 
 ---
 
@@ -45,7 +45,7 @@ For hunters and warlocks: "No pet" or "Pet is passive" until it's sorted. Quiet 
 
 ### Buff Manners (new)
 - One prompt offering the buff you can give to whoever needs it most: **a player who just buffed you**, then your target, your group (checked again at a ready check), then players right beside you (friends and guildmates first).
-- **Click it or press its key** (Key Bindings > AddOns > Daylight Essentials) and the buff goes out; your own target comes back to you. Nothing is ever cast by itself, and it hides in a fight.
+- **Click it or press its key** (Key Bindings > AddOns > Glowey's Essentials) and the buff goes out; your own target comes back to you. Nothing is ever cast by itself, and it hides in a fight.
 - Mages give Arcane Intellect; priests Fortitude (Divine Spirit and Shadow Protection are choices); druids Mark of the Wild (and Thorns for tanks); paladins Kings first or Wisdom or Might by class, never over a blessing of their own; warlocks Unending Breath while swimming.
 - **Thanks:** a /thank and/or a line in say or a whisper ("Thanks for the buff!", "Thank you, Name!", "Much appreciated!" or your own with `/dui manners line`). For a class with no buffs to give, or a player who already has yours, the prompt still shows who buffed you and offers the thank-you on its own. Only buffs cast on you count, not auras that are there while someone is near (paladin auras, Trueshot Aura).
 - Skips PvP-flagged players while you aren't flagged, and can be quiet in towns, dungeons and raids. Right-click the prompt for **Not Now** or **Never Offer**; `/dui manners never Name`, `/dui manners allow Name`, `/dui manners list`.
@@ -85,7 +85,7 @@ For hunters and warlocks: "No pet" or "Pet is passive" until it's sorted. Quiet 
 - **Update alert:** a chat line when a newer version is out (once a session; switch it off under Updates).
 
 ## Also new in 1.2.0
-- **In your language:** Daylight Essentials speaks German, French, Spanish, Russian, Korean and Simplified Chinese (machine drafts, corrections welcome; words the game already translates use the game's own wording), with fixes for non-English clients (Cursor Cooldowns, Kill on Sight, Buff Manners, Secondary Stats).
+- **In your language:** Glowey's Essentials speaks German, French, Spanish, Russian, Korean and Simplified Chinese (machine drafts, corrections welcome; words the game already translates use the game's own wording), with fixes for non-English clients (Cursor Cooldowns, Kill on Sight, Buff Manners, Secondary Stats).
 - **Window Opacity** follows Daylight UI's, or set your own on each part's page.
 
 ## Also new in 1.1.0
@@ -100,7 +100,7 @@ For hunters and warlocks: "No pet" or "Pet is passive" until it's sorted. Quiet 
 - Everything is on from the start and shows itself when it's needed.
 - **Move things:** `/dui unlock` shows samples to place; `/dui lock` when you're done. `/dui test` shows them too.
 - **Settings:** Daylight UI options > **Plugins > Essentials**, one page per part.
-- **Key bindings:** Key Bindings > AddOns > Daylight Essentials (Buff Manners and Halo).
+- **Key bindings:** Key Bindings > AddOns > Glowey's Essentials (Buff Manners and Halo).
 
 ---
 

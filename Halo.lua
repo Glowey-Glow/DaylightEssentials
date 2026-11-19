@@ -103,7 +103,7 @@ P.page = { id = KEY, label = L["Halo"],
 	desc = L["Hold a key for a Halo of your actions; point, let go, and it fires."],
 	groups = {
 		{ label = L["Halo"],
-		  desc = L["Set its key here (Set Key), or bind it under Key Bindings, AddOns, Daylight Essentials (Halo). Hold it, point toward an action or scroll to it, and let go to use it. Let go in the middle to close it without using anything."],
+		  desc = L["Set its key here (Set Key), or bind it under Key Bindings, AddOns, Glowey's Essentials (Halo). Hold it, point toward an action or scroll to it, and let go to use it. Let go in the middle to close it without using anything."],
 		  items = {
 			{ type = "toggle", key = KEY .. ".enabled", label = L["On"] },
 			{ type = "button", label = L["Set Key"],
@@ -1751,7 +1751,7 @@ end
 -- ---------------------------------------------------------------------------------------------
 
 -- The key binding's words (Key Bindings, AddOns).
-_G.BINDING_HEADER_DAYLIGHTESSENTIALS = _G.BINDING_HEADER_DAYLIGHTESSENTIALS or "Daylight Essentials"
+_G.BINDING_HEADER_DAYLIGHTESSENTIALS = _G.BINDING_HEADER_DAYLIGHTESSENTIALS or "Glowey's Essentials"
 _G["BINDING_NAME_CLICK DaylightEssentialsHaloButton:LeftButton"] = L["Halo: Hold to Open It"]
 _G["BINDING_NAME_CLICK DaylightEssentialsHaloButton2:LeftButton"] = L["Halo: Shift Halo"]
 _G["BINDING_NAME_CLICK DaylightEssentialsHaloButton3:LeftButton"] = L["Halo: Alt Halo"]

@@ -1,4 +1,4 @@
-# Daylight Essentials
+# Glowey's Essentials
 
 A plugin for Daylight UI on WoW: Forever: small combat aids in the Daylight UI look, each one switched on or off on its own.
 

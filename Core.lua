@@ -1,4 +1,4 @@
--- Daylight Essentials: a DaylightUI plugin of small combat and play aids, each one switched on and
+-- Glowey's Essentials: a DaylightUI plugin of small combat and play aids, each one switched on and
 -- set on its own page in DaylightUI's options (Plugins, Essentials):
 --   * Healer Mana: your group's healers and the mana each has left.
 --   * Combat Timer: how long you've been fighting, and how long the last fight took.

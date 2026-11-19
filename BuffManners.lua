@@ -64,7 +64,7 @@ P.page = { id = KEY, label = L["Buff Manners"],
 	desc = L["One click to buff players who buffed you, and others near you."],
 	groups = {
 		{ label = L["Buff Manners"],
-		  desc = L["Click the prompt, or press its key (Key Bindings, AddOns, Daylight Essentials). Right-click it for Not Now and Never Offer. Hidden in a fight. Your own missing buffs are left to Daylight UI's buff reminder."],
+		  desc = L["Click the prompt, or press its key (Key Bindings, AddOns, Glowey's Essentials). Right-click it for Not Now and Never Offer. Hidden in a fight. Your own missing buffs are left to Daylight UI's buff reminder."],
 		  items = {
 			{ type = "toggle", key = KEY .. ".enabled", label = L["On"] },
 			{ type = "toggle", key = KEY .. ".buffedYou", label = L["Show Who Buffed Me"],
@@ -917,7 +917,7 @@ notNowKey:Hide()
 notNowKey:SetScript("OnClick", function() NotNow(offer) end)
 
 -- The key bindings' words (Key Bindings, AddOns).
-_G.BINDING_HEADER_DAYLIGHTESSENTIALS = "Daylight Essentials"
+_G.BINDING_HEADER_DAYLIGHTESSENTIALS = "Glowey's Essentials"
 _G["BINDING_NAME_CLICK DaylightEssentialsBuffMannersButton:LeftButton"] = L["Buff Manners: Give the Offered Buff"]
 _G["BINDING_NAME_CLICK DaylightEssentialsBuffMannersNotNow:LeftButton"] = L["Buff Manners: Not Now"]
 

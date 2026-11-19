@@ -1,4 +1,4 @@
--- Daylight Essentials' welcome on first launch (the engine: Guide.lua). No tour: its parts show up
+-- Glowey's Essentials' welcome on first launch (the engine: Guide.lua). No tour: its parts show up
 -- in their own moments (a fight, a group, a missing pet, a key held), and each one's options page
 -- has a live preview. The welcome says what it adds and what it can stand in for, and its main
 -- button opens Essentials' options.
@@ -8,7 +8,7 @@ if not Guide then return end
 local L = ns.L
 
 Guide.Setup({
-	name = "Daylight Essentials",
+	name = "Glowey's Essentials",
 	db = function() return _G.DaylightEssentialsDB end,
 	-- (A player from before the welcome: anything saved besides the guide's own.)
 	existing = function()

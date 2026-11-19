@@ -1,4 +1,7 @@
-# Daylight Essentials
+# Glowey's Essentials (DaylightUI Plugin)
+
+## 1.8.1
+- Daylight Essentials is now Glowey's Essentials (DaylightUI Plugin), so it's clear it's a plugin and not part of Daylight UI. Inside Daylight UI the section is Glowey's Essentials, and its key bindings are under that name. Your settings and key bindings are kept.
 
 ## 1.8.0
 - Halo, new Bar layout (Layout: Ring or Bar on its page): your slots in a row. Hold the key and step through them with the D-pad or LB / RB, let go to use the lit one, B to cancel. It works in a fight too. With a controller the Bar is used by itself (Bar With a Controller, on to start).

@@ -1,4 +1,4 @@
--- Daylight Essentials' place in DaylightUI's options: one section under Plugins, a page per part,
+-- Glowey's Essentials' place in DaylightUI's options: one section under Plugins, a page per part,
 -- each part's settings under its own key. Loaded last, once every part has said what it has.
 
 local ADDON, ns = ...
@@ -70,6 +70,7 @@ if ns.UpdateGroup and pages[1] then table.insert(pages[1].groups, ns.UpdateGroup
 
 local ok, err = pcall(function()
 	ns.DUI:RegisterPlugin(ADDON, {
+		title = "Glowey's Essentials",
 		icon = "Interface\\AddOns\\" .. ADDON .. "\\Media\\icon-glyph.png",
 		needs = { 1, 1 },
 		short = L["Essentials"],
