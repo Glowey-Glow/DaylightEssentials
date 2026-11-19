@@ -1098,6 +1098,12 @@ local function Thicken(fs)
 		want = (flags:gsub("OUTLINE", "THICKOUTLINE"))
 	else
 		want = flags == "" and "OUTLINE" or (flags .. ",OUTLINE")
+		-- DaylightUI 1.9.5+ draws outlined text with the game's slug renderer: the same here.
+		local Style = ns.DUI and ns.DUI.Style
+		if type(Style) == "table" and type(Style.Slug) == "function" then
+			local ok, slug = pcall(Style.Slug, want)
+			if ok and type(slug) == "string" and slug ~= "" then want = slug end
+		end
 	end
 	local fam = type(size) == "number" and ThickFamily(fs, font, size, want)
 	if not fam then

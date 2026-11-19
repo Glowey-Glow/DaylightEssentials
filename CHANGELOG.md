@@ -1,5 +1,8 @@
 # Glowey's Essentials (DaylightUI Plugin)
 
+## 1.8.2
+- Nameplate Dmg Text and Secondary Stats draw their outlined text the way Daylight UI 1.9.5 does (the game's sharper outline), so they match its combat text. Older Daylight UI versions keep the plain outline.
+
 ## 1.8.1
 - Daylight Essentials is now Glowey's Essentials (DaylightUI Plugin), so it's clear it's a plugin and not part of Daylight UI. Inside Daylight UI the section is Glowey's Essentials, and its key bindings are under that name. Your settings and key bindings are kept.
 

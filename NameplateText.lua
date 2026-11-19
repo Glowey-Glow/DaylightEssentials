@@ -430,10 +430,22 @@ local function ReadLook()
 	if PlaceSelfSpots then PlaceSelfSpots() end
 end
 
+-- The outline flags: DaylightUI 1.9.5+ draws outlined text with the game's slug renderer (its
+-- Style.Slug: "OUTLINE, SLUG"), the one the game's own damage numbers use; older ones plain.
+local function Outline()
+	local Style = ns.DUI and ns.DUI.Style
+	if type(Style) == "table" and type(Style.Slug) == "function" then
+		local ok, flags = pcall(Style.Slug, "OUTLINE")
+		if ok and type(flags) == "string" and flags ~= "" then return flags end
+	end
+	return "OUTLINE"
+end
+
 local function Font(fs, size)
 	size = math.max(6, math.floor(size + 0.5))
 	if fs.daylightFile ~= look.file or fs.daylightSize ~= size then
-		if not fs:SetFont(look.file, size, "OUTLINE") then fs:SetFont(API.Font(), size, "OUTLINE") end
+		local flags = Outline()
+		if not fs:SetFont(look.file, size, flags) then fs:SetFont(API.Font(), size, flags) end
 		fs.daylightFile, fs.daylightSize = look.file, size
 	end
 end
