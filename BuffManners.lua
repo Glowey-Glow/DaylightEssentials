@@ -53,7 +53,7 @@ P.defaults = {
 
 local class   -- the player's class token, read at login
 
--- The lines of thanks ({name} = their name). "custom" is typed with /dui manners line.
+-- The lines of thanks ({name} = their name). "custom" is typed with /manners line.
 local LINES = {
 	thanks = L["Thanks for the buff!"],
 	name = L["Thank you, {name}!"],
@@ -103,7 +103,7 @@ P.page = { id = KEY, label = L["Buff Manners"],
 			  values = { off = L["Off"], say = L["Say"], whisper = L["Whisper"] } },
 			{ type = "dropdown", key = KEY .. ".line", label = L["What to Say"],
 			  values = { thanks = L["Thanks!"], name = L["Thank you, Name"], appreciated = L["Appreciated"], custom = L["Custom"] },
-			  desc = L["Thanks!: \"Thanks for the buff!\" Thank you, Name: \"Thank you, Glowey!\" Appreciated: \"Much appreciated!\" Custom: your own, typed with /dui manners line Your words ({name} for their name). Used when How to Thank is Say or Whisper."] },
+			  desc = L["Thanks!: \"Thanks for the buff!\" Thank you, Name: \"Thank you, Glowey!\" Appreciated: \"Much appreciated!\" Custom: your own, typed with /manners line Your words ({name} for their name). Used when How to Thank is Say or Whisper."] },
 			{ type = "button", label = L["Clear Block List"],
 			  desc = L["Everyone you chose Never Offer for is offered again."],
 			  func = function() P.ClearNever() end },
@@ -730,7 +730,7 @@ local function Menu(owner)
 		root:CreateButton(L["Not Now"], function() NotNow(o) end)
 		root:CreateButton(L["Never Offer %s"]:format(o.short or o.name), function()
 			Never(o.name, true)
-			Say(L["%s won't be offered again (/dui manners allow %s to undo)."]:format(o.short or o.name, o.name))
+			Say(L["%s won't be offered again (/manners allow %s to undo)."]:format(o.short or o.name, o.name))
 		end)
 	end)
 end
@@ -742,7 +742,7 @@ local function Command(rest)
 	if word == "never" or word == "allow" then
 		local name = arg ~= "" and arg or (UnitExists("target") and FullName("target"))
 		if not name then
-			Say(word == "never" and L["/dui manners never Name (or target a player)."] or L["/dui manners allow Name (or target a player)."])
+			Say(word == "never" and L["/manners never Name (or target a player)."] or L["/manners allow Name (or target a player)."])
 		else
 			Never(name, word == "never")
 			Say((word == "never" and L["%s won't be offered."] or L["%s can be offered again."]):format(name))
@@ -757,14 +757,14 @@ local function Command(rest)
 		local text = arg:gsub("[\r\n|]", ""):gsub("^/+", "")
 		text = ns.CutBytes(text, 200)
 		if text == "" then
-			Say(L["your line: %s. Type /dui manners line Your words ({name} for their name)."]:format(Line(L["Name"])))
+			Say(L["your line: %s. Type /manners line Your words ({name} for their name)."]:format(Line(L["Name"])))
 		else
 			NeverDB()
 			_G.DaylightEssentialsDB.mannersLine = text
 			Say(L["your line is now: %s (pick Custom under Thanks to use it)."]:format(text))
 		end
 	else
-		Say(L["/dui manners never Name, /dui manners allow Name, /dui manners list, /dui manners line Your words."])
+		Say(L["/manners never Name, /manners allow Name, /manners list, /manners line Your words."])
 	end
 end
 
@@ -886,6 +886,9 @@ local function Build()
 	-- When the prompt is moved (a profile, the mover), the secure part follows it.
 	hooksecurefunc(frame, "SetPoint", function() LookSoon() end)
 	ns.me.RegisterCommand("manners", Command, L["manners never|allow|list Name, manners line Words: Buff Manners"])
+	-- Its own command too, with no "/dui" in front (the /dui one stays for macros made before).
+	_G.SLASH_GLOWEYMANNERS1 = "/manners"
+	_G.SlashCmdList.GLOWEYMANNERS = function(msg) Command(msg or "") end
 
 	frame:SetScript("OnEvent", OnEvent)
 end

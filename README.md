@@ -26,7 +26,7 @@ Everything is on from the start and shows by itself when it's needed: the healer
 
 **Moving things:** type `/dui unlock`. Samples of the healer list, timer, alerts, pet warning, enemy list and stats box (when it's set free) show so you can place them; `/dui lock` when you're done. The cursor icons follow your pointer.
 
-**Enemies nearby:** the list fills from enemy nameplates, so keep them shown (the switch on its page, or V). Click a name to target; right-click it to add it to your Kill on Sight list, or type `/dui kos add Name`, `/dui kos remove Name`, `/dui kos list`.
+**Enemies nearby:** the list fills from enemy nameplates, so keep them shown (the switch on its page, or V). Click a name to target; right-click it to add it to your Kill on Sight list, or type `/kos add Name`, `/kos remove Name`, `/kos list`.
 
 **Who counts as a healer:** players the group gave the healer role (the group finder, or a leader's role check). When nobody has a role, it lists priests, druids, shamans and paladins, or nobody if you choose so.
 

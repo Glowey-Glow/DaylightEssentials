@@ -1,7 +1,7 @@
 -- Halo: hold a key and a ring of your own actions opens around the mouse (or in the middle of the
 -- screen). Point toward one, or scroll to it, and let go of the key: it fires. Let go with the
 -- mouse still in the middle and nothing happens. Spells, items and macros each take a slot: open
--- "Edit the slots" (its page, or /dui halo edit) and drag them in from your spellbook, bags or
+-- "Edit the slots" (its page, or /halo edit) and drag them in from your spellbook, bags or
 -- macros; right-click a slot to empty it. The slots are kept per character. The ring's shape,
 -- size, icon size, where it opens and how it shows what isn't ready are set on its page.
 -- (A ring menu like EllesmereUI's Quickdraw. Its way of working, a button per ring and the mouse
@@ -111,7 +111,7 @@ P.page = { id = KEY, label = L["Halo"],
 			  desc = L["Opens a small box: press the key you want (a mouse's middle or side button works too), Escape to cancel, or Clear to take it off. Shift, Alt and Ctrl are added by themselves for the Halos below."],
 			  func = function() P.KeyBox(true) end },
 			{ type = "button", label = L["Edit Halos"],
-			  desc = L["Drag spells, items or macros onto the slots; right-click one to empty it. Each Halo has its tab, and a label you can type there. Kept for this character. Also /dui halo edit. (A macro on a Shift, Alt or Ctrl Halo sees that key held: [mod:shift] and the like always match there.)"],
+			  desc = L["Drag spells, items or macros onto the slots; right-click one to empty it. Each Halo has its tab, and a label you can type there. Kept for this character. Also /halo edit. (A macro on a Shift, Alt or Ctrl Halo sees that key held: [mod:shift] and the like always match there.)"],
 			  func = function() P.Edit(true) end },
 			{ type = "slider", key = KEY .. ".count", label = L["Slots"], min = 2, max = MAX, step = 1,
 			  desc = L["How many slots each Halo has to fill. Empty ones aren't shown in the Halo."] },
@@ -169,7 +169,9 @@ P.page = { id = KEY, label = L["Halo"],
 	} }
 
 -- ---------------------------------------------------------------------------------------------
--- The slots: per character, in DaylightEssentialsDB.halo["Name-Realm"]:
+-- The slots: per character, in DaylightEssentialsDB.halo[key] (CharKey below: "Name-Realm", the
+-- "Name-" the game gives since it stopped naming realms, or the character's GUID;
+-- DaylightEssentialsDB.haloOwners says which, GUID -> key):
 --   [i] = action            the base ring (where every slot was kept before there were more rings,
 --                           so those stay as they are)
 --   shift / alt / ctrl      = { [i] = action }, the modifier rings
@@ -179,6 +181,82 @@ P.page = { id = KEY, label = L["Halo"],
 
 local function Say(msg) print("|cff73a0ffHalo|r: " .. msg) end
 
+-- ---------------------------------------------------------------------------------------------
+-- This character's record in a table kept by "Name-Realm". On 2026-11-20 the game stopped giving
+-- realm names on this client (GetRealmName() is ""; Daylight UI 2.1.2 DB.lua:226-238), so every
+-- character's key turned into "Name-" and what it had saved looked gone. Now:
+--   1. The key this character was given before (owners: GUID -> key) is its key: the GUID stays the
+--      same whatever the game says the realm is, so this can't happen again.
+--   2. Else the key the game gives now, "Name-Realm" or "Name-"; a key another character holds
+--      (two characters share a first name) is left to it, and this one is kept by its GUID.
+--   3. A record that is new or empty, with no realm name to go by, takes a copy of what the
+--      character had before: the "Name-Realm" record Daylight UI finds for it (DB.ShortKey gives
+--      the same key from its own saved characters, DB.lua:181-249), else the only "Name-<realm>"
+--      record there is, else the record it shared until now. Two to choose from: none is taken.
+-- Nothing is deleted and no record is written over: the old ones stay where they were.
+-- nil while the game doesn't know the character yet (the caller then waits, or uses nothing).
+-- ---------------------------------------------------------------------------------------------
+local function EmptyRecord(t)
+	for _, v in pairs(t) do
+		if type(v) ~= "table" or not EmptyRecord(v) then return false end
+	end
+	return true
+end
+
+local function CopyRecord(v)
+	if type(v) ~= "table" then return v end
+	local out = {}
+	for k, x in pairs(v) do out[k] = CopyRecord(x) end
+	return out
+end
+
+local function CharKey(records, owners)
+	local guid, name = UnitGUID("player"), UnitName("player")
+	if type(guid) ~= "string" or guid == "" or type(name) ~= "string" or name == "" or name == (UNKNOWNOBJECT or "Unknown") then
+		return nil
+	end
+	local kept = owners[guid]
+	if type(kept) == "string" and type(records[kept]) == "table" then return kept end
+	local realm = GetRealmName()
+	if type(realm) ~= "string" then realm = "" end
+	local bare = name .. "-"
+	local key = bare .. realm
+	local taken = {}
+	for g, k in pairs(owners) do
+		if g ~= guid then taken[k] = true end
+	end
+	local shared
+	if taken[key] then key, shared = guid, key end
+	if type(records[key]) ~= "table" then records[key] = {} end
+	owners[guid] = key
+	if realm ~= "" or not EmptyRecord(records[key]) then return key end
+	-- (What it had before.)
+	local old
+	local D = _G.DaylightUI
+	local short = type(D) == "table" and type(D.DB) == "table" and D.DB.ShortKey
+	if type(short) == "function" then
+		local ok, k = pcall(short)
+		if ok and type(k) == "string" and #k > #bare and k:sub(1, #bare) == bare and type(records[k]) == "table" then old = k end
+	end
+	if not old then
+		local n = 0
+		for k, v in pairs(records) do
+			if type(k) == "string" and type(v) == "table" and #k > #bare and k:sub(1, #bare) == bare and owners[k] == nil
+				and k ~= key then
+				n = n + 1
+				old = k
+			end
+		end
+		if n ~= 1 then old = nil end
+	end
+	old = old or shared
+	if old and old ~= key and type(records[old]) == "table" then
+		for k, v in pairs(records[old]) do records[key][k] = CopyRecord(v) end
+	end
+	return key
+end
+
+local recordKey       -- this character's key in DaylightEssentialsDB.halo, once known
 local function Record()
 	local db = _G.DaylightEssentialsDB
 	if type(db) ~= "table" then
@@ -186,7 +264,11 @@ local function Record()
 		_G.DaylightEssentialsDB = db
 	end
 	if type(db.halo) ~= "table" then db.halo = {} end
-	local me = (UnitName("player") or "?") .. "-" .. (GetRealmName() or "?")
+	if not recordKey then
+		if type(db.haloOwners) ~= "table" then db.haloOwners = {} end
+		recordKey = CharKey(db.halo, db.haloOwners)
+	end
+	local me = recordKey or ((UnitName("player") or "?") .. "-" .. (GetRealmName() or "?"))
 	if type(db.halo[me]) ~= "table" then db.halo[me] = {} end
 	return db.halo[me]
 end
@@ -1781,7 +1863,7 @@ function P.Clear(r)
 	Say(L["the %s is empty."]:format(RINGS[r].name))
 end
 
--- /dui halo check: what reaches Halo now, said in chat and kept in DaylightEssentialsDB.haloCheck
+-- /halo check: what reaches Halo now, said in chat and kept in DaylightEssentialsDB.haloCheck
 -- (read after a /reload): Halo's own key and each modifier's variant (what the game would do with
 -- it), whether each Halo is on, its slots and what the secure button knows of it.
 function P.Check()
@@ -1825,7 +1907,7 @@ local function Command(rest)
 		end
 		P.Clear(r)
 	else
-		Say(L["/dui halo edit: drag your actions onto its slots. /dui halo key: set its key. /dui halo clear [shift|alt|ctrl]: empty a Halo. /dui halo check: what reaches Halo now."])
+		Say(L["/halo edit: drag your actions onto its slots. /halo key: set its key. /halo clear [shift|alt|ctrl]: empty a Halo. /halo check: what reaches Halo now."])
 	end
 end
 
@@ -1879,6 +1961,9 @@ function P.Login()
 	end
 	for e in pairs(PAD_EVENTS) do pcall(events.RegisterEvent, events, e) end
 	ns.me.RegisterCommand("halo", Command, L["halo edit|key|clear|check: your Halos of actions"])
+	-- Its own command too, with no "/dui" in front (the /dui one stays for macros made before).
+	_G.SLASH_GLOWEYHALO1 = "/halo"
+	_G.SlashCmdList.GLOWEYHALO = function(msg) Command(msg or "") end
 	Apply()
 	ApplyKeys()
 end

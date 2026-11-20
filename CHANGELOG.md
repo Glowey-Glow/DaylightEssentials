@@ -1,5 +1,10 @@
 # Glowey's Essentials (DaylightUI Plugin)
 
+## 1.9.1
+- Commands of their own, with no "/dui" in front: /halo, /kos and /manners. The old /dui halo, /dui kos and /dui manners still work, so macros keep working.
+- Fixed: Halo slots looked empty after 2026-11-20. The game stopped giving realm names that day, and Halo kept each character's slots under its name and realm. Every character gets its slots, modifier Halos and labels back at its next login, and nothing was lost. Slots are now kept by character, so a change like this can't unhook them again.
+- Checked against Daylight UI 2.1.2. Nothing else to change.
+
 ## 1.9.0
 - Halo: an icon that is cooling down shows the time left on it, for spells and items alike (the game's own countdown, so it also counts in a fight). On by default; switch it off with "Cooldown Time on Icon" on Halo's page.
 - Checked against Daylight UI 1.9.6. Nameplate Dmg Text and Secondary Stats follow its outline again: 1.9.6 went back to the plain outline (1.9.5 drew every outline much heavier), and so do they, with nothing to set.

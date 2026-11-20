@@ -226,7 +226,7 @@ P.page = { id = KEY, label = L["Enemy Nearby"],
 			  desc = L["Daylight UI's glow runs round the alert, in its color, while it's up."] },
 		} },
 		{ label = L["Kill on Sight"], items = {
-			{ type = "text", label = L["Right-click a name in the list to add or remove it, or type /dui kos add Name, /dui kos remove Name or /dui kos list. The list is shared by all your characters; its names show in red, with a mark."] },
+			{ type = "text", label = L["Right-click a name in the list to add or remove it, or type /kos add Name, /kos remove Name or /kos list. The list is shared by all your characters; its names show in red, with a mark."] },
 			{ type = "text", label = function()
 				local names = KosNames()
 				if #names == 0 then return L["On the list: nobody yet."] end
@@ -840,7 +840,7 @@ function P.Menu(owner, key)
 end
 
 -- ---------------------------------------------------------------------------------------------
--- /dui kos
+-- /kos
 -- ---------------------------------------------------------------------------------------------
 
 local function Command(rest)
@@ -849,19 +849,19 @@ local function Command(rest)
 	word = string.lower(word or "")
 	if word == "add" then
 		local name = (arg ~= "" and arg) or TargetName()
-		if name then KosAdd(name) else Say(L["/dui kos add Name (or target a player)."]) end
+		if name then KosAdd(name) else Say(L["/kos add Name (or target a player)."]) end
 	elseif word == "remove" or word == "del" or word == "rm" then
 		local name = (arg ~= "" and arg) or TargetName()
-		if name then KosRemove(name) else Say(L["/dui kos remove Name (or target a player)."]) end
+		if name then KosRemove(name) else Say(L["/kos remove Name (or target a player)."]) end
 	elseif word == "" or word == "list" then
 		local names = KosNames()
 		if #names == 0 then
-			Say(L["your Kill on Sight list is empty. /dui kos add Name to add someone."])
+			Say(L["your Kill on Sight list is empty. /kos add Name to add someone."])
 		else
 			Say(L["Kill on Sight (%d): %s"]:format(#names, table.concat(names, L[", "])))
 		end
 	else
-		Say(L["/dui kos add Name, /dui kos remove Name, /dui kos list."])
+		Say(L["/kos add Name, /kos remove Name, /kos list."])
 	end
 end
 
@@ -932,6 +932,9 @@ local function Build()
 
 	ns.me.RegisterTestPart(KEY, L["Enemies Nearby"])
 	ns.me.RegisterCommand("kos", Command, L["kos add|remove|list Name: your Kill on Sight list"])
+	-- Its own command too, with no "/dui" in front (the /dui one stays for macros made before).
+	_G.SLASH_GLOWEYKOS1 = "/kos"
+	_G.SlashCmdList.GLOWEYKOS = function(msg) Command(msg or "") end
 end
 
 function P.Login()

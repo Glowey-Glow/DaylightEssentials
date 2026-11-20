@@ -27,7 +27,7 @@ For hunters and warlocks: "No pet" or "Pet is passive" until it's sorted. Quiet 
 ### Enemy Nearby (new)
 - A small list of enemy players seen near you lately: level and name in class color, newest at the top. Names fade while unseen and leave after a minute (your choice).
 - **Click a name to target that player.** In a fight the list keeps its order, and players seen during it are added below.
-- **Kill on Sight:** right-click a name, or use `/dui kos add Name`, `/dui kos remove Name`, `/dui kos list`. Shared by all your characters, and marked in red.
+- **Kill on Sight:** right-click a name, or use `/kos add Name`, `/kos remove Name`, `/kos list`. Shared by all your characters, and marked in red.
 - **New in 1.4.0:** the alert glows while it's up, red for Kill on Sight.
 - **Alerts:** a line mid-screen and a sound when someone on your Kill on Sight list shows up, and, if you like, when any new enemy does.
 - **Windowless** if you prefer just the names. Rests in battlegrounds and dungeons unless you ask otherwise.
@@ -47,15 +47,15 @@ For hunters and warlocks: "No pet" or "Pet is passive" until it's sorted. Quiet 
 - One prompt offering the buff you can give to whoever needs it most: **a player who just buffed you**, then your target, your group (checked again at a ready check), then players right beside you (friends and guildmates first).
 - **Click it or press its key** (Key Bindings > AddOns > Glowey's Essentials) and the buff goes out; your own target comes back to you. Nothing is ever cast by itself, and it hides in a fight.
 - Mages give Arcane Intellect; priests Fortitude (Divine Spirit and Shadow Protection are choices); druids Mark of the Wild (and Thorns for tanks); paladins Kings first or Wisdom or Might by class, never over a blessing of their own; warlocks Unending Breath while swimming.
-- **Thanks:** a /thank and/or a line in say or a whisper ("Thanks for the buff!", "Thank you, Name!", "Much appreciated!" or your own with `/dui manners line`). For a class with no buffs to give, or a player who already has yours, the prompt still shows who buffed you and offers the thank-you on its own. Only buffs cast on you count, not auras that are there while someone is near (paladin auras, Trueshot Aura).
-- Skips PvP-flagged players while you aren't flagged, and can be quiet in towns, dungeons and raids. Right-click the prompt for **Not Now** or **Never Offer**; `/dui manners never Name`, `/dui manners allow Name`, `/dui manners list`.
+- **Thanks:** a /thank and/or a line in say or a whisper ("Thanks for the buff!", "Thank you, Name!", "Much appreciated!" or your own with `/manners line`). For a class with no buffs to give, or a player who already has yours, the prompt still shows who buffed you and offers the thank-you on its own. Only buffs cast on you count, not auras that are there while someone is near (paladin auras, Trueshot Aura).
+- Skips PvP-flagged players while you aren't flagged, and can be quiet in towns, dungeons and raids. Right-click the prompt for **Not Now** or **Never Offer**; `/manners never Name`, `/manners allow Name`, `/manners list`.
 - The idea comes from Manners by fpsacha.
 
 ### Halo
 - **Hold a key and your own spells, items and macros open in a Halo around the cursor.** Point at one or scroll to it, then let go to use it. Let go in the middle to close it without using anything. Works in a fight.
 - **Its own key:** **Set Key** on its page takes the next key or mouse button you press, without touching your key bindings (or bind it under Key Bindings).
 - **Up to four Halos (new in 1.2.0):** the base Halo, plus a **Shift, Alt and Ctrl Halo**. Hold the modifier with Halo's key to open that one. Each has its own slots, **its own color** (rim, highlight and label) and **a label** of up to 16 letters.
-- Fill the slots by dragging spells, items or macros onto them in **Edit Halos** (a tab per Halo, or `/dui halo edit`).
+- Fill the slots by dragging spells, items or macros onto them in **Edit Halos** (a tab per Halo, or `/halo edit`).
 - Choose the shape (circle or arc), the number of slots (2 to 12), the Halo's size, the icon size and where it opens (around the cursor or the screen's center).
 
 ### Stance / Aura / Form (new in 1.7.0)
