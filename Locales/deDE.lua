@@ -560,3 +560,7 @@ L["Click to choose from a list."] = "Klickt, um aus einer Liste zu wählen."
 L["%s on a slot chooses its action, %s empties it."] = "%s auf einem Platz wählt seine Aktion, %s leert ihn."
 L["Choose"] = "Wählen"
 L["Empty Slot"] = "Platz leeren"
+
+-- Halo: cooldown time
+L["Cooldown Time on Icon"] = "Abklingzeit auf dem Symbol"
+L["The time left on a spell or item that is cooling down, on its icon."] = "Die verbleibende Zeit eines Zaubers oder Gegenstands mit Abklingzeit, auf seinem Symbol."

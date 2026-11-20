@@ -75,6 +75,9 @@ For hunters and warlocks: "No pet" or "Pet is passive" until it's sorted. Quiet 
 
 ---
 
+## New in 1.9.0
+- **Halo:** an icon that is cooling down shows the time left on it, for spells and items, in a fight too. Switch it off with "Cooldown Time on Icon" on Halo's page.
+
 ## New in 1.8.0
 - **Halo Bar:** a row of slots you step through with the D-pad or LB / RB, in a fight too, and a list to choose each slot's spell, item or macro.
 - **Controller support:** Halo, its editor and Set Key, the tours, and two new key bindings (Buff Manners: Not Now, Secondary Stats: Show or Fold Away).

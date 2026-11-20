@@ -97,6 +97,7 @@ P.defaults = {
 	iconSize = 36,
 	names = true,
 	dim = true,
+	cdTime = true,
 }
 
 P.page = { id = KEY, label = L["Halo"],
@@ -162,6 +163,8 @@ P.page = { id = KEY, label = L["Halo"],
 			  desc = L["The name of the action you point at, in the middle of the Halo."] },
 			{ type = "toggle", key = KEY .. ".dim", label = L["Dim Icon on Cooldown"],
 			  desc = L["Spells cooling down or out of reach (no mana, no rage) and items you have none of."] },
+			{ type = "toggle", key = KEY .. ".cdTime", label = L["Cooldown Time on Icon"],
+			  desc = L["The time left on a spell or item that is cooling down, on its icon."] },
 		} },
 	} }
 
@@ -383,6 +386,7 @@ end
 -- secure side measures on the whole screen the same way). Settings read every frame while it's
 -- open: kept from the last Apply (which every setting change runs).
 local cIcon, cNames, cDim = 36, true, true
+local cCool = true
 local cBar, cPad, cHint = false, false, nil   -- a bar; on a controller (no mouse picking); its hint
 
 local function Pointed(dx, dy)
@@ -656,6 +660,7 @@ local function Apply()
 	local count = math.min(MAX, G("count") or 8)
 	local size, icon, radius = RingSize(), G("iconSize") or 36, G("radius") or 90
 	cIcon, cNames, cDim = icon, G("names") and true or false, G("dim") and true or false
+	cCool = G("cdTime") ~= false
 	-- Ring or bar, and whether a controller drives it (then it opens in the middle, the mouse
 	-- doesn't pick, and the D-pad does).
 	local keys = HaloKeys()
@@ -868,6 +873,79 @@ local function Ready(a)
 	return true
 end
 
+-- The time left on an icon that's cooling down: the game's own countdown, on a cooldown frame over
+-- the icon with nothing else drawn (no sweep, no edge, no flash: the icon is dimmed already).
+-- A spell's is drawn from its duration object, which the game reads as it is, hidden or not, in a
+-- fight too (C_Spell.GetSpellCooldownDuration with ignoreGCD, SpellDocumentation.lua:327-341;
+-- Cooldown:SetCooldownFromDurationObject, FrameAPICooldownDocumentation.lua:308). An item's from
+-- its start and length (C_Container.GetItemCooldown, ContainerDocumentation.lua:337-351, whose
+-- returns carry no secret marker; left alone if they ever come hidden).
+-- Set once per cooldown (t.cool names the one drawn), not five times a second.
+local function CoolFrame(t)
+	local cd = t.cd
+	if cd then return cd end
+	cd = CreateFrame("Cooldown", nil, t, "CooldownFrameTemplate")
+	cd:SetPoint("TOPLEFT", t.art, "TOPLEFT", 0, 0)
+	cd:SetPoint("BOTTOMRIGHT", t.art, "BOTTOMRIGHT", 0, 0)
+	if cd.SetDrawSwipe then cd:SetDrawSwipe(false) end
+	if cd.SetDrawEdge then cd:SetDrawEdge(false) end
+	if cd.SetDrawBling then cd:SetDrawBling(false) end
+	if cd.SetHideCountdownNumbers then cd:SetHideCountdownNumbers(false) end
+	t.cd = cd
+	return cd
+end
+
+local function CoolOff(t)
+	if t.cool == nil then return end
+	t.cool = nil
+	if t.cd then
+		pcall(t.cd.Clear, t.cd)
+		t.cd:Hide()
+	end
+end
+
+local function Cool(t, a)
+	if a.kind == "spell" then
+		local id = a.name or a.id
+		local active = false
+		if C_Spell and C_Spell.GetSpellCooldown then
+			local ok, info = pcall(C_Spell.GetSpellCooldown, id)
+			active = ok and type(info) == "table" and type(info.isActive) == "boolean"
+				and info.isActive and info.isOnGCD ~= true
+		end
+		if not active then CoolOff(t) return end
+		if t.cool == "spell" then return end
+		local cd = CoolFrame(t)
+		if C_Spell.GetSpellCooldownDuration and cd.SetCooldownFromDurationObject then
+			local ok, d = pcall(C_Spell.GetSpellCooldownDuration, id, true)
+			if ok and type(d) ~= "nil" and pcall(cd.SetCooldownFromDurationObject, cd, d, true) then
+				cd:Show()
+				t.cool = "spell"
+				return
+			end
+		end
+		CoolOff(t)
+	elseif a.kind == "item" then
+		local start, duration
+		if C_Container and C_Container.GetItemCooldown then
+			local ok, s, d = pcall(C_Container.GetItemCooldown, a.id)
+			if ok and Safe(s) and Safe(d) and type(s) == "number" and type(d) == "number" then start, duration = s, d end
+		end
+		if not start or start <= 0 or duration <= 1.5 then CoolOff(t) return end
+		local key = start .. ":" .. duration
+		if t.cool == key then return end
+		local cd = CoolFrame(t)
+		if pcall(cd.SetCooldown, cd, start, duration) then
+			cd:Show()
+			t.cool = key
+		else
+			CoolOff(t)
+		end
+	else
+		CoolOff(t)
+	end
+end
+
 -- The rim every icon of the open Halo has in its color; the one pointed at is lit fully.
 local REST_ALPHA = 0.35
 
@@ -907,14 +985,17 @@ local function OnUpdate()
 		end
 	end
 	local now = GetTime()
-	if cDim and now >= dimAt then
+	if (cDim or cCool) and now >= dimAt then
 		dimAt = now + 0.2
 		for i = 1, #shown do
 			local t = list[i]
 			if t and t.action then
-				local ready = Ready(t.action)
-				t.art:SetDesaturated(not ready)
-				t.art:SetAlpha(ready and 1 or 0.45)
+				if cDim then
+					local ready = Ready(t.action)
+					t.art:SetDesaturated(not ready)
+					t.art:SetAlpha(ready and 1 or 0.45)
+				end
+				if cCool then Cool(t, t.action) end
 			end
 		end
 	end
@@ -938,6 +1019,8 @@ local function OnShow()
 			t.art:SetAlpha(1)
 		end
 	end
+	-- (Each opening draws its countdowns anew: a slot may hold another action by now.)
+	for _, t in ipairs(tiles[open]) do CoolOff(t) end
 end
 
 local function Build()

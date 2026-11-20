@@ -560,3 +560,7 @@ L["Click to choose from a list."] = "클릭하면 목록에서 고를 수 있습
 L["%s on a slot chooses its action, %s empties it."] = "칸에서 %s: 동작 선택, %s: 비우기."
 L["Choose"] = "선택"
 L["Empty Slot"] = "칸 비우기"
+
+-- Halo: cooldown time
+L["Cooldown Time on Icon"] = "아이콘에 재사용 대기시간"
+L["The time left on a spell or item that is cooling down, on its icon."] = "재사용 대기 중인 주문이나 아이템의 남은 시간을 아이콘 위에 표시합니다."

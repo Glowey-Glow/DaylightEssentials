@@ -560,3 +560,7 @@ L["Click to choose from a list."] = "Щёлкните, чтобы выбрать
 L["%s on a slot chooses its action, %s empties it."] = "%s на ячейке выбирает действие, %s очищает её."
 L["Choose"] = "Выбрать"
 L["Empty Slot"] = "Очистить ячейку"
+
+-- Halo: cooldown time
+L["Cooldown Time on Icon"] = "Время перезарядки на значке"
+L["The time left on a spell or item that is cooling down, on its icon."] = "Оставшееся время перезарядки заклинания или предмета на его значке."
