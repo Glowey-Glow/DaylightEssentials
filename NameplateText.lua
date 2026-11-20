@@ -430,8 +430,9 @@ local function ReadLook()
 	if PlaceSelfSpots then PlaceSelfSpots() end
 end
 
--- The outline flags: DaylightUI 1.9.5+ draws outlined text with the game's slug renderer (its
--- Style.Slug: "OUTLINE, SLUG"), the one the game's own damage numbers use; older ones plain.
+-- The outline flags, as DaylightUI's own combat text draws them. Only DaylightUI 1.9.5 has
+-- Style.Slug ("OUTLINE, SLUG", the game's slug renderer); 1.9.6 took it out again (it drew every
+-- outline much heavier) and, like the versions before 1.9.5, uses the plain outline.
 local function Outline()
 	local Style = ns.DUI and ns.DUI.Style
 	if type(Style) == "table" and type(Style.Slug) == "function" then

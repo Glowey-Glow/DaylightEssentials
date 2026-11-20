@@ -1,5 +1,8 @@
 # Glowey's Essentials (DaylightUI Plugin)
 
+## Unreleased
+- Checked against Daylight UI 1.9.6. Nameplate Dmg Text and Secondary Stats follow its outline again: 1.9.6 went back to the plain outline (1.9.5 drew every outline much heavier), and so do they, with nothing to set.
+
 ## 1.8.2
 - Nameplate Dmg Text and Secondary Stats draw their outlined text the way Daylight UI 1.9.5 does (the game's sharper outline), so they match its combat text. Older Daylight UI versions keep the plain outline.
 
