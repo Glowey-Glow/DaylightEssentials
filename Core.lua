@@ -4,6 +4,7 @@
 --   * Combat Timer: how long you've been fighting, and how long the last fight took.
 --   * Combat Alert: a short "+ Combat" / "- Combat" in the middle of the screen.
 --   * Pet Reminder: a warning while your pet is missing or set to passive.
+--   * Seal Reminder: for paladins, a warning while no seal is up.
 --   * Cursor Cooldowns: your taunt's and dispels' cooldowns beside the mouse pointer.
 --   * Enemy Nearby: enemy players seen near you lately, and your Kill on Sight list.
 --   * Secondary Stats: the stats that matter for your role (or your own pick) in a small box.

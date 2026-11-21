@@ -1,8 +1,9 @@
 -- Halo: hold a key and a ring of your own actions opens around the mouse (or in the middle of the
 -- screen). Point toward one, or scroll to it, and let go of the key: it fires. Let go with the
--- mouse still in the middle and nothing happens. Spells, items and macros each take a slot: open
--- "Edit the slots" (its page, or /halo edit) and drag them in from your spellbook, bags or
--- macros; right-click a slot to empty it. The slots are kept per character. The ring's shape,
+-- mouse still in the middle and nothing happens. Spells, items, macros, mounts, companion pets and
+-- your pet's abilities and commands each take a slot: open "Edit the slots" (its page, or /halo
+-- edit) and drag them in from your spellbook, bags, macros, the mount or pet journal or your
+-- pet's bar; right-click a slot to empty it. The slots are kept per character. The ring's shape,
 -- size, icon size, where it opens and how it shows what isn't ready are set on its page.
 -- (A ring menu like EllesmereUI's Quickdraw. Its way of working, a button per ring and the mouse
 -- read on the whole screen, was described to us; written from scratch, none of its code read or
@@ -45,7 +46,7 @@
 -- modifier set of each, so a controller's Shift held still steps) is written out of a fight.
 --
 -- Choosing without dragging: clicking a slot in the editor (A on a controller) opens a list of
--- your spells, usable items and macros to pick from; Y on a controller empties the slot. The
+-- your spells, usable items, macros, mounts, pets and pet actions to pick from; Y on a controller empties the slot. The
 -- editor and the list tell the game's controller mode about themselves (Daylight UI's Pad), so
 -- the D-pad moves through them and LB / RB step their tabs.
 --
@@ -177,6 +178,10 @@ P.page = { id = KEY, label = L["Halo"],
 --   shift / alt / ctrl      = { [i] = action }, the modifier rings
 --   labels                  = { [ring] = "text" }, each ring's label
 -- An action: { kind = "spell", id, name } | { kind = "item", id } | { kind = "macro", name }
+--   | { kind = "mount", id, name }      a mount by its journal ID (0: a random favorite)
+--   | { kind = "pet", id, name }        a companion pet by its journal GUID
+--   | { kind = "petspell", id, name }   an ability of your hunter pet or demon, by spell
+--   | { kind = "petcmd", token, slot }  a pet command (Attack, Follow, Passive...), by its token
 -- ---------------------------------------------------------------------------------------------
 
 local function Say(msg) print("|cff73a0ffHalo|r: " .. msg) end
@@ -346,9 +351,104 @@ local function ItemName(id)
 	return nil
 end
 
+-- ---------------------------------------------------------------------------------------------
+-- Mounts, companion pets and your combat pet's actions.
+-- The game puts a mount on the mouse as "mount" (its journal ID) and a companion pet as "battlepet"
+-- (its journal GUID): GetCursorInfo, read the way the game's own icon picker does
+-- (SharedUIPanelTemplates.lua, SetIconFromMouse). Neither is a spell, item or macro, so they fire
+-- the way the journals' own buttons do: C_MountJournal.SummonByID / Dismiss
+-- (Blizzard_MountCollection.lua, MountJournalMountButton_UseMount) and
+-- C_PetJournal.SummonPetByGUID (Blizzard_PetCollection.lua; the same call sends the pet away).
+-- Neither call is protected, so the secure snippet hands them to plain code (CallMethod).
+-- An ability or command of your pet is on the mouse as "petaction" (its spell, its place on the
+-- pet bar): an ability fires as a spell by name, a command (no spell) through the pet bar slot
+-- holding it (the secure "pet" action: CastPetAction).
+-- ---------------------------------------------------------------------------------------------
+local RANDOM_MOUNT_SPELL = 150544   -- Summon Random Favorite Mount (Blizzard_MountCollection.lua)
+
+-- A mount: its name, icon, whether you're on it, whether it can be used now, its spell.
+-- id 0: a random favorite.
+local function MountInfo(id)
+	if id == 0 then
+		local name = _G.MOUNT_JOURNAL_SUMMON_RANDOM_FAVORITE_MOUNT
+		if type(name) ~= "string" or name == "" then name = L["Random Favorite Mount"] end
+		local icon
+		if C_Spell and C_Spell.GetSpellTexture then
+			local ok, t = pcall(C_Spell.GetSpellTexture, RANDOM_MOUNT_SPELL)
+			if ok and t then icon = t end
+		end
+		return name, icon or 132261, false, not InCombatLockdown(), RANDOM_MOUNT_SPELL
+	end
+	local MJ = C_MountJournal
+	if type(MJ) ~= "table" or not MJ.GetMountInfoByID or type(id) ~= "number" then return nil end
+	local ok, name, spellID, icon, active, usable = pcall(MJ.GetMountInfoByID, id)
+	if not ok or type(name) ~= "string" or not Safe(name) then return nil end
+	return name, icon, Safe(active) and active == true, not Safe(usable) or usable ~= false, spellID
+end
+
+-- A companion pet: its name (the one you gave it first) and icon.
+local function PetInfo(guid)
+	local PJ = C_PetJournal
+	if type(PJ) ~= "table" or not PJ.GetPetInfoByPetID or type(guid) ~= "string" then return nil end
+	local ok, _, custom, _, _, _, _, _, name, icon = pcall(PJ.GetPetInfoByPetID, guid)
+	if not ok then return nil end
+	if type(custom) == "string" and custom ~= "" then name = custom end
+	if type(name) ~= "string" then return nil end
+	return name, icon
+end
+
+-- A pet command's pet bar slot now: the slot holding its token, else nil (no pet out).
+local function PetCommandSlot(token)
+	if not GetPetActionInfo then return nil end
+	for i = 1, NUM_PET_ACTION_SLOTS or 10 do
+		local name = GetPetActionInfo(i)
+		if Safe(name) and name == token then return i end
+	end
+	return nil
+end
+
+-- A pet command's name and icon: the game's own words for its token ("PET_ACTION_ATTACK").
+local function PetCommandInfo(a)
+	local word = type(a.token) == "string" and _G[a.token]
+	if type(word) ~= "string" or word == "" then word = a.name end
+	-- (The pet bar names a command's icon by a token too: "PET_ATTACK_TEXTURE".)
+	local icon = a.icon
+	if type(icon) == "string" and _G[icon] then icon = _G[icon] end
+	return word, icon
+end
+
+-- A mount or companion pet let go on: what the secure snippet hands over (never in its own path).
+local function Summon(a)
+	if type(a) ~= "table" then return end
+	if a.kind == "mount" and C_MountJournal and C_MountJournal.SummonByID then
+		local _, _, active = MountInfo(a.id)
+		if active and a.id ~= 0 and C_MountJournal.Dismiss then
+			pcall(C_MountJournal.Dismiss)
+		else
+			pcall(C_MountJournal.SummonByID, a.id)
+		end
+	elseif a.kind == "pet" and C_PetJournal and C_PetJournal.SummonPetByGUID then
+		pcall(C_PetJournal.SummonPetByGUID, a.id)
+	end
+end
+
 local function Texture(a)
 	if type(a) ~= "table" then return nil end
-	if a.kind == "spell" then
+	if a.kind == "mount" then
+		local _, icon = MountInfo(a.id)
+		if icon then return icon end
+	elseif a.kind == "pet" then
+		local _, icon = PetInfo(a.id)
+		if icon then return icon end
+	elseif a.kind == "petcmd" then
+		local _, icon = PetCommandInfo(a)
+		if icon then return icon end
+	elseif a.kind == "petspell" then
+		if C_Spell and C_Spell.GetSpellTexture then
+			local ok, t = pcall(C_Spell.GetSpellTexture, a.id)
+			if ok and t then return t end
+		end
+	elseif a.kind == "spell" then
 		if C_Spell and C_Spell.GetSpellTexture then
 			local ok, t = pcall(C_Spell.GetSpellTexture, a.name or a.id)
 			if ok and t then return t end
@@ -376,10 +476,15 @@ local function Label(a)
 	if a.kind == "spell" then return SpellName(a.id) or a.name or L["Spell"] end
 	if a.kind == "item" then return ItemName(a.id) or L["Item"] end
 	if a.kind == "macro" then return a.name or L["Macro"] end
+	if a.kind == "mount" then return MountInfo(a.id) or a.name or L["Mount"] end
+	if a.kind == "pet" then return PetInfo(a.id) or a.name or L["Pet"] end
+	if a.kind == "petspell" then return SpellName(a.id) or a.name or L["Pet Ability"] end
+	if a.kind == "petcmd" then return PetCommandInfo(a) or L["Pet Command"] end
 	return ""
 end
 
--- What's on the mouse now (picked up from the spellbook, bags or macros), as an action, or nil.
+-- What's on the mouse now (picked up from the spellbook, bags, macros, the mount or pet journal,
+-- or your pet's bar or spellbook), as an action, or nil.
 local function FromCursor()
 	if not GetCursorInfo then return nil end
 	local kind, a, b, c = GetCursorInfo()
@@ -395,6 +500,25 @@ local function FromCursor()
 	elseif kind == "macro" and a and GetMacroInfo then
 		local name = GetMacroInfo(a)
 		if type(name) == "string" then return { kind = "macro", name = name } end
+	elseif kind == "mount" and type(a) == "number" then
+		-- (The journal's Random Favorite Mount comes with an ID the journal has no mount for.)
+		local name = MountInfo(a)
+		if a ~= 0 and name then return { kind = "mount", id = a, name = name } end
+		return { kind = "mount", id = 0 }
+	elseif kind == "battlepet" and type(a) == "string" then
+		return { kind = "pet", id = a, name = PetInfo(a) }
+	elseif kind == "petaction" then
+		-- An ability: its spell. A command (Attack, Follow, Passive...): no spell, so the token of
+		-- the pet bar slot it was picked up from.
+		if type(a) == "number" and a > 0 and SpellName(a) then
+			return { kind = "petspell", id = a, name = SpellName(a) }
+		end
+		if type(b) == "number" and b > 0 and GetPetActionInfo then
+			local token, icon, isToken = GetPetActionInfo(b)
+			if Safe(token) and type(token) == "string" and Safe(isToken) and isToken then
+				return { kind = "petcmd", token = token, slot = b, name = _G[token], icon = Safe(icon) and icon or nil }
+			end
+		end
 	end
 	return nil
 end
@@ -571,6 +695,11 @@ local DOWN_UP = [=[
 	end
 	local slot = k > 0 and self:GetAttribute("s" .. k)
 	if not slot then return false end
+	-- A mount or companion pet: no secure action, plain code summons it.
+	if self:GetAttribute("call" .. slot) then
+		self:CallMethod("HaloSummon", slot)
+		return false
+	end
 	return "h" .. slot
 ]=]
 
@@ -612,7 +741,7 @@ local STEP = [=[
 	b:SetAttribute("wheel", 1)
 ]=]
 
-local FIELDS = { "spell", "item", "macro" }   -- the secure button's action fields
+local FIELDS = { "spell", "item", "macro", "action" }   -- the secure button's action fields
 local reskin = false                           -- a style change: every tile skinned again
 
 -- Every modifier set a key can carry, in the order the game writes them ("ALT-CTRL-SHIFT-").
@@ -855,8 +984,17 @@ local function Apply()
 					kind, field, value = "item", "item", "item:" .. a.id
 				elseif a.kind == "macro" then
 					kind, field, value = "macro", "macro", a.name
+				elseif a.kind == "petspell" then
+					kind, field, value = "spell", "spell", SpellName(a.id) or a.name or a.id
+				elseif a.kind == "petcmd" then
+					-- (Where the command is on the pet bar now; with no pet out, where it was.)
+					local at = PetCommandSlot(a.token)
+					if at then a.slot = at end
+					if type(a.slot) == "number" then kind, field, value = "pet", "action", a.slot end
 				end
 			end
+			-- (A mount or companion pet: summoned by plain code, see the snippet.)
+			b:SetAttribute("call" .. i, type(a) == "table" and (a.kind == "mount" or a.kind == "pet") or nil)
 			b:SetAttribute("type" .. suffix, kind)
 			b:SetAttribute("typerelease" .. suffix, kind)
 			for _, f in ipairs(FIELDS) do
@@ -923,7 +1061,20 @@ end
 
 -- What isn't ready (dimmed), read five times a second while the ring is open.
 local function Ready(a)
-	if a.kind == "spell" then
+	if a.kind == "mount" then
+		local name, _, _, usable = MountInfo(a.id)
+		return name ~= nil and usable
+	elseif a.kind == "pet" then
+		if C_PetJournal and C_PetJournal.PetIsSummonable then
+			local ok, can = pcall(C_PetJournal.PetIsSummonable, a.id)
+			if ok and Safe(can) and can == false then return false end
+		end
+		return true
+	elseif a.kind == "petcmd" then
+		return UnitExists("pet") and PetCommandSlot(a.token) ~= nil
+	elseif a.kind == "petspell" and not UnitExists("pet") then
+		return false
+	elseif a.kind == "spell" or a.kind == "petspell" then
 		local id = a.name or a.id
 		if C_Spell and C_Spell.GetSpellCooldown then
 			local ok, info = pcall(C_Spell.GetSpellCooldown, id)
@@ -987,7 +1138,7 @@ local function CoolOff(t)
 end
 
 local function Cool(t, a)
-	if a.kind == "spell" then
+	if a.kind == "spell" or a.kind == "petspell" then
 		local id = a.name or a.id
 		local active = false
 		if C_Spell and C_Spell.GetSpellCooldown then
@@ -1153,6 +1304,10 @@ local function Build()
 		b:SetAttribute("useOnKeyDown", false)
 		b:SetAttribute("type", nil)
 		b:SetAttribute("halo", r)
+		-- (What the snippet calls for a slot holding a mount or a companion pet.)
+		b.HaloSummon = function(_, slot)
+			if type(slot) == "number" then Summon(Slots(r)[slot]) end
+		end
 		b:Hide()   -- (a click binding still reaches a hidden button)
 		SecureHandlerSetFrameRef(b, "ring", ring)
 		SecureHandlerSetFrameRef(b, "screen", screen)
@@ -1347,7 +1502,7 @@ local Pad = ns.DUI and ns.DUI.Pad   -- Daylight UI's controller support (nil on 
 local picker
 local pickSlot, pickKind, pickPage = 1, 1, 1
 local PICK_ROWS, PICK_ROW_H, PICK_ICON = 8, 26, 20
-local KINDS = { L["Spells"], L["Items"], L["Macros"] }
+local KINDS = { L["Spells"], L["Items"], L["Macros"], L["Mounts"], L["Pets"], L["Pet Actions"] }
 
 local function SpellList()
 	local out, seen = {}, {}
@@ -1443,7 +1598,93 @@ local function MacroList()
 	return out
 end
 
-local LISTS = { SpellList, ItemList, MacroList }
+local function ByLabel(a, b) return a.label < b.label end
+
+-- Your mounts (the ones this character can have), a random favorite first.
+local function MountList()
+	local out = {}
+	local MJ = C_MountJournal
+	if type(MJ) ~= "table" or not (MJ.GetMountIDs and MJ.GetMountInfoByID) then return out end
+	local ok, ids = pcall(MJ.GetMountIDs)
+	if ok and type(ids) == "table" then
+		for _, id in ipairs(ids) do
+			local got, name, _, _, _, _, _, _, _, _, hidden, collected = pcall(MJ.GetMountInfoByID, id)
+			if got and type(name) == "string" and collected == true and hidden ~= true then
+				out[#out + 1] = { action = { kind = "mount", id = id, name = name }, label = name }
+			end
+		end
+	end
+	table.sort(out, ByLabel)
+	if #out > 0 then
+		table.insert(out, 1, { action = { kind = "mount", id = 0 }, label = (MountInfo(0)) })
+	end
+	return out
+end
+
+-- Your companion pets.
+local function PetList()
+	local out = {}
+	local PJ = C_PetJournal
+	if type(PJ) ~= "table" or not PJ.GetOwnedPetIDs then return out end
+	local ok, ids = pcall(PJ.GetOwnedPetIDs)
+	if ok and type(ids) == "table" then
+		for _, guid in ipairs(ids) do
+			local name = PetInfo(guid)
+			if name then out[#out + 1] = { action = { kind = "pet", id = guid, name = name }, label = name } end
+		end
+	end
+	table.sort(out, ByLabel)
+	return out
+end
+
+-- Your hunter pet's or demon's commands and abilities: what's on its bar, then the rest of its
+-- spellbook. Only while it's out.
+local function PetActionList()
+	local out, seen = {}, {}
+	if not UnitExists("pet") then return out end
+	if GetPetActionInfo then
+		for i = 1, NUM_PET_ACTION_SLOTS or 10 do
+			local name, icon, isToken, _, _, _, spellID = GetPetActionInfo(i)
+			if Safe(name) and type(name) == "string" and name ~= "" then
+				if Safe(isToken) and isToken then
+					local word = _G[name]
+					if type(word) == "string" then
+						out[#out + 1] = { action = { kind = "petcmd", token = name, slot = i, name = word,
+							icon = Safe(icon) and icon or nil }, label = word }
+					end
+				elseif Safe(spellID) and type(spellID) == "number" and not seen[name] then
+					seen[name] = true
+					out[#out + 1] = { action = { kind = "petspell", id = spellID, name = name }, label = name }
+				end
+			end
+		end
+	end
+	local SB = C_SpellBook
+	local bank = Enum and Enum.SpellBookSpellBank and Enum.SpellBookSpellBank.Pet
+	if type(SB) == "table" and bank and SB.HasPetSpells and SB.GetSpellBookItemType then
+		local ok, n = pcall(SB.HasPetSpells)
+		for i = 1, ok and type(n) == "number" and n or 0 do
+			local okT, _, id, spellID = pcall(SB.GetSpellBookItemType, i, bank)
+			local passive = false
+			if SB.IsSpellBookItemPassive then
+				local okP, p = pcall(SB.IsSpellBookItemPassive, i, bank)
+				passive = okP and p == true
+			end
+			-- (A pet's spell IDs carry a flag in their high bits: the plain ID is what's below it.)
+			if okT and type(id) == "number" and not passive then
+				id = type(spellID) == "number" and spellID or id % 0x1000000
+				local name = SpellName(id)
+				if name and not seen[name] then
+					seen[name] = true
+					out[#out + 1] = { action = { kind = "petspell", id = id, name = name }, label = name }
+				end
+			end
+		end
+	end
+	return out
+end
+
+local LISTS = { SpellList, ItemList, MacroList, MountList, PetList, PetActionList }
 
 local function PickLayout()
 	local list = picker.list or {}
@@ -1544,13 +1785,21 @@ local function BuildPicker()
 			local a = self.entry and self.entry.action
 			if not a then return end
 			GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-			if a.kind == "spell" and GameTooltip.SetSpellByID then
+			-- (A mount's or a companion pet's own tooltip, where the game has one; else its name.)
+			local own = false
+			if (a.kind == "spell" or a.kind == "petspell") and GameTooltip.SetSpellByID then
 				GameTooltip:SetSpellByID(a.id)
+				own = true
 			elseif a.kind == "item" and GameTooltip.SetItemByID then
 				GameTooltip:SetItemByID(a.id)
-			else
-				GameTooltip:SetText(self.entry.label)
+				own = true
+			elseif a.kind == "mount" and GameTooltip.SetMountBySpellID then
+				local spell = select(5, MountInfo(a.id))
+				own = spell ~= nil and pcall(GameTooltip.SetMountBySpellID, GameTooltip, spell)
+			elseif a.kind == "pet" and GameTooltip.SetCompanionPet then
+				own = pcall(GameTooltip.SetCompanionPet, GameTooltip, a.id)
 			end
+			if not own then GameTooltip:SetText(self.entry.label) end
 			GameTooltip:Show()
 		end)
 		row:SetScript("OnLeave", function(self)
@@ -1650,7 +1899,7 @@ local function EditLayout()
 			editor.hint:SetText(L["%s on a slot chooses its action, %s empties it."]:format(
 				Glyph(StepKey({ "GAMEPAD_FACE_BOTTOM", "PAD1" })), Glyph(StepKey({ "GAMEPAD_FACE_TOP", "PAD4" }))))
 		else
-			editor.hint:SetText(L["Drag in spells, items or macros. Right-click to empty."])
+			editor.hint:SetText(L["Drag in spells, items, macros, mounts or pets. Right-click to empty."])
 		end
 	else
 		editor.hint:SetText(L["%s is off: turn it on on Halo's page to use it."]:format(RINGS[editRing].name))
@@ -1698,7 +1947,7 @@ local function EditLayout()
 					local a = Slots(editRing)[self.slot]
 					GameTooltip:SetText(a and Label(a) or L["Slot %d"]:format(self.slot))
 					GameTooltip:AddLine(a and L["Right-click to empty it. Drop something else to swap it."]
-						or L["Drag a spell, item or macro here."], 1, 1, 1, true)
+						or L["Drag a spell, item, macro, mount or pet here."], 1, 1, 1, true)
 					GameTooltip:AddLine(L["Click to choose from a list."], 1, 1, 1, true)
 					GameTooltip:Show()
 				end)

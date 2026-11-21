@@ -24,6 +24,7 @@ HealerMana.lua
 CombatTimer.lua
 CombatAlert.lua
 PetReminder.lua
+SealReminder.lua
 CursorCooldowns.lua
 EnemyNearby.lua
 Stats.lua

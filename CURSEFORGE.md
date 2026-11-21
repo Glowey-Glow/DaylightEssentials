@@ -6,11 +6,10 @@ A plugin for Daylight UI, by Glowey (not part of Daylight UI itself: report its 
 
 ---
 
-## New in 1.9.1
-- **Halo slots are back:** the game stopped giving realm names on Nov 20, and Halo kept each character's slots under its name and realm, so they looked empty. Every character gets its slots, modifier Halos and labels back at its next login. Nothing was lost.
-- **Commands of their own:** `/halo`, `/kos` and `/manners`, with no "/dui" in front. The old ones still work, so macros keep working.
-- **Checked against Daylight UI 2.1.2.**
-
+## New in 1.10.0
+- **Seal Reminder (new, paladins):** "Seal Missing" on your screen while you have no seal up. Its own page and switch; move it with `/dui unlock`.
+- **Halo takes mounts and companion pets:** drag them in from the mount and pet journal, or pick them from the new Mounts and Pets lists. A Random Favorite Mount slot too. Before, a Halo slot only took spells, items and macros, so mounts and pets dropped on it did nothing.
+- **Halo takes your pet's abilities and commands:** a hunter pet's or a warlock demon's abilities, and Attack, Follow, Stay and the stances, dragged from the pet bar or its spellbook, or picked from the new Pet Actions list.
 ---
 
 ## What's in it
@@ -26,6 +25,9 @@ How long you've been fighting, and the last fight's length for a few seconds aft
 
 ### Pet Reminder
 For hunters and warlocks: "No pet" or "Pet is passive" until it's sorted. Quiet while you're mounted, flying, dead, resting in a town (your choice) or under Demonic Sacrifice. Its sample shows on every character in test mode, so you can place it from anyone. **New in 1.4.0:** it glows while it shows.
+
+### Seal Reminder
+For paladins: "Seal Missing" while you have no seal up, in the same gentle pulse as the Pet Reminder. Quiet while you're mounted, flying, dead or resting in a town (your choice), and it can wait for a fight (Only in a Fight). In a fight the game hides your buffs from addons, so there it goes by whether Judgement can be used.
 
 ### Cursor Cooldowns
 - Your taunt and dispel cooldowns as small icons beside the mouse pointer while they cool down, with the game's own sweep and countdown.
@@ -59,10 +61,10 @@ For hunters and warlocks: "No pet" or "Pet is passive" until it's sorted. Quiet 
 - The idea comes from Manners by fpsacha.
 
 ### Halo
-- **Hold a key and your own spells, items and macros open in a Halo around the cursor.** Point at one or scroll to it, then let go to use it. Let go in the middle to close it without using anything. Works in a fight.
+- **Hold a key and your own spells, items, macros, mounts and pets open in a Halo around the cursor.** Point at one or scroll to it, then let go to use it. Let go in the middle to close it without using anything. Works in a fight.
 - **Its own key:** **Set Key** on its page takes the next key or mouse button you press, without touching your key bindings (or bind it under Key Bindings).
 - **Up to four Halos (new in 1.2.0):** the base Halo, plus a **Shift, Alt and Ctrl Halo**. Hold the modifier with Halo's key to open that one. Each has its own slots, **its own color** (rim, highlight and label) and **a label** of up to 16 letters.
-- Fill the slots by dragging spells, items or macros onto them in **Edit Halos** (a tab per Halo, or `/halo edit`).
+- Fill the slots by dragging spells, items, macros, **mounts, companion pets and your pet's abilities and commands** onto them in **Edit Halos** (a tab per Halo, or `/halo edit`), or click a slot to choose from a list.
 - Choose the shape (circle or arc), the number of slots (2 to 12), the Halo's size, the icon size and where it opens (around the cursor or the screen's center).
 
 ### Stance / Aura / Form (new in 1.7.0)

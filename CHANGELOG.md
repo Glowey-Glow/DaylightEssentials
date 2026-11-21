@@ -1,5 +1,10 @@
 # Glowey's Essentials (DaylightUI Plugin)
 
+## 1.10.0
+- New: Seal Reminder, for paladins. "Seal Missing" shows while you have no seal up, in the same pulse as the Pet Reminder, on its own page with its own switch. Quiet while you're mounted, on a flight, dead or resting in a town (Mute in Towns and Inns), and with Only in a Fight on it waits for a fight. Out of a fight it reads your buffs; in a fight the game hides buffs from addons, so it goes by whether Judgement can be used, and says nothing where it can't tell. Move it with /dui unlock.
+- Fixed: Halo didn't take mounts or companion pets. A slot only knew spells, items and macros, and the game hands a mount or a pet over as a kind of its own, so dropping one did nothing. Both can now be dragged in from the mount and pet journal, and both have a list of their own in Choose for Slot (Mounts, with Random Favorite Mount first, and Pets). Letting go on a mount you're riding dismounts; on a pet that's out, sends it away.
+- Halo takes your combat pet's actions too: a hunter pet's or a warlock demon's abilities, and its commands (Attack, Follow, Stay, Passive and the rest), dragged from the pet bar or the pet's spellbook, or chosen from the new Pet Actions list while the pet is out. They dim while no pet is out.
+
 ## 1.9.1
 - Commands of their own, with no "/dui" in front: /halo, /kos and /manners. The old /dui halo, /dui kos and /dui manners still work, so macros keep working.
 - Fixed: Halo slots looked empty after 2026-11-20. The game stopped giving realm names that day, and Halo kept each character's slots under its name and realm. Every character gets its slots, modifier Halos and labels back at its next login, and nothing was lost. Slots are now kept by character, so a change like this can't unhook them again.
