@@ -6,6 +6,13 @@ A plugin for Daylight UI, by Glowey (not part of Daylight UI itself: report its 
 
 ---
 
+## New in 1.9.1
+- **Halo slots are back:** the game stopped giving realm names on Nov 20, and Halo kept each character's slots under its name and realm, so they looked empty. Every character gets its slots, modifier Halos and labels back at its next login. Nothing was lost.
+- **Commands of their own:** `/halo`, `/kos` and `/manners`, with no "/dui" in front. The old ones still work, so macros keep working.
+- **Checked against Daylight UI 2.1.2.**
+
+---
+
 ## What's in it
 
 ### Healer Mana
@@ -72,29 +79,6 @@ For hunters and warlocks: "No pet" or "Pet is passive" until it's sorted. Quiet 
 - **See and place it:** a live preview on its page shows a nameplate with numbers coming off it as you change the settings; in Design mode, drag where the numbers start.
 - **Turn Off Daylight UI's Combat Text:** all of Daylight UI's combat text (damage numbers and the scrolling text around you) switches off while it's on, so no hit shows twice, and comes back as it was when it's off.
 - **Only yours and your pet's:** the game gives addons no combat log on Forever, only each hit on a nameplate without who struck it. Alone, that's yours and your pet's; in a group (new in 1.3.1) the nameplate numbers pause and the game's own damage numbers show instead, which are only yours and your pet's. Off to start: turn it on on its page.
-
----
-
-## New in 1.9.0
-- **Halo:** an icon that is cooling down shows the time left on it, for spells and items, in a fight too. Switch it off with "Cooldown Time on Icon" on Halo's page.
-
-## New in 1.8.0
-- **Halo Bar:** a row of slots you step through with the D-pad or LB / RB, in a fight too, and a list to choose each slot's spell, item or macro.
-- **Controller support:** Halo, its editor and Set Key, the tours, and two new key bindings (Buff Manners: Not Now, Secondary Stats: Show or Fold Away).
-- **Nameplate Dmg Text:** your pet's hits show their own icons.
-
-## New in 1.6.0
-- **A welcome** on first launch: what Essentials adds, what shows from the start, Halo's key to pick, and that Nameplate Dmg Text stands in for Daylight UI's combat text when it's on. **Open Options** takes you to its pages.
-- **Update alert:** a chat line when a newer version is out (once a session; switch it off under Updates).
-
-## Also new in 1.2.0
-- **In your language:** Glowey's Essentials speaks German, French, Spanish, Russian, Korean and Simplified Chinese (machine drafts, corrections welcome; words the game already translates use the game's own wording), with fixes for non-English clients (Cursor Cooldowns, Kill on Sight, Buff Manners, Secondary Stats).
-- **Window Opacity** follows Daylight UI's, or set your own on each part's page.
-
-## Also new in 1.1.0
-- **Fades in with Daylight UI** on login and /reload, instead of popping in (when Daylight UI's fade-in is on).
-- **Nothing is cut off:** every box sizes itself to its text, and every options page fits its words.
-- All text in American English.
 
 ---
 
