@@ -361,15 +361,16 @@ local function Refresh()
 		local on = allowed and (info ~= nil or type(start) ~= "nil") and Cooling(start, duration, info)
 		if on then
 			-- Which cooldown this is: its start and length when readable, else the game's flags
-			-- (never secret). Drawn again only when that changes or the icon comes up.
-			local key
+			-- (never secret). Drawn again only when that changes or the icon comes up. (Kept as the
+			-- two values, compared as they are: no string built for each icon on every update.)
+			local keyed, a, b = false, nil, nil
 			if Safe(start) and Safe(duration) then
-				key = tostring(start) .. ":" .. tostring(duration)
+				keyed, a, b = true, start, duration
 			elseif info and Safe(info.isActive) and Safe(info.isOnGCD) then
-				key = tostring(info.isActive) .. ":" .. tostring(info.isOnGCD)
+				keyed, a, b = true, info.isActive, info.isOnGCD
 			end
-			if not icon:IsShown() or key == nil or key ~= icon.swept then
-				icon.swept = key
+			if not icon:IsShown() or not keyed or not icon.swept or a ~= icon.sweptA or b ~= icon.sweptB then
+				icon.swept, icon.sweptA, icon.sweptB = keyed, a, b
 				Sweep(icon.cd, id, start, duration)
 			end
 			if not icon:IsShown() then
@@ -377,7 +378,7 @@ local function Refresh()
 				changed = true
 			end
 		elseif icon:IsShown() then
-			icon.swept = nil
+			icon.swept, icon.sweptA, icon.sweptB = nil, nil, nil
 			icon.cd:Clear()
 			icon:Hide()
 			changed = true
@@ -389,13 +390,15 @@ end
 -- The spells to follow, from what you know now.
 local function Track()
 	wipe(tracked)
-	if G("taunts") then
+	-- (Switched off: nothing is followed, and the icons still up are taken down below.)
+	local on = G("enabled")
+	if on and G("taunts") then
 		for _, family in ipairs(TAUNTS) do
 			local id = KnownOf(family)
 			if id then tracked[#tracked + 1] = id end
 		end
 	end
-	if G("dispels") then
+	if on and G("dispels") then
 		for _, family in ipairs(DISPELS) do
 			local id = KnownOf(family)
 			if id then tracked[#tracked + 1] = id end
@@ -597,10 +600,27 @@ local function Retrack()
 	RefreshReady(true)
 end
 
+-- Cooldown and usable updates come in bursts (several in one frame as a spell goes off): the
+-- icons are looked at once, on the next frame, for all of them.
+local coolDirty, readyDirty, lookQueued = false, false, false
+local function LookNow()
+	lookQueued = false
+	local cool, ready = coolDirty, readyDirty
+	coolDirty, readyDirty = false, false
+	if cool then Refresh() end
+	if cool or ready then RefreshReady() end
+end
+local function LookSoon(cool)
+	if cool then coolDirty = true else readyDirty = true end
+	if not lookQueued then
+		lookQueued = true
+		C_Timer.After(0, LookNow)
+	end
+end
+
 local function OnEvent(_, event)
 	if event == "SPELL_UPDATE_COOLDOWN" then
-		Refresh()
-		RefreshReady()
+		LookSoon(true)
 	elseif event == "UNIT_POWER_FREQUENT" then
 		if not powerQueued then
 			powerQueued = true
@@ -608,8 +628,9 @@ local function OnEvent(_, event)
 		end
 	elseif event == "PLAYER_TARGET_CHANGED" then
 		if next(readyIds) ~= nil then RefreshReady() end
-	elseif event == "SPELL_UPDATE_USABLE" or event == "PLAYER_DEAD" or event == "PLAYER_ALIVE"
-		or event == "PLAYER_UNGHOST" then
+	elseif event == "SPELL_UPDATE_USABLE" then
+		LookSoon(false)
+	elseif event == "PLAYER_DEAD" or event == "PLAYER_ALIVE" or event == "PLAYER_UNGHOST" then
 		RefreshReady()
 	elseif event == "PLAYER_REGEN_DISABLED" then
 		inFight = true
@@ -627,6 +648,26 @@ local function OnEvent(_, event)
 	end
 end
 
+-- Its events, heard only while it's on: switched off, nothing is followed (Track, ReadyTrack), so
+-- none is listened to. Switched on again, what you know and whether you're in a fight are read
+-- afresh, since their events went unheard meanwhile.
+local EVENTS = { "SPELL_UPDATE_COOLDOWN", "SPELLS_CHANGED", "PLAYER_REGEN_DISABLED",
+	"PLAYER_REGEN_ENABLED", "LEARNED_SPELL_IN_SKILL_LINE", "SPELL_UPDATE_USABLE", "PLAYER_DEAD",
+	"PLAYER_ALIVE", "PLAYER_UNGHOST" }
+local listening = false
+local function Listen()
+	local on = G("enabled") and true or false
+	if on == listening then return end
+	listening = on
+	for _, e in ipairs(EVENTS) do
+		if on then pcall(holder.RegisterEvent, holder, e) else pcall(holder.UnregisterEvent, holder, e) end
+	end
+	if on then
+		inFight = InCombatLockdown()
+		knownDirty = true
+	end
+end
+
 function P.Login()
 	holder = CreateFrame("Frame", "DaylightEssentialsCursorCooldowns", UIParent)
 	holder:SetFrameStrata("TOOLTIP")
@@ -638,11 +679,7 @@ function P.Login()
 	readyHolder:SetFrameStrata("TOOLTIP")
 	readyHolder:EnableMouse(false)
 	readyHolder:Hide()
-	for _, e in ipairs({ "SPELL_UPDATE_COOLDOWN", "SPELLS_CHANGED", "PLAYER_REGEN_DISABLED",
-		"PLAYER_REGEN_ENABLED", "LEARNED_SPELL_IN_SKILL_LINE", "SPELL_UPDATE_USABLE", "PLAYER_DEAD",
-		"PLAYER_ALIVE", "PLAYER_UNGHOST" }) do
-		pcall(holder.RegisterEvent, holder, e)
-	end
+	Listen()
 	-- (Target and power changes: registered by ReadyTrack while an ability is picked.)
 	Track()
 	RefreshReady(true)
@@ -650,6 +687,7 @@ end
 
 function P.Setting()
 	if holder then
+		Listen()
 		Track()
 		RefreshReady(true)
 	end

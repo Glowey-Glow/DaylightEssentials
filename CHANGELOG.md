@@ -1,5 +1,10 @@
 # Glowey's Essentials
 
+## 1.11.1
+- Buff Manners offers your own buff when it's missing on you, not only when it's running out: a Fortitude or Mark of the Wild that wore off or was lost to a death mid-dungeon gets a row of its own ("Missing on you") that casts it on you, until it's back. The option is now Rebuff Me When Missing or Low. Daylight UI's buff reminder only shows missing buffs on a ready check and on entering a dungeon, so these were never offered.
+- Lighter in combat: the Stance text, Healer Mana's low-mana glow, Buff Manners, Cursor Cooldowns and the nameplate numbers do less work on every update, so fights run smoother.
+- Parts you've switched off (Cursor Cooldowns, Seal Reminder, Pet Reminder) no longer listen to the game at all.
+
 ## 1.11.0
 - Buff Manners lists several players at once, a row each, instead of one. Players Listed (1 to 6, 3 to start) sets how many; click any row to give that player the buff, and the key gives the top row's.
 - Buff Manners: Rebuff Me Before Mine Run Out (on to start). When a buff you can cast is running out on you, the prompt offers it on a row of its own that casts it on you, on the same button and key. Minutes Left to Rebuff Me (1 to 10, 3 to start) sets how early, never earlier than halfway through the buff. Paladins are offered only their own blessing again.

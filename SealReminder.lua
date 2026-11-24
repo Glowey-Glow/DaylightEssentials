@@ -83,17 +83,26 @@ local function SealNames()
 	return list
 end
 
--- Whether you know a seal yet (any rank).
+-- Whether you know a seal yet (any rank). Once you do, kept until your spells change
+-- (SPELLS_CHANGED); not yet, asked again each look.
+local knowsSeal = false
 local function KnowsSeal()
+	if knowsSeal then return true end
 	for _, id in ipairs(SEALS) do
-		if (IsPlayerSpell and IsPlayerSpell(id)) or (IsSpellKnown and IsSpellKnown(id)) then return true end
+		if (IsPlayerSpell and IsPlayerSpell(id)) or (IsSpellKnown and IsSpellKnown(id)) then
+			knowsSeal = true
+			return true
+		end
 	end
 	-- (A higher rank only: the spellbook finds a spell you know by its name.)
 	local find = C_SpellBook and C_SpellBook.FindSpellBookSlotForSpell
 	if find then
 		for _, name in ipairs(SealNames()) do
 			local ok, slot = pcall(find, name)
-			if ok and slot ~= nil then return true end
+			if ok and slot ~= nil then
+				knowsSeal = true
+				return true
+			end
 		end
 	end
 	return false
@@ -150,8 +159,13 @@ local function Warning()
 	return nil
 end
 
+local shownWord, shownScale   -- what Show last put up (nothing to do when it's the same again)
 local function Show(word)
 	if word then
+		local scale = G("scale")
+		if type(scale) ~= "number" or scale < 0.5 or scale > 3 then scale = 1 end
+		if word == shownWord and scale == shownScale and frame:IsShown() then return end
+		shownWord, shownScale = word, scale
 		-- (The words always at full, and in a font.)
 		if not text:GetFont() and _G.GameFontNormalLarge then text:SetFontObject(_G.GameFontNormalLarge) end
 		text:SetText(word)
@@ -159,8 +173,6 @@ local function Show(word)
 		text:Show()
 		body:SetAlpha(1)
 		body:Show()
-		local scale = G("scale")
-		if type(scale) ~= "number" or scale < 0.5 or scale > 3 then scale = 1 end
 		body:SetScale(scale)
 		frame:SetSize(W * scale, H * scale)
 		if not frame:IsShown() then
@@ -168,9 +180,12 @@ local function Show(word)
 			frame:Show()
 			if ns.MotionOn() then pulse:Play() end   -- (no pulse with motion off)
 		end
-	elseif frame:IsShown() then
-		pulse:Stop()
-		frame:Hide()
+	else
+		shownWord = nil
+		if frame:IsShown() then
+			pulse:Stop()
+			frame:Hide()
+		end
 	end
 end
 
@@ -194,7 +209,27 @@ local EVENTS = { "PLAYER_UPDATE_RESTING", "PLAYER_ENTERING_WORLD", "PLAYER_MOUNT
 	"SPELLS_CHANGED", "UNIT_ENTERED_VEHICLE", "UNIT_EXITED_VEHICLE", "PLAYER_REGEN_DISABLED",
 	"PLAYER_REGEN_ENABLED", "SPELL_UPDATE_USABLE" }
 
-local function OnEvent() LookSoon() end
+local function OnEvent(_, event)
+	if event == "SPELLS_CHANGED" then knowsSeal = false end
+	LookSoon()
+end
+
+-- The game's events: only for a paladin with it on (switched on again, what you know is asked
+-- afresh, since SPELLS_CHANGED went unheard meanwhile).
+local listening = false
+local function Listen()
+	local on = class == "PALADIN" and G("enabled") and true or false
+	if not frame or on == listening then return end
+	listening = on
+	if on then
+		knowsSeal = false
+		for _, e in ipairs(EVENTS) do pcall(frame.RegisterEvent, frame, e) end
+		frame:RegisterUnitEvent("UNIT_AURA", "player")
+	else
+		for _, e in ipairs(EVENTS) do pcall(frame.UnregisterEvent, frame, e) end
+		frame:UnregisterEvent("UNIT_AURA")
+	end
+end
 
 -- The line, its mover and its test part. Made at login for a paladin; for any other class only
 -- when unlock or test mode asks for the sample (so it can be placed from any character), and then
@@ -226,11 +261,8 @@ local function Build()
 	-- the game loads, and the fade-in starts what it's given at nothing. The words are kept at full
 	-- by Show above; the frame's own alpha is the pulse.)
 	frame:SetScript("OnEvent", OnEvent)
-	-- (The game's events only matter to a paladin.)
-	if class == "PALADIN" then
-		for _, e in ipairs(EVENTS) do pcall(frame.RegisterEvent, frame, e) end
-		frame:RegisterUnitEvent("UNIT_AURA", "player")
-	end
+	-- (The game's events only matter to a paladin with it on.)
+	Listen()
 end
 
 function P.Login()
@@ -251,7 +283,10 @@ function P.Login()
 end
 
 function P.Setting()
-	if frame then LookSoon() end
+	if frame then
+		Listen()
+		LookSoon()
+	end
 end
 
 function P.Preview()

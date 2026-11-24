@@ -348,12 +348,15 @@ local function IconFor(plate, school, missed)
 			if c.plate then c.used = true end
 			if c.id and school ~= nil and not missed and schoolOf[c.id] == nil then schoolOf[c.id] = school end
 			if school ~= nil and not missed then
+				-- (Each school's entry kept and written over, not made again for every hit.)
 				if c.pet then
-					petLast[school] = { tex = c.tex, t = now }
+					local e = petLast[school]
+					if e then e.tex, e.t = c.tex, now else petLast[school] = { tex = c.tex, t = now } end
 				elseif Periodic(c.id) then
 					local mine = lastHit[plate] or {}
 					lastHit[plate] = mine
-					mine[school] = { tex = c.tex, t = now }
+					local e = mine[school]
+					if e then e.tex, e.t = c.tex, now else mine[school] = { tex = c.tex, t = now } end
 				end
 			end
 			return c.tex
@@ -630,12 +633,20 @@ local function SelfSpot(at)
 	return at == "right" and selfRight or selfLeft
 end
 
--- DaylightUI's own combat text is showing (not held off by us): it already shows these.
+-- DaylightUI's own combat text is showing (not held off by us): it already shows these. Its
+-- switch is read once and kept until a setting or the look changes, or we hold it off or let it
+-- go (ApplyReplace): not on every hit you take.
+local showsIncoming   -- nil: read it again
 local function DaylightShowsIncoming()
 	if sctOff then return false end
-	local ok, on = pcall(API.GetSetting, "general", "sct.enabled")
-	return ok and on == true
+	if showsIncoming == nil then
+		local ok, on = pcall(API.GetSetting, "general", "sct.enabled")
+		showsIncoming = ok and on == true
+	end
+	return showsIncoming
 end
+ns.me.On("SettingChanged", function() showsIncoming = nil end)
+ns.me.On("StyleChanged", function() showsIncoming = nil end)
 
 local function OnSelf(action, flag, amount, school)
 	if not selfLeft or Secret(action) or type(action) ~= "string" then return end
@@ -719,6 +730,7 @@ local function Saved()
 end
 
 local waiting = false
+local ListenCombat   -- below
 
 local function ApplyReplace()
 	if InCombatLockdown() then
@@ -759,6 +771,8 @@ local function ApplyReplace()
 		pcall(API.Off, sctOff)
 		sctOff = nil
 	end
+	showsIncoming = nil
+	ListenCombat()
 end
 
 -- ---------------------------------------------------------------------------------------------
@@ -922,14 +936,29 @@ P.page.sample = function(parent) return NewSample(parent) end
 
 local events
 
+-- Every unit's hits while the plates' numbers are ours; only yours (On You) while they're handed
+-- to the game in a group, since OnCombat passes over every other unit's then.
+local combatHeard   -- "all", "player", or nil (not listening)
+ListenCombat = function()
+	if not events then return end
+	local want = G("enabled") == true and (handed and "player" or "all") or nil
+	if want == combatHeard then return end
+	combatHeard = want
+	events:UnregisterEvent("UNIT_COMBAT")
+	if want == "player" then
+		events:RegisterUnitEvent("UNIT_COMBAT", "player")
+	elseif want == "all" then
+		events:RegisterEvent("UNIT_COMBAT")
+	end
+end
+
 local function Listen()
 	local on = G("enabled") == true
+	ListenCombat()
 	if on then
-		events:RegisterEvent("UNIT_COMBAT")
 		events:RegisterEvent("NAME_PLATE_UNIT_REMOVED")
 		events:RegisterEvent("GROUP_ROSTER_UPDATE")
 	else
-		events:UnregisterEvent("UNIT_COMBAT")
 		events:UnregisterEvent("NAME_PLATE_UNIT_REMOVED")
 		events:UnregisterEvent("GROUP_ROSTER_UPDATE")
 		DropAll(world)

@@ -8,13 +8,16 @@
 --
 -- The prompt lists up to "Players Listed" people (rows), each row its own secure button; the key
 -- gives the top row's buff. A buff of yours on you that is running out is offered too, on a row
--- of its own that casts it on you ("Rebuff Me Before Mine Run Out"). "Disable When Busy" lists
+-- of its own that casts it on you, and so is one missing on you altogether: worn off in a dungeon,
+-- gone with a death ("Rebuff Me When Missing or Low"). "Disable When Busy" lists
 -- nobody else while more players than its number want your buff (a crowded city).
 --
 -- Nothing is ever cast by itself: the game only lets an addon cast from a click or a key press, so
 -- the prompt is a secure button (SecureActionButtonTemplate) whose macro is set out of a fight
 -- only. In a fight the prompt is hidden (a state driver hides its secure part), and comes back
--- after it. Your own missing buffs are left to DaylightUI's buff reminder.
+-- after it. (Daylight UI's buff reminder shows missing group buffs only on a ready check and on
+-- entering a dungeon, for a few seconds: a buff that wears off or is lost to a death later in the
+-- run was never offered. The row here stays until the buff is back.)
 --
 -- Who buffed you: the game names the caster of each new buff on you (its sourceUnit) when that
 -- player is one of your units (group, target, mouseover, a nameplate). Friendly nameplates help it
@@ -79,7 +82,7 @@ P.page = { id = KEY, label = L["Buff Manners"],
 	desc = L["One click to buff players who buffed you, and others near you."],
 	groups = {
 		{ label = L["Buff Manners"],
-		  desc = L["Click the prompt, or press its key (Key Bindings, AddOns, Glowey's Essentials). Right-click it for Not Now and Never Offer. Hidden in a fight. Your own missing buffs are left to Daylight UI's buff reminder."],
+		  desc = L["Click the prompt, or press its key (Key Bindings, AddOns, Glowey's Essentials). Right-click it for Not Now and Never Offer. Hidden in a fight."],
 		  items = {
 			{ type = "toggle", key = KEY .. ".enabled", label = L["On"] },
 			{ type = "toggle", key = KEY .. ".buffedYou", label = L["Show Who Buffed Me"],
@@ -106,8 +109,8 @@ P.page = { id = KEY, label = L["Buff Manners"],
 		{ label = L["My Buffs"],
 		  desc = L["Mages give Arcane Intellect, Priests Fortitude, Druids Mark of the Wild, Paladins a blessing, Warlocks Unending Breath (only while you're swimming). Intellect, Wisdom and Divine Spirit only go to players who use mana."],
 		  items = {
-			{ type = "toggle", key = KEY .. ".selfTopUp", label = L["Rebuff Me Before Mine Run Out"],
-			  desc = L["When a buff you can cast is running out on you, the prompt offers it on a row of its own: click it, or its key when it's on top, to cast it on yourself."] },
+			{ type = "toggle", key = KEY .. ".selfTopUp", label = L["Rebuff Me When Missing or Low"],
+			  desc = L["When a buff you can cast is missing on you or running out, the prompt offers it on a row of its own: click it, or its key when it's on top, to cast it on yourself."] },
 			{ type = "slider", key = KEY .. ".selfMinutes", label = L["Minutes Left to Rebuff Me"], min = 1, max = 10, step = 1,
 			  desc = L["In minutes. Never earlier than halfway through the buff."], disabled = SelfOff },
 			-- Other languages: the spell and the class in the game's own words.
@@ -328,7 +331,8 @@ local function Pick(unit, buffs)
 end
 
 -- A buff of yours on you that runs out within "Minutes Left to Rebuff Me" (never earlier than
--- halfway through it): the entry to cast again and the seconds left, or nil. Read fresh each look
+-- halfway through it): the entry to cast again and the seconds left, or nil. Else one missing on
+-- you: the entry, 0 and true. Read fresh each look
 -- (time passes without a UNIT_AURA). Out of a fight only, and any field the game keeps secret
 -- (Safe) passes that aura over: the same reads as the game's own buff frame, expirationTime minus
 -- GetTime() and duration 0 for a buff that never runs out (Blizzard_BuffFrame/BuffFrame.lua 733-734).
@@ -359,7 +363,14 @@ local function SelfDue()
 			end
 		end
 	end
-	return best, bestLeft
+	if best then return best, bestLeft end
+	-- Missing on you altogether (worn off, gone with a death): the same choice as for anyone else
+	-- (Pick: its switch, known, wanted by your class, none of its names on you, castable now; a
+	-- paladin's, only with no blessing of its own on you). Left 0: the row says it's missing.
+	local buffs = Buffs("player")
+	local b = buffs and Pick("player", buffs)
+	if b then return b, 0, true end
+	return nil
 end
 
 -- Whether a unit is a player we may offer anything to (not range: that's per spell).
@@ -545,7 +556,7 @@ local function PaintRow(r, o)
 	r.icon:SetTexture(spell and spell.icon or o.icon or 136243)
 	r.title:SetText(spell and spell.name or L["Thank %s"]:format(o.short))
 	if o.reason == "self" then
-		r.sub:SetText(Left(o.left or 0))
+		r.sub:SetText(o.missing and L["Missing on you"] or Left(o.left or 0))
 	else
 		local cr, cg, cb = 1, 1, 1
 		if o.class then cr, cg, cb = API.ClassColor(o.class) end
@@ -648,7 +659,7 @@ local function ShowOffers(list)
 				keys[#keys + 1] = "-"
 			else
 				keys[#keys + 1] = (o.guid or o.name) .. ":" .. (o.spell and o.spell.name or "") .. ":" .. o.reason
-					.. (o.thanks and ":t" or "") .. (o.reason == "self" and ":" .. Left(o.left or 0) or "")
+					.. (o.thanks and ":t" or "") .. (o.reason == "self" and ":" .. (o.missing and "missing" or Left(o.left or 0)) or "")
 			end
 		end
 		local key = table.concat(keys, "|")
@@ -682,14 +693,15 @@ local function Quiet()
 	return false
 end
 
+-- The group's unit tokens, made once (read only: never changed by whoever asks).
+local RAID_UNITS, PARTY_UNITS, NO_UNITS = {}, {}, {}
+for i = 1, 40 do RAID_UNITS[i] = "raid" .. i end
+for i = 1, 4 do PARTY_UNITS[i] = "party" .. i end
+
 local function GroupUnits()
-	local units = {}
-	if IsInRaid() then
-		for i = 1, 40 do units[#units + 1] = "raid" .. i end
-	elseif IsInGroup() then
-		for i = 1, 4 do units[#units + 1] = "party" .. i end
-	end
-	return units
+	if IsInRaid() then return RAID_UNITS end
+	if IsInGroup() then return PARTY_UNITS end
+	return NO_UNITS
 end
 
 local plates = {}   -- nameplate unit tokens on screen now
@@ -721,11 +733,14 @@ local function Try(unit, reason, seen, thanksFor)
 end
 
 -- The units that could be someone who buffed you: group, target, focus, mouseover, nameplates.
+-- (One list, filled again on each look: nothing that walks it looks again meanwhile.)
+local known = {}
 local function KnownUnits()
-	local units = { "target", "focus", "mouseover" }
-	for _, u in ipairs(GroupUnits()) do units[#units + 1] = u end
-	for u in pairs(plates) do units[#units + 1] = u end
-	return units
+	wipe(known)
+	known[1], known[2], known[3] = "target", "focus", "mouseover"
+	for _, u in ipairs(GroupUnits()) do known[#known + 1] = u end
+	for u in pairs(plates) do known[#known + 1] = u end
+	return known
 end
 
 -- Whether your class has a buff to give right now (a warlock's breath only while swimming).
@@ -744,7 +759,7 @@ end
 
 -- Your own buff running out, as a row of its own, or nil.
 local function SelfOffer()
-	local spell, left = SelfDue()
+	local spell, left, missing = SelfDue()
 	if not spell then return nil end
 	local guid = Read(UnitGUID, "player")
 	if type(guid) ~= "string" then return nil end
@@ -753,7 +768,7 @@ local function SelfOffer()
 	if snoozed[guid] and now - snoozed[guid] < SNOOZE then return nil end
 	local short = Read(UnitName, "player") or ""
 	return { guid = guid, unit = "player", name = FullName("player") or short, short = short, class = class,
-		spell = spell, reason = "self", left = left }
+		spell = spell, reason = "self", left = left, missing = missing }
 end
 
 -- Everyone to offer, in order, as a list of rows (at most "Players Listed"): who buffed you, your
@@ -1015,6 +1030,26 @@ local EVENTS = { "PLAYER_ENTERING_WORLD", "PLAYER_REGEN_DISABLED", "PLAYER_REGEN
 	"READY_CHECK", "SPELLS_CHANGED", "PLAYER_UPDATE_RESTING", "PLAYER_MOUNT_DISPLAY_CHANGED", "ZONE_CHANGED_NEW_AREA",
 	"PLAYER_DEAD", "PLAYER_ALIVE", "PLAYER_UNGHOST" }
 
+-- Heard only out of a fight: nothing reads players' buffs or the nameplates in one (Look waits,
+-- NoteBuffs too), and the end of the fight forgets every buff read before it. The nameplates up
+-- then are read again (SeePlates).
+local QUIET_IN_COMBAT = { "UNIT_AURA", "NAME_PLATE_UNIT_ADDED", "NAME_PLATE_UNIT_REMOVED" }
+
+local function SeePlates()
+	wipe(plates)
+	if C_NamePlate and C_NamePlate.GetNamePlates then
+		for _, p in ipairs(C_NamePlate.GetNamePlates() or {}) do
+			if p.namePlateUnitToken then plates[p.namePlateUnitToken] = true end
+		end
+	end
+end
+
+local function QuietInCombat(on)
+	for _, e in ipairs(QUIET_IN_COMBAT) do
+		if on then pcall(frame.UnregisterEvent, frame, e) else pcall(frame.RegisterEvent, frame, e) end
+	end
+end
+
 local function OnEvent(_, event, unit, info)
 	if event == "UNIT_AURA" then
 		-- Only a buff added or taken away changes what we read (refreshed timers and stacks don't).
@@ -1038,12 +1073,16 @@ local function OnEvent(_, event, unit, info)
 		plates[unit] = nil
 		return
 	elseif event == "PLAYER_REGEN_DISABLED" then
+		QuietInCombat(true)
+		wipe(plates)
 		Tick(false)
 		offers = {}
 		wipe(hovered)
 		body:Hide()   -- (the secure part is hidden by its state driver)
 		return
 	elseif event == "PLAYER_REGEN_ENABLED" then
+		QuietInCombat(false)
+		SeePlates()
 		Forget()
 		Tick(G("enabled"))
 		LookSoon(0.5)
@@ -1157,11 +1196,9 @@ local function Listen(on)
 		Forget()
 	else
 		-- Nameplates already up (a /reload, the part switched on).
-		if C_NamePlate and C_NamePlate.GetNamePlates then
-			for _, p in ipairs(C_NamePlate.GetNamePlates() or {}) do
-				if p.namePlateUnitToken then plates[p.namePlateUnitToken] = true end
-			end
-		end
+		SeePlates()
+		-- (Switched on in a fight: the buffs and nameplates wait for its end.)
+		if InCombatLockdown() then QuietInCombat(true) end
 	end
 	Tick(on and not InCombatLockdown())
 end

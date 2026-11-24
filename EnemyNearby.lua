@@ -136,6 +136,11 @@ local function IsKos(name)
 	return type(name) == "string" and KosDB()[Fold(name)] ~= nil
 end
 
+-- (A listed player's key is their name already folded: no need to fold it again.)
+local function IsKosKey(key)
+	return KosDB()[key] ~= nil
+end
+
 local PaintSoon -- below
 
 local function KosAdd(name)
@@ -253,7 +258,9 @@ P.page = { id = KEY, label = L["Enemy Nearby"],
 -- ---------------------------------------------------------------------------------------------
 
 -- An enemy player's key (full name in small letters, ns.Fold), name, class, level and guild; nil
--- for anyone else, and for anyone the game won't name to addons right now.
+-- for anyone else, and for anyone the game won't name to addons right now. (Each name is folded
+-- once and kept, until the list is cleared: the same plates are looked at every second.)
+local folded = {}
 local function Look(unit)
 	if not Yes(Read(UnitExists, unit)) then return nil end
 	if not Yes(Read(UnitIsPlayer, unit)) then return nil end
@@ -269,7 +276,12 @@ local function Look(unit)
 	if not Safe(level) or type(level) ~= "number" then level = nil end
 	local guild = Read(GetGuildInfo, unit)
 	if not Safe(guild) or type(guild) ~= "string" or guild == "" then guild = nil end
-	return Fold(name), name, class, level, guild
+	local key = folded[name]
+	if not key then
+		key = Fold(name)
+		folded[name] = key
+	end
+	return key, name, class, level, guild
 end
 
 -- ---------------------------------------------------------------------------------------------
@@ -327,7 +339,7 @@ end
 
 -- A player came into the list: an alert, if they call for one and haven't had one lately.
 local function Alert(key, name, class, level)
-	local kos = IsKos(name)
+	local kos = IsKosKey(key)
 	local wantKos = kos and G("alertKos")
 	if not wantKos and not G("alertNew") then return end
 	local now = GetTime()
@@ -574,7 +586,7 @@ local function Paint(force)
 		for i, e in ipairs(list) do
 			local row = Row(i)
 			row.key = e.key
-			FillRow(row, e.name, e.class, e.level, e.guild, IsKos(e.name), now - e.seen)
+			FillRow(row, e.name, e.class, e.level, e.guild, IsKosKey(e.key), now - e.seen)
 			row:Show()
 		end
 	end
@@ -743,6 +755,7 @@ end
 local function Clear()
 	wipe(list)
 	wipe(byKey)
+	wipe(folded)
 	wipe(plates)
 	version = version + 1
 	StopTicker()

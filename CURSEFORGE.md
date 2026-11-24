@@ -6,12 +6,9 @@ By Glowey. A standalone addon that **integrates with Daylight UI** when it's ins
 
 ---
 
-## New in 1.11.0
-- **Works without Daylight UI:** every page is in Glowey's settings (**/glowey**), in Glowey's look or **Blizzard Style** (the game's own window frames). With Daylight UI it follows its language, colors and scale.
-- **Buff Manners lists several players at once** (Players Listed, 1 to 6, 3 to start), offers to **rebuff you** before your own buffs run out, and **Disable When Busy** keeps it quiet in a crowd.
-- **Move Window** on every page with a window of its own unlocks them to drag, and locks them again.
-- **Quick Loot** (off to start): everything taken the moment the loot window opens.
-- **Settings fixes without Daylight UI:** sliders drag, dropdowns fit their longest choice, and Secondary Stats' layouts read List and Line.
+## New in 1.11.1
+- **Buff Manners offers your own missing buff:** a Fortitude or Mark of the Wild that wore off or was lost to a death mid-dungeon now gets a row of its own ("Missing on you") that casts it on you, not only one that's running out. The option is now **Rebuff Me When Missing or Low**.
+- **Lighter in combat:** the Stance text, Healer Mana, Buff Manners, Cursor Cooldowns and the nameplate numbers do less work on every update, and parts you've switched off no longer listen to the game at all.
 ---
 
 ## What's in it

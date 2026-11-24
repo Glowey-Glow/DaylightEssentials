@@ -339,6 +339,8 @@ local glowing = setmetatable({}, { __mode = "k" })
 function ns.Glow(frame, on, opts)
 	if type(API.GlowAround) ~= "function" or type(frame) ~= "table" then return end
 	on = on and true or false
+	-- (Taking away a glow that isn't there: nothing to do, before anything is built.)
+	if not on and not glowing[frame] then return end
 	local o = {}
 	if type(opts) == "table" then for k, v in pairs(opts) do o[k] = v end end
 	if on and o.style == nil then

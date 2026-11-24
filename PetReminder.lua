@@ -113,8 +113,14 @@ local function Show(word)
 			frame:Show()
 			if ns.MotionOn() then pulse:Play() end   -- (no pulse with motion off)
 		end
-		ns.Glow(frame, G("glow") ~= false)
+		-- (The glow asked for only when it turns on or off, not on every look; a setting asks again.)
+		local glow = G("glow") ~= false
+		if glow ~= frame.glowOn then
+			frame.glowOn = glow
+			ns.Glow(frame, glow)
+		end
 	elseif frame:IsShown() then
+		frame.glowOn = false
 		ns.Glow(frame, false)
 		pulse:Stop()
 		frame:Hide()
@@ -163,6 +169,20 @@ local EVENTS = { "UNIT_PET", "PET_BAR_UPDATE", "PLAYER_UPDATE_RESTING", "PLAYER_
 	"PLAYER_MOUNT_DISPLAY_CHANGED", "PLAYER_CONTROL_LOST", "PLAYER_CONTROL_GAINED", "PLAYER_ALIVE",
 	"PLAYER_UNGHOST", "PLAYER_DEAD", "SPELLS_CHANGED", "UNIT_ENTERED_VEHICLE", "UNIT_EXITED_VEHICLE" }
 
+-- The game's events: only for a class with a pet, with it on.
+local listening = false
+local function Listen()
+	local on = CALLS[class] and G("enabled") and true or false
+	if not frame or on == listening then return end
+	listening = on
+	for _, e in ipairs(EVENTS) do
+		if on then pcall(frame.RegisterEvent, frame, e) else pcall(frame.UnregisterEvent, frame, e) end
+	end
+	if class == "WARLOCK" then
+		if on then frame:RegisterUnitEvent("UNIT_AURA", "player") else frame:UnregisterEvent("UNIT_AURA") end
+	end
+end
+
 local function OnEvent(_, event, unit)
 	-- A warlock's buffs change all through a fight; they only matter while no pet is out.
 	if event == "UNIT_AURA" and (unit ~= "player" or UnitExists("pet")) then return end
@@ -198,11 +218,8 @@ local function Build()
 	-- Comes up with DaylightUI's fade-in on login and /reload (the inner box: the frame's own alpha is its pulse).
 	ns.FadeIn(KEY, function() return { body } end)
 	frame:SetScript("OnEvent", OnEvent)
-	-- (The game's events only matter to a class with a pet.)
-	if CALLS[class] then
-		for _, e in ipairs(EVENTS) do pcall(frame.RegisterEvent, frame, e) end
-		if class == "WARLOCK" then frame:RegisterUnitEvent("UNIT_AURA", "player") end
-	end
+	-- (The game's events only matter to a class with a pet, with it on.)
+	Listen()
 end
 
 function P.Login()
@@ -223,7 +240,11 @@ function P.Login()
 end
 
 function P.Setting()
-	if frame then LookSoon() end
+	if frame then
+		frame.glowOn = nil   -- (its glow asked for again: a new choice or glow style)
+		Listen()
+		LookSoon()
+	end
 end
 
 function P.Preview()

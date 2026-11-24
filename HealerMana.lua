@@ -208,18 +208,27 @@ local function LowCurve()
 	return c
 end
 
-local function PaintLow(row, unit)
+-- The glow is asked for only when it turns on or off (holder.glowOn): mana updates come many
+-- times a second, in a fight every one of them. A line drawn whole (FillRow, the look, a setting)
+-- passes again, which asks once more so a new color or glow style is taken.
+local function SetGlow(holder, on, again)
+	if not again and holder.glowOn == on then return end
+	holder.glowOn = on
+	ns.Glow(holder, on, on and GlowInk() or nil)
+end
+
+local function PaintLow(row, unit, again)
 	local holder = row.glow
 	if not holder then return end
 	if G("lowGlow") == false or row.dead or row.off or row.drinking or not unit then
-		ns.Glow(holder, false)
+		SetGlow(holder, false, again)
 		holder:SetAlpha(1)
 		return
 	end
 	local cur, max = UnitPower(unit, MANA), UnitPowerMax(unit, MANA)
 	if Safe(cur) and Safe(max) and type(cur) == "number" and type(max) == "number" and max > 0 then
 		holder:SetAlpha(1)
-		ns.Glow(holder, cur / max < LOW_AT, GlowInk())
+		SetGlow(holder, cur / max < LOW_AT, again)
 		return
 	end
 	local curve = UnitPowerPercent and LowCurve()
@@ -227,7 +236,7 @@ local function PaintLow(row, unit)
 	local ok, col = pcall(UnitPowerPercent, unit, MANA, false, curve)
 	if not (ok and type(col) == "table" and col.GetRGBA) then return end
 	local okA, _, _, _, a = pcall(col.GetRGBA, col)
-	if okA and pcall(holder.SetAlpha, holder, a) then ns.Glow(holder, true, GlowInk()) end
+	if okA and pcall(holder.SetAlpha, holder, a) then SetGlow(holder, true, again) end
 end
 
 local function PaintMana(fs, unit)
@@ -359,7 +368,7 @@ end
 
 -- A dead or offline healer: the whole line grayed (name and class icon), so it reads at a glance.
 local function GrayLine(row)
-	PaintLow(row, nil)
+	PaintLow(row, nil, true)
 	row.bar:Hide()
 	ns.Ink(row.name, "OFF")
 	row.icon:SetDesaturated(true)
@@ -378,7 +387,7 @@ local function PaintDrink(row, unit)
 		row.bar:Hide()
 		PaintMana(row.mana, unit)
 	end
-	PaintLow(row, unit)
+	PaintLow(row, unit, true)
 end
 
 -- One healer's line: its name, class and state, then its mana.
@@ -510,7 +519,7 @@ local function Rebuild()
 			end
 			-- (The sample's low healer glows too.)
 			row.glow:SetAlpha(1)
-			ns.Glow(row.glow, G("lowGlow") ~= false and not row.drinking and p.pct < LOW_AT * 100, GlowInk())
+			SetGlow(row.glow, G("lowGlow") ~= false and not row.drinking and p.pct < LOW_AT * 100, true)
 			row:Show()
 		end
 		for i = #PREVIEW + 1, #rows do rows[i]:Hide() end

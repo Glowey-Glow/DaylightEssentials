@@ -1364,14 +1364,22 @@ local function Build()
 	-- Docked to the chat with "Fade with the Chat": as see-through as the chat window is now.
 	-- Docked to the damage meters: making way for the threat meter (MakeWay). A small child frame
 	-- does it, shown only for those two (Watching), so nothing runs otherwise.
-	local fadeWait = 0
+	-- (The fade follows the chat's closely. Making way looks ten times a second while no threat
+	-- meter is up, and as closely as the fade while one is, so the box keeps up with its slide.)
+	local fadeWait, wayWait = 0, 0
 	watcher = CreateFrame("Frame", nil, frame)
 	watcher:Hide()
 	watcher:SetScript("OnUpdate", function(_, dt)
 		fadeWait = fadeWait + (dt or 0)
 		if fadeWait < 0.03 then return end
+		wayWait = wayWait + fadeWait
 		fadeWait = 0
-		P.MakeWay()
+		local threat = _G.DaylightUIThreatMeter
+		if wayWait >= 0.1 or makeWay ~= 0 or makeWayX ~= 0
+			or (type(threat) == "table" and threat.IsVisible and threat:IsVisible()) then
+			wayWait = 0
+			P.MakeWay()
+		end
 		local a = 1
 		if G("chatFade") and G("dock") == "chat" then
 			local chat = _G.DaylightUIChatPanel
