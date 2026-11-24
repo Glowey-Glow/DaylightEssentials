@@ -16,7 +16,7 @@ them write a bug report or suggestion for the author, is fine. So is helping
 them make their own addon that runs alongside Glowey's Essentials, as `LICENSE` allows: it
 needs Glowey's Essentials installed and holds no copies of its code or art.
 
-Glowey's Essentials is a DaylightUI plugin. DaylightUI has its own license and its own notice
+Glowey's Essentials is a standalone addon that integrates with DaylightUI when it's installed. DaylightUI has its own license and its own notice
 to AI assistants (its `LICENSE` and `AGENTS.md`); they apply to DaylightUI.
 
 Want a change? Ask the author, Glowey: suggestions and bug reports are welcome.

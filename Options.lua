@@ -11,12 +11,14 @@ local L = ns.L
 local WINDOWED = { combatTimer = true, healerMana = true, enemyNearby = true, stats = true,
 	buffManners = true, halo = true }
 
+-- (Without Daylight UI, Host.lua, both are left out: the boxes take the Glowey window opacity.)
+local function NoDaylight() return ns.standalone == true end
 local function OpacityItems(key)
 	return {
-		{ type = "toggle", key = key .. ".duiOpacity", label = L["Use Daylight UI's Opacity"],
+		{ type = "toggle", key = key .. ".duiOpacity", label = L["Use Daylight UI's Opacity"], hidden = NoDaylight,
 		  desc = L["Its background follows Daylight UI's window opacity."] },
 		{ type = "slider", key = key .. ".opacity", label = L["Window Opacity"], min = 0.1, max = 1, step = 0.05, unit = "%",
-		  desc = L["How solid its background is, with Daylight UI's opacity off."],
+		  desc = L["How solid its background is, with Daylight UI's opacity off."], hidden = NoDaylight,
 		  disabled = function(get) return get(key .. ".duiOpacity") ~= false end },
 	}
 end
@@ -57,10 +59,44 @@ ns.me.On("Login", function()
 	end
 end)
 
+-- "Move Window" on the page of each part with a frame of its own to place (its mover): frames
+-- unlocked to drag, from the page itself (Host.SetUnlocked: Daylight UI's /dui unlock with it, the
+-- Glowey unlock without). A second press locks them again. In the page's first group, after its
+-- On switch.
+local MOVABLE = { combatTimer = true, healerMana = true, enemyNearby = true, stats = true,
+	buffManners = true, combatAlert = true, petReminder = true, sealReminder = true }
+
+local function Unlocked()
+	local H = ns.Host
+	return H and H.Unlocked and H.Unlocked() == true or false
+end
+
+local function MoveItem()
+	return { type = "button", label = L["Move Window"],
+		textFn = function() return Unlocked() and L["Lock Windows"] or L["Move Window"] end,
+		desc = L["Shows a handle on each window you can move: drag it, or right-click it to put it back. Press again (or use the lock button) when done."],
+		func = function()
+			local H = ns.Host
+			if H and H.SetUnlocked then H.SetUnlocked(not Unlocked()) end
+		end }
+end
+
+for _, part in ipairs(ns.parts) do
+	local g = MOVABLE[part.key] and part.page and part.page.groups and part.page.groups[1]
+	if g and type(g.items) == "table" then
+		local at = #g.items + 1
+		for i, item in ipairs(g.items) do
+			if item.type == "toggle" and item.key == part.key .. ".enabled" then at = i + 1 break end
+		end
+		table.insert(g.items, at, MoveItem())
+	end
+end
+
 local pages = {}
 for _, part in ipairs(ns.parts) do
 	ns.defaults[part.key] = part.defaults or {}
-	if part.page then pages[#pages + 1] = part.page end
+	-- (A part that lives on Daylight UI's own frames has no page without it.)
+	if part.page and not (part.daylightOnly and ns.standalone) then pages[#pages + 1] = part.page end
 end
 -- (The page the welcome's Open Options shows: EssentialsGuide.lua.)
 ns.firstPage = pages[1] and pages[1].id

@@ -208,6 +208,7 @@ local KEY = "stance"
 local KIND = ns.ADDON .. ":stance"
 
 local P = ns.Part({ key = KEY, label = L["Stance / Aura / Form"] })
+P.daylightOnly = true   -- a text on Daylight UI's player frame: no page without it (Options.lua)
 P.defaults = { player = false, spot = "left", size = 11, x = 3, y = 7 }
 
 -- Where it sits: the same choices as DaylightUI's extra text card (its Spots), else these.
@@ -246,8 +247,10 @@ local function Place(slot)
 end
 
 local function UFTexts()
-	local DUI = ns.DUI
-	local mod = DUI and DUI.GetModule and DUI:GetModule("UnitFrames")
+	local DUI = ns.DUI or _G.DaylightUI   -- (ns.DUI: Host.lua; the global only in the offline tests)
+	local okM, mod = false, nil
+	if type(DUI) == "table" and type(DUI.GetModule) == "function" then okM, mod = pcall(DUI.GetModule, DUI, "UnitFrames") end
+	if not okM then return nil end
 	local T = type(mod) == "table" and type(mod.ns) == "table" and mod.ns.Texts
 	if type(T) == "table" and type(T.Add) == "function" and type(T.Remove) == "function" then return T, mod.ns end
 end
@@ -283,14 +286,16 @@ function P.Setting(path)
 	local want = ns.API.GetSetting(ns.ADDON, KEY .. ".player") == true
 	local have = SlotsShowing(UFns)
 	if want and #have == 0 then
-		local slot = T.Add("player", KIND)
+		-- (Daylight UI's UnitFrames texts are inside it, not its API: called carefully.)
+		local ok, slot = pcall(T.Add, "player", KIND)
+		if not ok then return end
 		if slot then
 			Place(slot)
 		else
 			if DEFAULT_CHAT_FRAME then DEFAULT_CHAT_FRAME:AddMessage("|cff73a0ffEssentials|r: " .. L["All four extra texts on your player frame are in use: remove one first."]) end
 		end
 	elseif not want then
-		for _, slot in ipairs(have) do T.Remove("player", "texts", slot) end
+		for _, slot in ipairs(have) do pcall(T.Remove, "player", "texts", slot) end
 	end
 end
 

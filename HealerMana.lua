@@ -146,12 +146,17 @@ end
 -- ---------------------------------------------------------------------------------------------
 
 local MANA = Enum and Enum.PowerType and Enum.PowerType.Mana or 0
-local LOW = { 0.95, 0.35, 0.35 }
-local WARN = { 1, 0.8, 0.3 }
+-- The look's inks for low mana (its BAD and WARN, read again after every look change: P.Style);
+-- these only if the look has none.
+local FALLBACK = { BAD = { 0.95, 0.35, 0.35 }, WARN = { 1, 0.8, 0.3 } }
+local function Ink3(role)
+	local c = ns.Colors()[role]
+	return type(c) == "table" and c or FALLBACK[role] or ns.Colors().VALUE
+end
 
--- The color the mana text takes: soft red when nearly out, warm yellow when low, the bright ink
--- above. A curve the game reads the (maybe secret) percent through; built once per style.
-local STOPS = { { 0, LOW }, { 0.2, LOW }, { 0.35, WARN }, { 0.5, WARN }, { 0.65, nil }, { 1, nil } }
+-- The color the mana text takes: the look's bad ink when nearly out, its warning ink when low, the
+-- bright ink above. A curve the game reads the (maybe secret) percent through; built once per style.
+local STOPS = { { 0, "BAD" }, { 0.2, "BAD" }, { 0.35, "WARN" }, { 0.5, "WARN" }, { 0.65, "VALUE" }, { 1, "VALUE" } }
 local manaCurve
 local function ManaCurve()
 	if manaCurve ~= nil then return manaCurve or nil end
@@ -162,9 +167,8 @@ local function ManaCurve()
 	if c.SetType and Enum and Enum.LuaCurveType and Enum.LuaCurveType.Linear then
 		pcall(c.SetType, c, Enum.LuaCurveType.Linear)
 	end
-	local value = ns.Colors().VALUE
 	for _, stop in ipairs(STOPS) do
-		local rgb = stop[2] or value
+		local rgb = Ink3(stop[2])
 		c:AddPoint(stop[1], CreateColor(rgb[1], rgb[2], rgb[3], 1))
 	end
 	manaCurve = c
@@ -182,7 +186,12 @@ end
 -- won't take that answer as an alpha, the line keeps the glow it had when the mana was last read.
 -- Not while the healer drinks (their mana is coming back), is dead or offline.
 local LOW_AT = 0.2
-local LOW_GLOW = { r = LOW[1], g = LOW[2], b = LOW[3] }
+local LOW_GLOW = {}   -- (the look's bad ink: GlowInk)
+local function GlowInk()
+	local c = Ink3("BAD")
+	LOW_GLOW.r, LOW_GLOW.g, LOW_GLOW.b = c[1], c[2], c[3]
+	return LOW_GLOW
+end
 local lowCurve
 local function LowCurve()
 	if lowCurve ~= nil then return lowCurve or nil end
@@ -210,7 +219,7 @@ local function PaintLow(row, unit)
 	local cur, max = UnitPower(unit, MANA), UnitPowerMax(unit, MANA)
 	if Safe(cur) and Safe(max) and type(cur) == "number" and type(max) == "number" and max > 0 then
 		holder:SetAlpha(1)
-		ns.Glow(holder, cur / max < LOW_AT, LOW_GLOW)
+		ns.Glow(holder, cur / max < LOW_AT, GlowInk())
 		return
 	end
 	local curve = UnitPowerPercent and LowCurve()
@@ -218,7 +227,7 @@ local function PaintLow(row, unit)
 	local ok, col = pcall(UnitPowerPercent, unit, MANA, false, curve)
 	if not (ok and type(col) == "table" and col.GetRGBA) then return end
 	local okA, _, _, _, a = pcall(col.GetRGBA, col)
-	if okA and pcall(holder.SetAlpha, holder, a) then ns.Glow(holder, true, LOW_GLOW) end
+	if okA and pcall(holder.SetAlpha, holder, a) then ns.Glow(holder, true, GlowInk()) end
 end
 
 local function PaintMana(fs, unit)
@@ -496,12 +505,12 @@ local function Rebuild()
 			else
 				row.bar:Hide()
 				row.mana:SetFormattedText("%d%%", p.pct)
-				local c = p.pct <= 20 and LOW or p.pct <= 50 and WARN or ns.Colors().VALUE
+				local c = Ink3(p.pct <= 20 and "BAD" or p.pct <= 50 and "WARN" or "VALUE")
 				row.mana:SetTextColor(c[1], c[2], c[3])
 			end
 			-- (The sample's low healer glows too.)
 			row.glow:SetAlpha(1)
-			ns.Glow(row.glow, G("lowGlow") ~= false and not row.drinking and p.pct < LOW_AT * 100, LOW_GLOW)
+			ns.Glow(row.glow, G("lowGlow") ~= false and not row.drinking and p.pct < LOW_AT * 100, GlowInk())
 			row:Show()
 		end
 		for i = #PREVIEW + 1, #rows do rows[i]:Hide() end

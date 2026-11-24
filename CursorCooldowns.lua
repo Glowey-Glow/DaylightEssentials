@@ -29,7 +29,6 @@ if ns.off then return end
 
 local L = ns.L
 
-local API = ns.API
 local KEY = "cursorCooldowns"
 local G = ns.Reader(KEY)
 local Safe = ns.Safe
@@ -267,7 +266,7 @@ local function Icon(id)
 	icon.art:SetPoint("BOTTOMRIGHT", icon, "BOTTOMRIGHT", -2, 2)
 	icon.art:SetTexCoord(0.08, 0.92, 0.08, 0.92)
 	icon.art:SetTexture(Texture(id))
-	API.Skin(icon, { noBevel = true, borderPx = 2, bgAlpha = 0.85 })
+	ns.Host.Skin(icon, { noBevel = true, borderPx = 2, bgAlpha = 0.85 })   -- (dressed again on a look change)
 	icon.cd = CreateFrame("Cooldown", nil, icon, "CooldownFrameTemplate")
 	icon.cd:SetAllPoints(icon.art)
 	icon.cd:SetDrawEdge(false)
@@ -463,7 +462,7 @@ local function ReadyIcon(slot)
 	icon.art:SetPoint("TOPLEFT", icon, "TOPLEFT", 2, -2)
 	icon.art:SetPoint("BOTTOMRIGHT", icon, "BOTTOMRIGHT", -2, 2)
 	icon.art:SetTexCoord(0.08, 0.92, 0.08, 0.92)
-	API.Skin(icon, { noBevel = true, borderPx = 2, bgAlpha = 0.85 })
+	ns.Host.Skin(icon, { noBevel = true, borderPx = 2, bgAlpha = 0.85 })   -- (dressed again on a look change)
 	icon:Hide()
 	readyIcons[slot] = icon
 	return icon

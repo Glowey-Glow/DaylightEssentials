@@ -1,13 +1,17 @@
 ## Interface: 16001
-## Title: Glowey's |cff73a0ffEssentials|r (DaylightUI Plugin)
+## Title: Glowey's |cff73a0ffEssentials|r
 ## IconTexture: Interface\AddOns\DaylightEssentials\Media\icon.png
-## Notes: A plugin for Daylight UI of small combat aids: your healers' mana, a combat timer and alert, a pet reminder, your taunt and dispel cooldowns at the cursor, a list of enemy players nearby with a Kill on Sight list, your secondary stats, one-click buffs for players who buffed you, and Halo, a ring of your actions at the mouse. Each on its own switch.
+## Group: DaylightEssentials
+## Notes: Works on its own, and integrates with Daylight UI when it's installed (its options window, look and profiles). Small combat aids: your healers' mana, a combat timer and alert, a pet reminder, your taunt and dispel cooldowns at the cursor, a list of enemy players nearby with a Kill on Sight list, your secondary stats, one-click buffs for players who buffed you, and Halo, a ring of your actions at the mouse. Each on its own switch.
 ## Author: Glowey
 ## X-License: All Rights Reserved
 ## X-Curse-Project-ID: 1802092
 ## Version: @project-version@
-## Dependencies: DaylightUI
-## SavedVariables: DaylightEssentialsDB
+## OptionalDeps: DaylightUI
+## SavedVariables: DaylightEssentialsDB, DaylightEssentialsSettings
+# (The saved variables load before the files: Locales/Locales.lua reads the language picked in
+# Glowey's Plugins window as it loads.)
+## LoadSavedVariablesFirst: 1
 
 Locales\Locales.lua
 Locales\deDE.lua
@@ -16,6 +20,7 @@ Locales\esES.lua
 Locales\ruRU.lua
 Locales\koKR.lua
 Locales\zhCN.lua
+Host.lua
 Update.lua
 Guide.lua
 EssentialsGuide.lua
@@ -25,6 +30,7 @@ CombatTimer.lua
 CombatAlert.lua
 PetReminder.lua
 SealReminder.lua
+QuickLoot.lua
 CursorCooldowns.lua
 EnemyNearby.lua
 Stats.lua

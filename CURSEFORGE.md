@@ -1,15 +1,17 @@
-# Glowey's Essentials (DaylightUI Plugin)
+# Glowey's Essentials
 
 **Small combat and play aids for Daylight UI on WoW: Forever, in the Daylight UI look.** Each one has its own switch and settings page, so you only run what you want.
 
-A plugin for Daylight UI, by Glowey (not part of Daylight UI itself: report its bugs here, not to Daylight UI). Requires **Daylight UI**.
+By Glowey. A standalone addon that **integrates with Daylight UI** when it's installed: its pages sit in Daylight UI's options window, in its look, and ride in its profiles (not part of Daylight UI itself: report its bugs here, not to Daylight UI). Without Daylight UI, its settings are in the Glowey's Plugins window (**/glowey**, or Options > AddOns).
 
 ---
 
-## New in 1.10.0
-- **Seal Reminder (new, paladins):** "Seal Missing" on your screen while you have no seal up. Its own page and switch; move it with `/dui unlock`.
-- **Halo takes mounts and companion pets:** drag them in from the mount and pet journal, or pick them from the new Mounts and Pets lists. A Random Favorite Mount slot too. Before, a Halo slot only took spells, items and macros, so mounts and pets dropped on it did nothing.
-- **Halo takes your pet's abilities and commands:** a hunter pet's or a warlock demon's abilities, and Attack, Follow, Stay and the stances, dragged from the pet bar or its spellbook, or picked from the new Pet Actions list.
+## New in 1.11.0
+- **Works without Daylight UI:** every page is in Glowey's settings (**/glowey**), in Glowey's look or **Blizzard Style** (the game's own window frames). With Daylight UI it follows its language, colors and scale.
+- **Buff Manners lists several players at once** (Players Listed, 1 to 6, 3 to start), offers to **rebuff you** before your own buffs run out, and **Disable When Busy** keeps it quiet in a crowd.
+- **Move Window** on every page with a window of its own unlocks them to drag, and locks them again.
+- **Quick Loot** (off to start): everything taken the moment the loot window opens.
+- **Settings fixes without Daylight UI:** sliders drag, dropdowns fit their longest choice, and Secondary Stats' layouts read List and Line.
 ---
 
 ## What's in it
@@ -87,7 +89,7 @@ For paladins: "Seal Missing" while you have no seal up, in the same gentle pulse
 ## How to use it
 
 - Everything is on from the start and shows itself when it's needed.
-- **Move things:** `/dui unlock` shows samples to place; `/dui lock` when you're done. `/dui test` shows them too.
+- **Move things:** **Move Window** on a part's page (or `/dui unlock`, `/glowey unlock` without Daylight UI) shows samples to place; press it again (or `/dui lock`) when you're done. `/dui test` shows them too.
 - **Settings:** Daylight UI options > **Plugins > Essentials**, one page per part.
 - **Key bindings:** Key Bindings > AddOns > Glowey's Essentials (Buff Manners and Halo).
 

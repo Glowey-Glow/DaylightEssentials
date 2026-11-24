@@ -787,11 +787,8 @@ local function PadUI()
 		local ok, on = pcall(IU.IsGamepadUIEnabled)
 		if ok and on == true then return true end
 	end
-	local Pad = ns.DUI and ns.DUI.Pad
-	if type(Pad) == "table" and type(Pad.On) == "function" then
-		local ok, on = pcall(Pad.On)
-		if ok and on == true then return true end
-	end
+	-- (Guide.lua's ns.Pad: Daylight UI's kit, checked and pcall'd.)
+	if ns.Pad and ns.Pad.On() then return true end
 	return false
 end
 
@@ -1385,7 +1382,7 @@ local function Take(key)
 	if InCombatLockdown() then return end
 	if MODIFIERS[key] then
 		box.msg:SetText(L["Shift, Alt and Ctrl can't be the key on their own: held with it, they open the other Halos."])
-		ns.Ink(box.msg, "WARN")
+		ns.Host.Ink(box.msg, "WARN")
 		BoxLayout()
 		return
 	end
@@ -1411,17 +1408,18 @@ local function BuildBox()
 	local head = API.Text(box, "head", "LEFT")
 	head:SetPoint("TOPLEFT", box, "TOPLEFT", 12, -12)
 	head:SetText(L["Halo's Key"])
-	ns.Ink(head, "TITLE")
+	-- (The box's inks follow the look: Host.Ink paints them again on every look change.)
+	ns.Host.Ink(head, "TITLE")
 	box.now = API.Text(box, "body", "LEFT")
 	box.now:SetPoint("TOPLEFT", box, "TOPLEFT", 12, -40)
-	ns.Ink(box.now, "VALUE")
+	ns.Host.Ink(box.now, "VALUE")
 	box.game = API.Text(box, "small", "LEFT")
 	box.game:SetPoint("TOPLEFT", box.now, "BOTTOMLEFT", 0, -6)
-	ns.Ink(box.game, "LABEL")
+	ns.Host.Ink(box.game, "LABEL")
 	box.help = API.Text(box, "small", "LEFT")
 	box.help:SetPoint("TOPLEFT", box.game, "BOTTOMLEFT", 0, -6)
 	box.help:SetText(L["Press the key you want, or click here with the mouse's middle or a side button. Escape cancels."])
-	ns.Ink(box.help, "TEXT")
+	ns.Host.Ink(box.help, "TEXT")
 	box.msg = API.Text(box, "small", "LEFT")
 	box.msg:SetPoint("TOPLEFT", box.help, "BOTTOMLEFT", 0, -6)
 	for _, fs in ipairs({ box.now, box.game, box.help, box.msg }) do fs:SetWordWrap(true) end
@@ -1456,6 +1454,8 @@ local function BuildBox()
 	box:SetScript("OnMouseDown", function(_, which)
 		if MOUSE[which] then Take(MOUSE[which]) end
 	end)
+	-- (At Daylight UI's scale, as its own boxes; its keys, Escape included, stay its own.)
+	ns.Host.Scaled(box, { own = 1 })
 	box:Hide()
 end
 
@@ -1498,7 +1498,9 @@ local TOP = 112                     -- the title, the tabs with their labels and
 -- macros, a page at a time.
 -- ---------------------------------------------------------------------------------------------
 
-local Pad = ns.DUI and ns.DUI.Pad   -- Daylight UI's controller support (nil on an older one)
+-- Daylight UI's controller support through Guide.lua's guarded wrapper (each call does nothing on a
+-- Daylight UI without it, or with no Daylight UI).
+local Pad = ns.Pad
 local picker
 local pickSlot, pickKind, pickPage = 1, 1, 1
 local PICK_ROWS, PICK_ROW_H, PICK_ICON = 8, 26, 20
@@ -1746,7 +1748,8 @@ local function BuildPicker()
 	picker:EnableMouse(true)
 	picker.head = API.Text(picker, "head", "LEFT")
 	picker.head:SetPoint("TOPLEFT", picker, "TOPLEFT", 10, -10)
-	ns.Ink(picker.head, "TITLE")
+	-- (Its inks follow the look: Host.Ink paints them again on every look change.)
+	ns.Host.Ink(picker.head, "TITLE")
 	local close = API.Close(picker, function() P.Pick(false) end)
 	if close then close:SetPoint("TOPRIGHT", picker, "TOPRIGHT", -6, -6) end
 	picker.tabs = {}
@@ -1775,7 +1778,7 @@ local function BuildPicker()
 		row.text = API.Text(row, "body", "LEFT")
 		row.text:SetWordWrap(false)
 		row.text:SetPoint("LEFT", row.icon, "RIGHT", 8, 0)
-		ns.Ink(row.text, "VALUE")
+		ns.Host.Ink(row.text, "VALUE")
 		row.lit = row:CreateTexture(nil, "BACKGROUND")
 		row.lit:SetAllPoints(row)
 		row.lit:SetColorTexture(1, 1, 1, 0)
@@ -1818,7 +1821,7 @@ local function BuildPicker()
 	picker.empty = API.Text(picker, "body", "CENTER")
 	picker.empty:SetPoint("TOP", picker, "TOP", 0, -(top + PICK_ROW_H))
 	picker.empty:SetText(L["Nothing to choose here yet."])
-	ns.Ink(picker.empty, "OFF")
+	ns.Host.Ink(picker.empty, "OFF")
 	picker.prev = API.Button(picker, L["Previous Page"], 24)
 	picker.next = API.Button(picker, L["Next Page"], 24)
 	for _, b in ipairs({ picker.prev, picker.next }) do
@@ -1837,7 +1840,7 @@ local function BuildPicker()
 	end)
 	picker.page = API.Text(picker, "small", "CENTER")
 	picker.page:SetPoint("BOTTOM", picker, "BOTTOM", 0, 18)
-	ns.Ink(picker.page, "LABEL")
+	ns.Host.Ink(picker.page, "LABEL")
 	picker:Hide()
 	-- On a controller: the D-pad moves through it, LB / RB step its tabs, B closes it.
 	if Pad and type(Pad.Follow) == "function" then
@@ -1845,8 +1848,11 @@ local function BuildPicker()
 		picker.padFirst = function()
 			return picker.rows[1]:IsShown() and picker.rows[1] or picker.tabs[pickKind]
 		end
-		pcall(Pad.Follow, picker, function() P.Pick(false) end)
 	end
+	-- Escape, B on a controller (the fields above), the open / close sounds and fade (Host.Window:
+	-- Daylight UI's window feel with it), and Daylight UI's scale, as the editor it sits beside.
+	ns.Host.Window(picker, { close = function() P.Pick(false) end })
+	ns.Host.Scaled(picker, { own = 1 })
 end
 
 -- Opens the list for one slot of the Halo the editor shows (out of a fight), or closes it.
@@ -1943,13 +1949,10 @@ local function EditLayout()
 					end
 				end)
 				t:SetScript("OnEnter", function(self)
-					GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
 					local a = Slots(editRing)[self.slot]
-					GameTooltip:SetText(a and Label(a) or L["Slot %d"]:format(self.slot))
-					GameTooltip:AddLine(a and L["Right-click to empty it. Drop something else to swap it."]
-						or L["Drag a spell, item, macro, mount or pet here."], 1, 1, 1, true)
-					GameTooltip:AddLine(L["Click to choose from a list."], 1, 1, 1, true)
-					GameTooltip:Show()
+					ns.Host.Tip(self, a and Label(a) or L["Slot %d"]:format(self.slot),
+						a and L["Right-click to empty it. Drop something else to swap it."]
+						or L["Drag a spell, item, macro, mount or pet here."], L["Click to choose from a list."])
 				end)
 				t:SetScript("OnLeave", function() GameTooltip:Hide() end)
 				editTiles[i] = t
@@ -2016,17 +2019,15 @@ local function BuildEditor()
 			EditLayout()
 		end)
 		tab:SetScript("OnEnter", function(self)
-			GameTooltip:SetOwner(self, "ANCHOR_TOP")
-			GameTooltip:SetText(def.name)
+			local text
 			if r == 1 then
-				GameTooltip:AddLine(L["Opens with Halo's key on its own."], 1, 1, 1, true)
+				text = L["Opens with Halo's key on its own."]
 			elseif G(def.key) == true then
-				GameTooltip:AddLine(L["Opens with %s held with Halo's key."]:format(def.label), 1, 1, 1, true)
+				text = L["Opens with %s held with Halo's key."]:format(def.label)
 			else
-				GameTooltip:AddLine(L["Off: turn on %s on Halo's page to use it. You can fill it now."]:format(def.name),
-					1, 1, 1, true)
+				text = L["Off: turn on %s on Halo's page to use it. You can fill it now."]:format(def.name)
 			end
-			GameTooltip:Show()
+			ns.Host.Tip(self, def.name, text, nil, "ANCHOR_TOP")
 		end)
 		tab:SetScript("OnLeave", function() GameTooltip:Hide() end)
 		editor.tabs[r] = tab
@@ -2069,8 +2070,11 @@ local function BuildEditor()
 				P.Changed()
 			  end },
 		}
-		pcall(Pad.Follow, editor, function() P.Edit(false) end)
 	end
+	-- Escape and B close it, with the open / close sounds and fade (Host.Window: Daylight UI's window
+	-- feel with it), at Daylight UI's scale (it floats free).
+	ns.Host.Window(editor, { close = function() P.Edit(false) end })
+	ns.Host.Scaled(editor, { own = 1 })
 end
 
 function P.Edit(show)
@@ -2232,4 +2236,5 @@ function P.Style()
 	ns.Ink(center, "TITLE")
 	Apply()
 	if editor and editor:IsShown() then EditLayout() end
+	if picker and picker:IsShown() then PickLayout() end   -- (its tab lines in the new accent)
 end

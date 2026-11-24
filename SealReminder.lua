@@ -49,8 +49,6 @@ P.page = { id = KEY, label = L["Seal Reminder"],
 local SEALS = { 21084, 20154, 21082, 20375, 20165, 20166, 20164, 31892, 31801, 348700, 348704, 53720, 53736 }
 local JUDGEMENT = 20271
 
-local WARN = { 1, 0.75, 0.3 }
-
 local frame, body, text, pulse   -- frame: what /dui unlock moves; body: the line, sized by its setting
 local W, H = 220, 30
 local DEFAULT = { "CENTER", UIParent, "CENTER", 0, 110 }
@@ -168,7 +166,7 @@ local function Show(word)
 		if not frame:IsShown() then
 			frame:SetAlpha(1)
 			frame:Show()
-			pulse:Play()
+			if ns.MotionOn() then pulse:Play() end   -- (no pulse with motion off)
 		end
 	elseif frame:IsShown() then
 		pulse:Stop()
@@ -213,7 +211,7 @@ local function Build()
 	body:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
 	text = API.Text(body, "head", "CENTER")
 	text:SetPoint("CENTER", body, "CENTER", 0, 0)
-	text:SetTextColor(WARN[1], WARN[2], WARN[3])
+	ns.Host.Ink(text, "WARN")   -- (the look's warning ink, again on every look change)
 	pulse = frame:CreateAnimationGroup()
 	pulse:SetLooping("BOUNCE")
 	local a = pulse:CreateAnimation("Alpha")

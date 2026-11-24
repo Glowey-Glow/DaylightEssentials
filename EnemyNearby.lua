@@ -49,6 +49,9 @@ P.defaults = {
 	soundNew = false,
 	alertKos = true,
 	soundKos = true,
+	-- (The sounds each played before they had a choice: the raid warning; the game's alarm clock.)
+	kosSound = ns.Host.DefaultAlert(),
+	newSound = "kit:" .. (SOUNDKIT and (SOUNDKIT.ALARM_CLOCK_WARNING_2 or SOUNDKIT.RAID_WARNING) or 12867),
 	throttle = 120,
 	width = 210,
 	scale = 1,
@@ -216,9 +219,15 @@ P.page = { id = KEY, label = L["Enemy Nearby"],
 			{ type = "toggle", key = KEY .. ".alertKos", label = L["Alert Kill on Sight Targets"], disabled = Off },
 			{ type = "toggle", key = KEY .. ".soundKos", label = L["Kill on Sight Sound"],
 			  disabled = function(get) return Off(get) or get(KEY .. ".alertKos") == false end },
+			ns.AlertRow({ key = KEY .. ".kosSound", label = L["Kill on Sight Alert Sound"],
+			  disabled = function(get) return Off(get) or get(KEY .. ".alertKos") == false or get(KEY .. ".soundKos") == false end },
+			  P.defaults.kosSound, L["Raid Warning"]),
 			{ type = "toggle", key = KEY .. ".alertNew", label = L["Alert on All Enemies"], disabled = Off },
 			{ type = "toggle", key = KEY .. ".soundNew", label = L["New Enemy Contact"],
 			  disabled = function(get) return Off(get) or get(KEY .. ".alertNew") == false end },
+			ns.AlertRow({ key = KEY .. ".newSound", label = L["New Enemy Alert Sound"],
+			  disabled = function(get) return Off(get) or get(KEY .. ".alertNew") == false or get(KEY .. ".soundNew") == false end },
+			  P.defaults.newSound, L["Alarm Clock"]),
 			{ type = "slider", key = KEY .. ".throttle", label = L["Time Until Same Enemy Alerts"], min = 30, max = 600, step = 30,
 			  desc = L["Seconds before the same player can alert you again."], disabled = Off },
 			{ type = "slider", key = KEY .. ".alertScale", label = L["Alert Size"], min = 0.7, max = 2, step = 0.05, unit = "%", disabled = Off },
@@ -311,8 +320,9 @@ local function ClassName(class)
 	return class and type(names) == "table" and names[class] or nil
 end
 
-local function Sound(kit)
-	if kit and PlaySound then pcall(PlaySound, kit, "SFX") end
+-- An alert sound by its saved key (Host.PlayAlert: Daylight UI's alert sounds, or the game's).
+local function Sound(key)
+	ns.Host.PlayAlert(key)
 end
 
 -- A player came into the list: an alert, if they call for one and haven't had one lately.
@@ -326,12 +336,12 @@ local function Alert(key, name, class, level)
 	lastAlert[key] = now
 	if wantKos then
 		ShowAlert(L["Kill on sight: %s"]:format(name), "BAD", 3)
-		if G("soundKos") and SOUNDKIT then Sound(SOUNDKIT.RAID_WARNING) end
+		if G("soundKos") then Sound(G("kosSound") or P.defaults.kosSound) end
 	else
 		local what = ClassName(class)
 		local lvl = level and level > 0 and tostring(level) or "??"
 		ShowAlert(what and L["Enemy: %s (%s %s)"]:format(name, lvl, what) or L["Enemy: %s"]:format(name), "WARN", 2.5)
-		if G("soundNew") and SOUNDKIT then Sound(SOUNDKIT.ALARM_CLOCK_WARNING_2 or SOUNDKIT.RAID_WARNING) end
+		if G("soundNew") then Sound(G("newSound") or P.defaults.newSound) end
 	end
 end
 

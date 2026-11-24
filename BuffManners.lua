@@ -6,6 +6,11 @@
 -- is also offered on its own when you have nothing they're missing. Move it with /dui unlock.
 -- (The idea is from Manners by fpsacha, MIT licensed; this is written from scratch.)
 --
+-- The prompt lists up to "Players Listed" people (rows), each row its own secure button; the key
+-- gives the top row's buff. A buff of yours on you that is running out is offered too, on a row
+-- of its own that casts it on you ("Rebuff Me Before Mine Run Out"). "Disable When Busy" lists
+-- nobody else while more players than its number want your buff (a crowded city).
+--
 -- Nothing is ever cast by itself: the game only lets an addon cast from a click or a key press, so
 -- the prompt is a secure button (SecureActionButtonTemplate) whose macro is set out of a fight
 -- only. In a fight the prompt is hidden (a state driver hides its secure part), and comes back
@@ -49,7 +54,17 @@ P.defaults = {
 	say = "off",
 	line = "thanks",
 	scale = 1,
+	rows = 3,
+	busyHide = false,
+	busyCount = 10,
+	selfTopUp = true,
+	selfMinutes = 3,
 }
+
+local MAX_ROWS = 6   -- the most rows (secure buttons) the prompt can list
+
+local function BusyOff() return not (G("enabled") and G("busyHide")) end
+local function SelfOff() return not (G("enabled") and G("selfTopUp")) end
 
 local class   -- the player's class token, read at login
 
@@ -75,6 +90,13 @@ P.page = { id = KEY, label = L["Buff Manners"],
 			{ type = "dropdown", key = KEY .. ".nearby", label = L["Nearby Players"],
 			  values = { off = L["Off"], beside = L["Right Beside Me"], range = L["In Spell Range"] },
 			  desc = L["Passers-by missing your buff, seen through friendly nameplates and the mouse. Right Beside Me: about 10 yards. Friends and guildmates come first."] },
+			{ type = "slider", key = KEY .. ".rows", label = L["Players Listed"], min = 1, max = MAX_ROWS, step = 1,
+			  desc = L["The most players the prompt lists at once, one row each. Click any row; its key gives the top row's buff."] },
+			{ type = "toggle", key = KEY .. ".busyHide", label = L["Disable When Busy"],
+			  desc = L["Lists nobody while more players than the number below want your buff, as in a crowded city. Your own rebuff still shows."] },
+			{ type = "slider", key = KEY .. ".busyCount", label = L["Busy Above This Many Players"], min = 2, max = 40, step = 1,
+			  desc = L["Counts everyone the prompt would offer your buff to: who buffed you, your target, group and passers-by."],
+			  disabled = BusyOff },
 			{ type = "toggle", key = KEY .. ".skipFlagged", label = L["Skip Flagged Players"],
 			  desc = L["While you aren't flagged yourself: buffing them would flag you."] },
 			{ type = "toggle", key = KEY .. ".quietResting", label = L["Mute in Towns and Inns"] },
@@ -84,6 +106,10 @@ P.page = { id = KEY, label = L["Buff Manners"],
 		{ label = L["My Buffs"],
 		  desc = L["Mages give Arcane Intellect, Priests Fortitude, Druids Mark of the Wild, Paladins a blessing, Warlocks Unending Breath (only while you're swimming). Intellect, Wisdom and Divine Spirit only go to players who use mana."],
 		  items = {
+			{ type = "toggle", key = KEY .. ".selfTopUp", label = L["Rebuff Me Before Mine Run Out"],
+			  desc = L["When a buff you can cast is running out on you, the prompt offers it on a row of its own: click it, or its key when it's on top, to cast it on yourself."] },
+			{ type = "slider", key = KEY .. ".selfMinutes", label = L["Minutes Left to Rebuff Me"], min = 1, max = 10, step = 1,
+			  desc = L["In minutes. Never earlier than halfway through the buff."], disabled = SelfOff },
 			-- Other languages: the spell and the class in the game's own words.
 			{ type = "toggle", key = KEY .. ".priestSpirit", label = ns.GameTagged("Divine Spirit (Priests)", 14752, "PRIEST") },
 			{ type = "toggle", key = KEY .. ".priestShadow", label = ns.GameTagged("Shadow Protection (Priests)", 976, "PRIEST") },
@@ -266,6 +292,17 @@ local function Usable(name)
 	return true
 end
 
+-- Whether a buff's own switch lets it be offered now (a warlock's breath only while swimming).
+local function Switched(b)
+	if b.setting == "thorns" then
+		if G("thorns") ~= "tanks" then return false end
+	elseif b.setting and G(b.setting) ~= true then
+		return false
+	end
+	if b.swim and not (IsSwimming and IsSwimming()) then return false end
+	return true
+end
+
 -- The buff of yours this player is missing (an entry of BUFFS), or nil.
 local function Pick(unit, buffs)
 	if class == "PALADIN" then
@@ -283,15 +320,46 @@ local function Pick(unit, buffs)
 		return nil
 	end
 	for _, b in ipairs(BUFFS[class] or {}) do
-		local on = true
-		if b.setting == "thorns" then on = G("thorns") == "tanks"
-		elseif b.setting then on = G(b.setting) == true end
-		if b.swim and not (IsSwimming and IsSwimming()) then on = false end
-		if on and Known(b.id) and Prepare(b) and Wants(b, unit) and not Has(buffs, b) and Usable(b.name) then
+		if Switched(b) and Known(b.id) and Prepare(b) and Wants(b, unit) and not Has(buffs, b) and Usable(b.name) then
 			return b
 		end
 	end
 	return nil
+end
+
+-- A buff of yours on you that runs out within "Minutes Left to Rebuff Me" (never earlier than
+-- halfway through it): the entry to cast again and the seconds left, or nil. Read fresh each look
+-- (time passes without a UNIT_AURA). Out of a fight only, and any field the game keeps secret
+-- (Safe) passes that aura over: the same reads as the game's own buff frame, expirationTime minus
+-- GetTime() and duration 0 for a buff that never runs out (Blizzard_BuffFrame/BuffFrame.lua 733-734).
+local function SelfDue()
+	if not G("selfTopUp") or not (C_UnitAuras and C_UnitAuras.GetAuraDataByIndex) then return nil end
+	local list = class == "PALADIN" and { KINGS, WISDOM, MIGHT } or BUFFS[class]
+	if not list then return nil end
+	local lead = (tonumber(G("selfMinutes")) or 3) * 60
+	local now = GetTime()
+	local best, bestLeft
+	for i = 1, 40 do
+		local ok, data = pcall(C_UnitAuras.GetAuraDataByIndex, "player", i, "HELPFUL")
+		if not ok or not Safe(data) or type(data) ~= "table" then break end
+		local name, ends, length, src = data.name, data.expirationTime, data.duration, data.sourceUnit
+		if Safe(name) and Safe(ends) and Safe(length) and Safe(src) and type(name) == "string"
+			and type(ends) == "number" and ends > 0 and type(length) == "number" and length > 0 then
+			local left = ends - now
+			local due = math.min(lead, length / 2)
+			if left > 0 and left <= due and (not bestLeft or left < bestLeft) then
+				for _, b in ipairs(list) do
+					-- (A paladin's: only a blessing of ours, as one per paladin is allowed.)
+					if (class ~= "PALADIN" or src == "player") and Switched(b) and Known(b.id) and Prepare(b)
+						and b.names[name] and Wants(b, "player") and Usable(b.name) then
+						best, bestLeft = b, left
+						break
+					end
+				end
+			end
+		end
+	end
+	return best, bestLeft
 end
 
 -- Whether a unit is a player we may offer anything to (not range: that's per spell).
@@ -386,15 +454,25 @@ end
 -- The prompt
 -- ---------------------------------------------------------------------------------------------
 
-local frame, body, icon, iconEdge, title, sub   -- frame: what /dui unlock moves; body: the look
-local holder, button                            -- the secure part, laid over the body out of a fight
+local frame, body     -- frame: what /dui unlock moves; body: the look
+local rows = {}       -- rows[i]: { icon, iconEdge, title, sub } painted in the body, top to bottom
+local holder          -- the secure part, laid over the body out of a fight
+local buttons = {}    -- buttons[i]: row i's secure button (1 is the one the key clicks)
 local W, H, ICON, PAD, GAP = 200, 40, 28, 6, 8
 local DEFAULT = { "CENTER", UIParent, "CENTER", 0, -170 }
-local offer          -- what the prompt offers now: { guid, unit, name, short, class, spell, reason, thanks }
+-- What the prompt offers now, a row each: { guid, unit, name, short, class, spell, reason, thanks,
+-- left }. A row the pointer holds whose player has gone is { blank = true } (see Hold).
+local offers = {}
 local previewing = false
 
 -- (Whole lines: "%s" is the player's name, in their class color.)
 local REASON = { buffed = L["%s  buffed you"], target = L["%s  your target"], group = L["%s  your group"], nearby = L["%s  nearby"] }
+
+-- The time left on a buff of yours: whole minutes, or seconds under one.
+local function Left(seconds)
+	if seconds >= 60 then return L["%d min left on you"]:format(math.ceil(seconds / 60)) end
+	return L["%d sec left on you"]:format(math.max(1, math.floor(seconds)))
+end
 
 local function Say(msg) print("|cff73a0ffBuff Manners|r: " .. msg) end
 
@@ -424,6 +502,8 @@ end
 local MACRO_MAX = 255
 
 local function Macro(o)
+	-- Your own buff running out: cast on you, your target left alone.
+	if o.reason == "self" then return "/cast [@player] " .. o.spell.name end
 	local lines = {}
 	local inInstance = IsInInstance and IsInInstance() or false
 	local emote, say = nil, nil
@@ -453,42 +533,80 @@ local function Macro(o)
 	return table.concat(lines, "\n")
 end
 
-local sizedAs   -- the box's last size and scale (skinned again only when they change)
-local function Paint(o)
+-- One row's words and icon (a BLANK row shows nothing: the pointer holds its place).
+local function PaintRow(r, o)
+	local shown = not o.blank
+	r.icon:SetShown(shown)
+	r.iconEdge:SetShown(shown)
+	r.title:SetShown(shown)
+	r.sub:SetShown(shown)
+	if not shown then return 0 end
 	local spell = o.spell
-	icon:SetTexture(spell and spell.icon or o.icon or 136243)
-	title:SetText(spell and spell.name or L["Thank %s"]:format(o.short))
-	local r, g, b = 1, 1, 1
-	if o.class then r, g, b = API.ClassColor(o.class) end
-	sub:SetText((REASON[o.reason] or "%s  "):format(("|cff%02x%02x%02x%s|r"):format(math.floor(r * 255),
-		math.floor(g * 255), math.floor(b * 255), o.short or o.name)))
-	ns.Ink(title, "TITLE")
-	ns.Ink(sub, "LABEL")
+	r.icon:SetTexture(spell and spell.icon or o.icon or 136243)
+	r.title:SetText(spell and spell.name or L["Thank %s"]:format(o.short))
+	if o.reason == "self" then
+		r.sub:SetText(Left(o.left or 0))
+	else
+		local cr, cg, cb = 1, 1, 1
+		if o.class then cr, cg, cb = API.ClassColor(o.class) end
+		r.sub:SetText((REASON[o.reason] or "%s  "):format(("|cff%02x%02x%02x%s|r"):format(math.floor(cr * 255),
+			math.floor(cg * 255), math.floor(cb * 255), o.short or o.name)))
+	end
+	ns.Ink(r.title, "TITLE")
+	ns.Ink(r.sub, "LABEL")
+	return math.max(ns.TextWidth(r.title) or 0, ns.TextWidth(r.sub) or 0)
+end
+
+-- The rows on show. The frame (what /dui unlock moves) stays one row high and the rows below hang
+-- from its top, so the top row never moves as the list grows or shrinks.
+local sizedAs   -- the box's last size and scale (skinned again only when they change)
+local function Paint(list)
+	local tw = 0
+	for i = 1, MAX_ROWS do
+		local r, o = rows[i], list[i]
+		if o then
+			tw = math.max(tw, PaintRow(r, o))
+		else
+			r.icon:Hide()
+			r.iconEdge:Hide()
+			r.title:Hide()
+			r.sub:Hide()
+		end
+	end
 	-- The box fits its words: nothing is cut short.
-	local tw = math.max(ns.TextWidth(title) or 0, ns.TextWidth(sub) or 0)
 	local w = math.max(W, math.ceil(PAD * 2 + ICON + GAP + tw + 2))
+	local n = math.max(1, #list)
 	local scale = G("scale") or 1
-	local sig = w .. ":" .. scale
+	local sig = w .. ":" .. n .. ":" .. scale
 	if sig == sizedAs then return end
 	sizedAs = sig
-	body:SetSize(w, H)
+	body:SetSize(w, H * n)
 	body:SetScale(scale)
 	frame:SetSize(w * scale, H * scale)
 	ns.SkinWindow(body, nil, KEY)
 end
 
--- The secure part over the body (out of a fight only).
-local placedAs, macroText   -- the secure part's last spot and macro (set again only when changed)
+-- The secure part over the body (out of a fight only): one button per row.
+local placedAs                -- the secure part's last spot (set again only when changed)
+local macroText = {}          -- each button's last macro (set again only when changed)
+local function HideButtons(from)
+	for i = from, MAX_ROWS do
+		local b = buttons[i]
+		if b and b:IsShown() then b:Hide() end
+	end
+end
+
 local function PlaceButton()
 	if InCombatLockdown() or not holder then return end
 	local l, t = body:GetLeft(), body:GetTop()
-	if not l or not t or not body:IsVisible() or previewing or not offer then
-		if button:IsShown() then button:Hide() end
+	if not l or not t or not body:IsVisible() or previewing or not offers[1] then
+		HideButtons(1)
 		placedAs = nil
 		return
 	end
 	local s = body:GetEffectiveScale() / UIParent:GetEffectiveScale()
 	local w, h = body:GetWidth() * s, body:GetHeight() * s
+	local rowH = H * s
 	local spot = l * s .. ":" .. t * s .. ":" .. w .. ":" .. h
 	if spot ~= placedAs then
 		placedAs = spot
@@ -497,24 +615,46 @@ local function PlaceButton()
 		holder:SetSize(w, h)
 		holder:SetFrameStrata(frame:GetFrameStrata())
 		holder:SetFrameLevel(frame:GetFrameLevel() + 20)
+		for i = 1, MAX_ROWS do
+			local b = buttons[i]
+			b:ClearAllPoints()
+			b:SetPoint("TOPLEFT", holder, "TOPLEFT", 0, -(i - 1) * rowH)
+			b:SetSize(w, rowH)
+		end
 	end
-	local m = Macro(offer)
-	if m ~= macroText then
-		macroText = m
-		button:SetAttribute("macrotext1", m)
+	for i = 1, MAX_ROWS do
+		local o, b = offers[i], buttons[i]
+		if o then
+			-- (A blank row stays under the pointer, holding its place, and casts nothing.)
+			local m = o.blank and "" or Macro(o)
+			if m ~= macroText[i] then
+				macroText[i] = m
+				b:SetAttribute("macrotext1", m)
+			end
+			if not b:IsShown() then b:Show() end
+		elseif b:IsShown() then
+			b:Hide()
+		end
 	end
-	if not button:IsShown() then button:Show() end
 end
 
-local shownAs   -- the offer on show (who, which buff, why): painted again only when it changes
-local function ShowOffer(o)
-	offer = o
-	if o then
-		local key = (o.guid or o.name) .. ":" .. (o.spell and o.spell.name or "") .. ":" .. o.reason
-			.. (o.thanks and ":t" or "") .. (previewing and ":p" or "") .. ":" .. (G("scale") or 1)
+local shownAs   -- the offers on show (who, which buff, why): painted again only when they change
+local function ShowOffers(list)
+	offers = list or {}
+	if offers[1] then
+		local keys = { previewing and "p" or "", tostring(G("scale") or 1) }
+		for _, o in ipairs(offers) do
+			if o.blank then
+				keys[#keys + 1] = "-"
+			else
+				keys[#keys + 1] = (o.guid or o.name) .. ":" .. (o.spell and o.spell.name or "") .. ":" .. o.reason
+					.. (o.thanks and ":t" or "") .. (o.reason == "self" and ":" .. Left(o.left or 0) or "")
+			end
+		end
+		local key = table.concat(keys, "|")
 		if key ~= shownAs or not body:IsShown() then
 			shownAs = key
-			Paint(o)
+			Paint(offers)
 		end
 		body:Show()
 		if not frame:IsShown() then frame:Show() end
@@ -597,54 +737,137 @@ local function CanGive()
 	return true
 end
 
+-- How many rows the prompt lists ("Players Listed").
+local function Limit()
+	return math.max(1, math.min(MAX_ROWS, math.floor(tonumber(G("rows")) or 1)))
+end
+
+-- Your own buff running out, as a row of its own, or nil.
+local function SelfOffer()
+	local spell, left = SelfDue()
+	if not spell then return nil end
+	local guid = Read(UnitGUID, "player")
+	if type(guid) ~= "string" then return nil end
+	local now = GetTime()
+	if tried[guid] and now - tried[guid] < TRIED then return nil end
+	if snoozed[guid] and now - snoozed[guid] < SNOOZE then return nil end
+	local short = Read(UnitName, "player") or ""
+	return { guid = guid, unit = "player", name = FullName("player") or short, short = short, class = class,
+		spell = spell, reason = "self", left = left }
+end
+
+-- Everyone to offer, in order, as a list of rows (at most "Players Listed"): who buffed you, your
+-- own buff running out, your target, your group, then players nearby. With Disable When Busy on,
+-- the others are counted up to its number and, past it, left out (your own row stays).
 local function Find()
 	local seen = {}
 	local now = GetTime()
 	for guid, e in pairs(buffedBy) do
 		if now - e.at > BUFFED_FOR then buffedBy[guid] = nil end
 	end
+	local limit = Limit()
+	local busy = G("busyHide") and math.max(1, math.floor(tonumber(G("busyCount")) or 10)) or nil
+	-- (Busy: counted one past its number, to know it's passed; else no more than the rows.)
+	local cap = busy and math.max(limit, busy + 1) or limit
+	local others = {}
+	local function Add(o)
+		if o then others[#others + 1] = o end
+		return #others >= cap
+	end
 	-- 1. Someone who buffed you.
+	local full = false
 	if G("buffedYou") and next(buffedBy) then
 		for _, u in ipairs(KnownUnits()) do
 			local guid = Read(UnitGUID, u)
 			if type(guid) == "string" and buffedBy[guid] and not seen[guid] then
-				local o = Try(u, "buffed", seen, buffedBy)
-				if o then return o end
+				full = Add(Try(u, "buffed", seen, buffedBy))
+				if full then break end
 			end
 		end
 	end
+	local thanked = #others
+	-- 2. Your own buff running out (not one of the others: never counted as busy).
+	local mine = SelfOffer()
 	-- Nothing of yours to give: only the thank-yous above.
-	if not CanGive() then return nil end
-	-- 2. Your target.
-	if G("target") then
-		local o = Try("target", "target", seen)
-		if o then return o end
-	end
-	-- 3. Your group.
-	if G("group") then
-		for _, u in ipairs(GroupUnits()) do
-			local o = Try(u, "group", seen)
-			if o then return o end
+	if not full and CanGive() then
+		-- 3. Your target.
+		if G("target") then full = Add(Try("target", "target", seen)) end
+		-- 4. Your group.
+		if not full and G("group") then
+			for _, u in ipairs(GroupUnits()) do
+				full = Add(Try(u, "group", seen))
+				if full then break end
+			end
 		end
-	end
-	-- 4. Players nearby: friends and guildmates first.
-	if G("nearby") ~= "off" then
-		local first, rest = {}, {}
-		for u in pairs(plates) do
-			local guid = Read(UnitGUID, u)
-			local close = (UnitIsInMyGuild and Read(UnitIsInMyGuild, u))
-				or (type(guid) == "string" and C_FriendList and C_FriendList.IsFriend and Read(C_FriendList.IsFriend, guid))
-			if close then first[#first + 1] = u else rest[#rest + 1] = u end
-		end
-		rest[#rest + 1] = "mouseover"
-		for _, list in ipairs({ first, rest }) do
-			for _, u in ipairs(list) do
-				local o = Try(u, "nearby", seen)
-				if o then return o end
+		-- 5. Players nearby: friends and guildmates first.
+		if not full and G("nearby") ~= "off" then
+			local first, rest = {}, {}
+			for u in pairs(plates) do
+				local guid = Read(UnitGUID, u)
+				local close = (UnitIsInMyGuild and Read(UnitIsInMyGuild, u))
+					or (type(guid) == "string" and C_FriendList and C_FriendList.IsFriend and Read(C_FriendList.IsFriend, guid))
+				if close then first[#first + 1] = u else rest[#rest + 1] = u end
+			end
+			rest[#rest + 1] = "mouseover"
+			for _, list in ipairs({ first, rest }) do
+				for _, u in ipairs(list) do
+					full = Add(Try(u, "nearby", seen))
+					if full then break end
+				end
+				if full then break end
 			end
 		end
 	end
-	return nil
+	if busy and #others > busy then others, thanked = {}, 0 end
+	local out = {}
+	for i = 1, thanked do out[#out + 1] = others[i] end
+	if mine then out[#out + 1] = mine end
+	for i = thanked + 1, #others do out[#out + 1] = others[i] end
+	for i = limit + 1, #out do out[i] = nil end
+	return out
+end
+
+-- While the pointer is on a row, that row keeps the player it named (the list is found again
+-- every look, and in a crowd its order moves, so a click meant for one name would go to whoever
+-- slid into the row). Someone still listed stays in their row; someone gone leaves it blank, and
+-- a blank row casts nothing. The others fill the rest in order. The pointer gone, the order comes
+-- back at the next look. (Manners does the same; this is our own.)
+local hovered = {}   -- row index -> true while the pointer is on its button
+
+local function Id(o) return o.held or o.guid or o.name end
+
+local function Hold(list, limit)
+	if not next(hovered) then return list end
+	local out, used, last = {}, {}, 0
+	for i = 1, limit do
+		local was = hovered[i] and offers[i]
+		if was then
+			local id = Id(was)
+			for j, o in ipairs(list) do
+				if not used[j] and Id(o) == id then
+					out[i], used[j] = o, true
+					break
+				end
+			end
+			if not out[i] then out[i] = { blank = true, held = id } end
+			last = i
+		end
+	end
+	if last == 0 then return list end
+	local j = 1
+	for i = 1, limit do
+		if not out[i] then
+			while used[j] do j = j + 1 end
+			if list[j] then
+				out[i], used[j] = list[j], true
+			elseif i < last then
+				out[i] = { blank = true }
+			else
+				break
+			end
+		end
+	end
+	return out
 end
 
 local looking = false
@@ -653,18 +876,32 @@ local function Look()
 	if not frame or InCombatLockdown() then return end
 	previewing = G("enabled") and ns.Previewing(KEY) or false
 	if previewing then
-		-- A buff of yours to give, or for a class with none, the thank-you on its own.
+		-- A buff of yours to give, or for a class with none, the thank-you on its own; then as many
+		-- sample rows as Players Listed shows.
 		local sample = (BUFFS[class] and BUFFS[class][1]) or (class == "PALADIN" and KINGS) or nil
 		if sample and not Prepare(sample) then sample = nil end
-		ShowOffer({ unit = "player", name = "Glowey", short = "Glowey", class = "PRIEST", reason = "buffed",
-			spell = sample, icon = 135987, thanks = true })
+		local list = { { unit = "player", name = "Glowey", short = "Glowey", class = "PRIEST", reason = "buffed",
+			spell = sample, icon = 135987, thanks = true } }
+		local limit = Limit()
+		if sample and G("selfTopUp") and #list < limit then
+			list[#list + 1] = { unit = "player", name = "self", short = "", class = class, reason = "self",
+				spell = sample, left = 120 }
+		end
+		local names = { { "Daylight", "MAGE", "group" }, { "Aurora", "DRUID", "nearby" }, { "Ember", "WARRIOR", "nearby" },
+			{ "Solstice", "PALADIN", "nearby" }, { "Halo", "ROGUE", "nearby" } }
+		for _, e in ipairs(names) do
+			if #list >= limit or not sample then break end
+			list[#list + 1] = { unit = "player", name = e[1], short = e[1], class = e[2], reason = e[3], spell = sample }
+		end
+		ShowOffers(list)
 		return
 	end
 	if Quiet() or not class then
-		ShowOffer(nil)
+		ShowOffers(nil)
 		return
 	end
-	ShowOffer(Find())
+	local limit = Limit()
+	ShowOffers(Hold(Find(), limit))
 end
 
 local function LookSoon(delay)
@@ -716,18 +953,19 @@ local function Never(name, on)
 end
 
 local function NotNow(o)
-	if not o then return end
+	if not o or o.blank then return end
 	if o.guid then snoozed[o.guid] = GetTime() end
 	buffedBy[o.guid or ""] = nil
 	LookSoon()
 end
 
-local function Menu(owner)
-	local o = offer
-	if not o or not (MenuUtil and MenuUtil.CreateContextMenu) then return end
+local function Menu(owner, o)
+	if not o or o.blank or not (MenuUtil and MenuUtil.CreateContextMenu) then return end
 	MenuUtil.CreateContextMenu(owner, function(_, root)
-		root:CreateTitle(o.name)
+		root:CreateTitle(o.reason == "self" and o.spell.name or o.name)
 		root:CreateButton(L["Not Now"], function() NotNow(o) end)
+		-- (Never Offer is for other players: your own rebuff has its switch on the page.)
+		if o.reason == "self" then return end
 		root:CreateButton(L["Never Offer %s"]:format(o.short or o.name), function()
 			Never(o.name, true)
 			Say(L["%s won't be offered again (/manners allow %s to undo)."]:format(o.short or o.name, o.name))
@@ -801,7 +1039,8 @@ local function OnEvent(_, event, unit, info)
 		return
 	elseif event == "PLAYER_REGEN_DISABLED" then
 		Tick(false)
-		offer = nil
+		offers = {}
+		wipe(hovered)
 		body:Hide()   -- (the secure part is hidden by its state driver)
 		return
 	elseif event == "PLAYER_REGEN_ENABLED" then
@@ -831,52 +1070,68 @@ local function Build()
 	body:SetSize(W, H)
 	body:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
 	body:Hide()
-	iconEdge = body:CreateTexture(nil, "ARTWORK", nil, 1)
-	iconEdge:SetSize(ICON + 2, ICON + 2)
-	iconEdge:SetPoint("LEFT", body, "LEFT", PAD - 1, 0)
-	iconEdge:SetColorTexture(0, 0, 0, 1)
-	icon = body:CreateTexture(nil, "ARTWORK", nil, 2)
-	icon:SetSize(ICON, ICON)
-	icon:SetPoint("CENTER", iconEdge, "CENTER", 0, 0)
-	icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
-	title = API.Text(body, "body", "LEFT")
-	title:SetPoint("BOTTOMLEFT", iconEdge, "RIGHT", GAP - 1, 1)
-	sub = API.Text(body, "small", "LEFT")
-	sub:SetPoint("TOPLEFT", iconEdge, "RIGHT", GAP - 1, -1)
+	-- The rows, top to bottom, each H high: icon, then the buff over who and why.
+	for i = 1, MAX_ROWS do
+		local r = {}
+		r.iconEdge = body:CreateTexture(nil, "ARTWORK", nil, 1)
+		r.iconEdge:SetSize(ICON + 2, ICON + 2)
+		r.iconEdge:SetPoint("LEFT", body, "TOPLEFT", PAD - 1, -(i - 0.5) * H)
+		r.iconEdge:SetColorTexture(0, 0, 0, 1)
+		r.icon = body:CreateTexture(nil, "ARTWORK", nil, 2)
+		r.icon:SetSize(ICON, ICON)
+		r.icon:SetPoint("CENTER", r.iconEdge, "CENTER", 0, 0)
+		r.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+		r.title = API.Text(body, "body", "LEFT")
+		r.title:SetPoint("BOTTOMLEFT", r.iconEdge, "RIGHT", GAP - 1, 1)
+		r.sub = API.Text(body, "small", "LEFT")
+		r.sub:SetPoint("TOPLEFT", r.iconEdge, "RIGHT", GAP - 1, -1)
+		rows[i] = r
+	end
 
-	-- The secure part: hidden in every fight by its state driver; shown, placed and given its macro
-	-- out of a fight only.
+	-- The secure part: hidden in every fight by its state driver; shown, placed and given its macros
+	-- out of a fight only. One secure button per row, all made here (never in a fight); the first
+	-- keeps the name the key binding clicks (Bindings.xml).
 	holder = CreateFrame("Frame", "DaylightEssentialsBuffMannersHolder", UIParent, "SecureHandlerStateTemplate")
 	holder:SetSize(W, H)
 	RegisterStateDriver(holder, "visibility", "[combat] hide; show")
-	button = CreateFrame("Button", "DaylightEssentialsBuffMannersButton", holder, "SecureActionButtonTemplate")
-	button:SetAllPoints(holder)
-	-- Both: the template itself acts on the one the game's "cast on key down" choice says.
-	button:RegisterForClicks("AnyUp", "AnyDown")
-	button:SetAttribute("type1", "macro")
-	local hl = button:CreateTexture(nil, "HIGHLIGHT")
-	hl:SetAllPoints()
-	hl:SetColorTexture(1, 1, 1, 0.08)
-	button:Hide()
-	button:HookScript("OnClick", function(self, which, down)
-		if which == "RightButton" then
-			if not down then Menu(self) end
-			return
-		end
-		local o = offer
-		if o and o.guid then
-			tried[o.guid] = GetTime()
-			buffedBy[o.guid] = nil
-		end
-		LookSoon(0.4)
-	end)
-	button:SetScript("OnEnter", function(self)
-		GameTooltip:SetOwner(self, "ANCHOR_TOP")
-		GameTooltip:SetText(L["Buff Manners"])
-		GameTooltip:AddLine(L["Click (or its key) to give the buff. Right-click: Not Now or Never Offer."], 1, 1, 1, true)
-		GameTooltip:Show()
-	end)
-	button:SetScript("OnLeave", function() GameTooltip:Hide() end)
+	for i = 1, MAX_ROWS do
+		local b = CreateFrame("Button", "DaylightEssentialsBuffMannersButton" .. (i == 1 and "" or i), holder,
+			"SecureActionButtonTemplate")
+		b.row = i
+		b:SetPoint("TOPLEFT", holder, "TOPLEFT", 0, -(i - 1) * H)
+		b:SetSize(W, H)
+		-- Both: the template itself acts on the one the game's "cast on key down" choice says.
+		b:RegisterForClicks("AnyUp", "AnyDown")
+		b:SetAttribute("type1", "macro")
+		local hl = b:CreateTexture(nil, "HIGHLIGHT")
+		hl:SetAllPoints()
+		hl:SetColorTexture(1, 1, 1, 0.08)
+		b:Hide()
+		b:HookScript("OnClick", function(self, which, down)
+			local o = offers[self.row]
+			if which == "RightButton" then
+				if not down then Menu(self, o) end
+				return
+			end
+			if o and o.guid and not o.blank then
+				tried[o.guid] = GetTime()
+				buffedBy[o.guid] = nil
+			end
+			LookSoon(0.4)
+		end)
+		b:SetScript("OnEnter", function(self)
+			hovered[self.row] = true
+			ns.Host.Tip(self, L["Buff Manners"], self.row == 1 and L["Click (or its key) to give the buff. Right-click: Not Now or Never Offer."]
+				or L["Click to give the buff. Right-click: Not Now or Never Offer."], nil, "ANCHOR_TOP")
+		end)
+		b:SetScript("OnLeave", function(self)
+			hovered[self.row] = nil
+			GameTooltip:Hide()
+			-- (The rows held for the pointer go back to their order.)
+			LookSoon(0.3)
+		end)
+		buttons[i] = b
+	end
 
 	frame:SetPoint(unpack(DEFAULT))
 	ns.me.RegisterMover(frame, KEY, L["Buff Prompt"], DEFAULT)
@@ -917,7 +1172,7 @@ end
 -- both answers are keys instead. Not a secure button: it only puts the offer off.
 local notNowKey = CreateFrame("Button", "DaylightEssentialsBuffMannersNotNow", UIParent)
 notNowKey:Hide()
-notNowKey:SetScript("OnClick", function() NotNow(offer) end)
+notNowKey:SetScript("OnClick", function() NotNow(offers[1]) end)
 
 -- The key bindings' words (Key Bindings, AddOns).
 _G.BINDING_HEADER_DAYLIGHTESSENTIALS = "Glowey's Essentials"
@@ -942,7 +1197,7 @@ end
 function P.Style()
 	-- The look changed: everything painted and skinned again.
 	shownAs, sizedAs = nil, nil
-	if frame and offer then LookSoon() end
+	if frame and offers[1] then LookSoon() end
 end
 
 function P.Preview()

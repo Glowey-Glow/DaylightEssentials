@@ -12,12 +12,12 @@
 --   * Halo: hold a key for a ring of your actions at the mouse; point, let go, and it fires.
 -- This file is what the parts share: their settings, DaylightUI's look, and the game's and
 -- DaylightUI's events handed to each part. Options.lua (loaded last) registers the plugin.
--- Built on DaylightUI.API only.
+-- Built on DaylightUI.API, or without Daylight UI on Host.lua's stand-in for it.
 
 local ADDON, ns = ...
 
-local DUI = _G.DaylightUI
-local API = DUI and DUI.API
+local DUI = ns.DUI or _G.DaylightUI   -- (ns.DUI: Host.lua; the global only in the offline tests)
+local API = ns.API or (DUI and DUI.API)   -- Daylight UI's, or without it Host.lua's stand-in
 if not API or API.major ~= 1 then
 	ns.off = true
 	return
@@ -132,7 +132,14 @@ end
 ns.unlocked = false
 function ns.Previewing(key)
 	if ns.unlocked then return true end
-	if DUI.testMode == true and DUI.TestPartShown then
+	-- The public ask (me.IsPreviewing, API 1.7: DaylightUI/API.lua:1755; Host's stand-in answers its
+	-- unlock state), else the read it does, made carefully (an older Daylight UI).
+	local ask = ns.me.IsPreviewing
+	if type(ask) == "function" then
+		local ok, on = pcall(ask, key)
+		if ok then return on == true end
+	end
+	if type(DUI) == "table" and DUI.testMode == true and type(DUI.TestPartShown) == "function" then
 		local ok, shown = pcall(DUI.TestPartShown, "plugin." .. ADDON .. "." .. key)
 		return ok and shown == true
 	end
@@ -287,10 +294,41 @@ end
 
 -- Whether the player lets DaylightUI animate (its "motion" choice). True when it can't be asked.
 function ns.MotionOn()
-	local motion = DUI.Motion
+	-- (The public ask, DaylightUI/API.lua:859; Host answers true. Else the read it does.)
+	if type(API.MotionOn) == "function" then
+		local ok, on = pcall(API.MotionOn)
+		if ok then return on ~= false end
+	end
+	local motion = type(DUI) == "table" and DUI.Motion
 	if type(motion) ~= "table" or type(motion.On) ~= "function" then return true end
 	local ok, on = pcall(motion.On)
 	return not ok or on ~= false
+end
+
+-- A page row picking an alert sound: Daylight UI's own alert list with it, the game's alert sounds
+-- without it (Host.AlertChoices). defKey / defName: the sound the part played before it had a choice
+-- (its default), put in the list when the list hasn't got it. Played with ns.Host.PlayAlert(key).
+function ns.AlertRow(row, defKey, defName)
+	local function Choices()
+		local values, order, titles = ns.Host.AlertChoices()
+		if values[defKey] == nil then
+			values[defKey] = defName
+			table.insert(order, math.min(2, #order + 1), defKey)
+		end
+		return values, order, titles
+	end
+	row.type = "dropdown"
+	if ns.standalone then
+		-- (Host's own page asks values and order.)
+		row.values = function() return (Choices()) end
+		row.order = function() return select(2, Choices()) end
+	else
+		-- (Daylight UI's dropdown fetches choices() each time it opens and plays onPick's sample, as its
+		-- own sound rows do: DaylightUI/Options/Widgets.lua:3297-3300, :3343; ActionBars CdmCard.lua:399-405.)
+		row.choices = Choices
+		row.onPick = function(k) ns.Host.PlayAlert(k) end
+	end
+	return row
 end
 
 -- DaylightUI's animated glow (API.GlowAround, 1.9) round a frame of ours, in the style the player

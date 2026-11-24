@@ -270,8 +270,10 @@ P.page = { id = KEY, label = L["Secondary Stats"],
 		{ label = L["Where"], items = {
 			{ type = "dropdown", key = KEY .. ".dock", label = L["Dock To"], disabled = Off,
 			  values = { minimap = L["Minimap"], meters = L["Damage Meters"], chat = L["Chat"], free = L["Free"] },
-			  order = { "minimap", "meters", "chat", "free" },
-			  desc = L["Docked, it sits against that frame's side at a corner, level with it, and slides out of it and back in with a tab on its edge. Damage Meters: their own window when detached, else the minimap panel they sit in. Chat: Daylight UI's chat window. Free: move it anywhere with /dui unlock."] },
+			  -- (Without Daylight UI, Host.lua, there are no meters or chat panel of its to dock to.)
+			  order = ns.standalone and { "minimap", "free" } or { "minimap", "meters", "chat", "free" },
+			  desc = ns.standalone and L["Docked, it sits against the minimap's side at a corner, level with it, and slides out of it and back in with a tab on its edge. Free: move it anywhere with /glowey unlock."]
+				or L["Docked, it sits against that frame's side at a corner, level with it, and slides out of it and back in with a tab on its edge. Damage Meters: their own window when detached, else the minimap panel they sit in. Chat: Daylight UI's chat window. Free: move it anywhere with /dui unlock."] },
 			{ type = "dropdown", key = KEY .. ".meterCorner", label = L["Corner"], disabled = Off,
 			  hidden = DockIsNot("meters"),
 			  desc = L["A bottom corner only: the threat meter slides out of the top. When it grows down past the stats, they step down under it, or out beside it when there's no room below."],
@@ -298,7 +300,7 @@ P.page = { id = KEY, label = L["Secondary Stats"],
 		  items = slotItems },
 		{ label = L["Look"], items = {
 			{ type = "dropdown", key = KEY .. ".layout", label = L["Layout"], disabled = Off,
-			  values = { list = L["A List"], line = L["One Line"] }, order = { "list", "line" } },
+			  values = { list = L["List"], line = L["Line"] }, order = { "list", "line" } },
 			{ type = "dropdown", key = KEY .. ".nameColors", label = L["Stat Colors"], disabled = Off,
 			  values = { stat = L["Per Stat"], class = L["Class Color"], plain = L["Plain"] },
 			  order = { "stat", "class", "plain" },
@@ -780,9 +782,8 @@ local function BuildTab()
 	end)
 	tab:SetScript("OnEnter", function(self)
 		PaintGrip(true)
-		GameTooltip:SetOwner(self, goesLeft and "ANCHOR_LEFT" or "ANCHOR_RIGHT")
-		GameTooltip:SetText(Shut() and L["Show Your Stats"] or L["Fold Your Stats Away"])
-		GameTooltip:Show()
+		ns.Host.Tip(self, Shut() and L["Show Your Stats"] or L["Fold Your Stats Away"], nil, nil,
+			goesLeft and "ANCHOR_LEFT" or "ANCHOR_RIGHT")
 	end)
 	tab:SetScript("OnLeave", function()
 		PaintGrip(false)

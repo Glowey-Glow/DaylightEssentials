@@ -51,8 +51,6 @@ local CALLS = {
 -- Demonic Sacrifice's buffs (the warlock gave the demon up on purpose).
 local SACRIFICE = { 18789, 18790, 18791, 18792, 35701 }
 
-local WARN = { 1, 0.75, 0.3 }
-
 local frame, body, text, pulse   -- frame: what /dui unlock moves; body: the line, sized by its setting
 local W, H = 220, 30
 local DEFAULT = { "CENTER", UIParent, "CENTER", 0, 110 }
@@ -113,7 +111,7 @@ local function Show(word)
 		if not frame:IsShown() then
 			frame:SetAlpha(1)
 			frame:Show()
-			pulse:Play()
+			if ns.MotionOn() then pulse:Play() end   -- (no pulse with motion off)
 		end
 		ns.Glow(frame, G("glow") ~= false)
 	elseif frame:IsShown() then
@@ -186,7 +184,7 @@ local function Build()
 	body:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
 	text = API.Text(body, "head", "CENTER")
 	text:SetPoint("CENTER", body, "CENTER", 0, 0)
-	text:SetTextColor(WARN[1], WARN[2], WARN[3])
+	ns.Host.Ink(text, "WARN")   -- (the look's warning ink, again on every look change)
 	pulse = frame:CreateAnimationGroup()
 	pulse:SetLooping("BOUNCE")
 	local a = pulse:CreateAnimation("Alpha")

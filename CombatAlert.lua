@@ -19,6 +19,7 @@ P.defaults = {
 	words = "plus",
 	hold = 1,
 	sound = false,
+	alertSound = ns.Host.DefaultAlert(),   -- (the raid warning, as before it had a choice)
 	scale = 1,
 }
 
@@ -39,12 +40,14 @@ P.page = { id = KEY, label = L["Combat Alert"],
 			  desc = L["+/- Combat: \"+ Combat\" and \"- Combat\". Entering, Leaving: \"Entering combat\" and \"Leaving combat\". Combat, Safe: \"Combat\" and \"Safe\". Move it with /dui unlock."] },
 			{ type = "slider", key = KEY .. ".hold", label = L["Stays for (Seconds)"], min = 0.5, max = 3, step = 0.25 },
 			{ type = "toggle", key = KEY .. ".sound", label = L["Sound on Combat Start"] },
+			ns.AlertRow({ key = KEY .. ".alertSound", label = L["Alert Sound"],
+			  disabled = function(get) return not get(KEY .. ".sound") end }, ns.Host.DefaultAlert(), L["Raid Warning"]),
 			{ type = "slider", key = KEY .. ".scale", label = L["Size"], min = 0.7, max = 2, step = 0.05, unit = "%" },
 		} },
 	} }
 
-local ENTER = { 0.95, 0.4, 0.35 }
-local LEAVE = { 0.45, 0.85, 0.5 }
+-- The look's inks for the two lines (its BAD and GOOD), painted again on every look change.
+local ENTER, LEAVE = "BAD", "GOOD"
 
 local frame, body, text   -- frame: what /dui unlock moves; body: the line, sized by its setting
 local token = 0
@@ -74,12 +77,12 @@ local function FadeAway(t)
 	C_Timer.After(API.Speed and API.Speed.SLOW or 0.4, function() Gone(t) end)
 end
 
-local function Say(word, color, hold)
+local function Say(word, role, hold)
 	token = token + 1
 	local t = token
 	previewShown = hold == nil
 	text:SetText(word)
-	text:SetTextColor(color[1], color[2], color[3])
+	ns.Host.Ink(text, role)
 	frame:SetAlpha(0)
 	frame:Show()
 	API.Fade(frame, 1, "FAST")
@@ -90,7 +93,7 @@ local function OnEvent(_, event)
 	if not G("enabled") then return end
 	if event == "PLAYER_REGEN_DISABLED" then
 		Say(Words()[1], ENTER, G("hold") or 1)
-		if G("sound") and SOUNDKIT and SOUNDKIT.RAID_WARNING then PlaySound(SOUNDKIT.RAID_WARNING, "SFX") end
+		if G("sound") then ns.Host.PlayAlert(G("alertSound") or ns.Host.DefaultAlert()) end
 	elseif event == "PLAYER_REGEN_ENABLED" and G("onLeave") then
 		Say(Words()[2], LEAVE, G("hold") or 1)
 	end
