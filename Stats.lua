@@ -433,7 +433,6 @@ end
 local ROW_H, PAD, GAP, SLACK = 18, 6, 14, 6
 
 local frame, body, line   -- frame: what /dui unlock moves; body: the box, sized to its text
-local watcher             -- in frame: the threat meter and chat fade watch (Watching)
 local shell, content             -- in body: the window (can be left off), and the text over it
 local tab                        -- the fold tab, beside the box while it's under the minimap
 local rows = {}
@@ -729,18 +728,46 @@ local function PaintGrip(hover)
 end
 
 -- The tab shows while the mouse is near: over the box, the tab or the frame it's docked to.
+-- Watched only while the mouse is near, the way DaylightUI's meter watches its hover: the mouse
+-- coming onto the tab, the box or the frame it's docked to (OnEnter, HoverStart) starts a look
+-- twenty times a second, and the look stops itself once the mouse has gone. Nothing runs between.
 local tabNear, hoverWait = nil, 0
 local dockNow   -- the frame it's docked to, as Present last found it
-local function WatchHover(self, dt)
-	hoverWait = hoverWait + (dt or 0)
-	if hoverWait < 0.05 and tabNear ~= nil then return end
-	hoverWait = 0
+local function LookHover(self)
 	local dock = dockNow
 	local near = self:IsMouseOver() or (body:IsVisible() and body:IsMouseOver())
 		or (dock and dock:IsMouseOver()) or false
 	if near ~= tabNear then
 		tabNear = near
 		API.Fade(self, near and 1 or 0, "FAST")
+	end
+	return near
+end
+local function WatchHover(self, dt)
+	hoverWait = hoverWait + (dt or 0)
+	if hoverWait < 0.05 then return end
+	hoverWait = 0
+	if not LookHover(self) then self:SetScript("OnUpdate", nil) end
+end
+local function HoverStart()
+	if not (tab and tab:IsShown()) or tab:GetScript("OnUpdate") then return end
+	hoverWait = 0
+	if LookHover(tab) then tab:SetScript("OnUpdate", WatchHover) end
+end
+
+-- The frame it's docked to and what's in it (the minimap, the meter's rows, data texts), hooked
+-- once each: the mouse coming onto any of them starts the look. (A frame takes OnEnter only with
+-- the mouse on it, and a parent none while the mouse is on a child: so the children too.)
+local nearHooked = setmetatable({}, { __mode = "k" })
+local function HookNear(f, depth)
+	if type(f) ~= "table" or nearHooked[f] or not f.HookScript then return end
+	nearHooked[f] = true
+	pcall(f.HookScript, f, "OnEnter", HoverStart)
+	if depth < 3 and f.GetChildren then
+		local kids = { pcall(f.GetChildren, f) }
+		if kids[1] then
+			for i = 2, #kids do HookNear(kids[i], depth + 1) end
+		end
 	end
 end
 
@@ -781,6 +808,7 @@ local function BuildTab()
 		SlideTo(open and 1 or 0)
 	end)
 	tab:SetScript("OnEnter", function(self)
+		HoverStart()
 		PaintGrip(true)
 		ns.Host.Tip(self, Shut() and L["Show Your Stats"] or L["Fold Your Stats Away"], nil, nil,
 			goesLeft and "ANCHOR_LEFT" or "ANCHOR_RIGHT")
@@ -789,11 +817,12 @@ local function BuildTab()
 		PaintGrip(false)
 		GameTooltip:Hide()
 	end)
-	tab:SetScript("OnUpdate", WatchHover)
 	tab:SetScript("OnShow", function(self)
 		tabNear = nil
-		WatchHover(self, 0)
+		self:SetScript("OnUpdate", nil)
+		HoverStart()   -- (the mouse away: faded out now; near: watched while it stays)
 	end)
+	tab:SetScript("OnHide", function(self) self:SetScript("OnUpdate", nil) end)
 	tab:SetAlpha(0)
 	tab:Hide()
 end
@@ -1013,7 +1042,12 @@ local function Present(on)
 			frame:SetClipsChildren(false)
 			frame:SetSize(fullW, fullH)
 		end
+		-- Docked, the box takes the mouse's coming (for the tab's hover), never its clicks.
+		body:SetMouseClickEnabled(false)
+		body:SetMouseMotionEnabled(docked and on)
 		if docked and on then
+			HookNear(dock, 0)
+			HookNear(body, 0)
 			tab:SetFrameStrata(frame:GetFrameStrata())
 			tab:SetFrameLevel(math.max(0, frame:GetFrameLevel()))
 			tab:Show()
@@ -1323,16 +1357,87 @@ local function OnEvent(_, event)
 	end
 end
 
--- The watch runs by the meters or by the chat with its fade; turned off, the stats are back to
+-- The watch is on by the meters or by the chat with its fade; turned off, the stats are back to
 -- full (no chat fade) and in their own spot (no threat meter to make way for).
+-- Nothing runs on a clock: DaylightUI's threat window is followed by its own show, hide, size and
+-- spot (it slides out by growing its clip, a size change every frame of the slide), and the chat's
+-- fade by the alpha DaylightUI sets on the chat panel and its holder (hooks, once each).
+local watchOn = false
+local lookQueued = false
+
+-- As see-through as the chat window is now (docked to the chat with "Fade with the Chat").
+local function FollowChat()
+	if not (watchOn and frame and frame:IsShown()) then return end
+	local a = 1
+	if G("chatFade") and G("dock") == "chat" then
+		local chat = _G.DaylightUIChatPanel
+		if type(chat) == "table" and chat.GetEffectiveAlpha then
+			local ok, v = pcall(chat.GetEffectiveAlpha, chat)
+			if ok and Safe(v) and type(v) == "number" then a = v end
+		end
+	end
+	if math.abs(frame:GetAlpha() - a) > 0.01 then frame:SetAlpha(a) end
+end
+
+local function LookNow()
+	lookQueued = false
+	if not (watchOn and frame and frame:IsShown()) then return end
+	P.MakeWay()
+	FollowChat()
+end
+-- (Once on the next frame, however many hooks fired in this one.)
+local function LookSoon()
+	if lookQueued or not watchOn then return end
+	lookQueued = true
+	C_Timer.After(0, LookNow)
+end
+
+local threatHooked, chatHooked = false, {}
+local hookTries = 0
+local function HookWatch()
+	local win = _G.DaylightUIThreatMeter
+	if not threatHooked and type(win) == "table" and win.HookScript and win.GetParent then
+		threatHooked = true
+		local clip = win:GetParent()
+		for _, f in ipairs({ win, clip }) do
+			if type(f) == "table" and f.HookScript then
+				f:HookScript("OnShow", LookSoon)
+				f:HookScript("OnHide", LookSoon)
+				f:HookScript("OnSizeChanged", LookSoon)
+			end
+		end
+		if type(clip) == "table" and clip.SetPoint then
+			hooksecurefunc(clip, "SetPoint", LookSoon)
+			hooksecurefunc(clip, "SetParent", LookSoon)
+		end
+	end
+	local chat = _G.DaylightUIChatPanel
+	if type(chat) == "table" and chat.GetParent then
+		for _, f in ipairs({ chat, chat:GetParent() }) do
+			if type(f) == "table" and f.SetAlpha and not chatHooked[f] then
+				chatHooked[f] = true
+				hooksecurefunc(f, "SetAlpha", FollowChat)
+			end
+		end
+	end
+	-- DaylightUI's panel module builds its threat window when it's enabled: a few looks a second
+	-- apart in case that's after this, then never again.
+	if not threatHooked and hookTries < 5 then
+		hookTries = hookTries + 1
+		C_Timer.After(1, function() if watchOn then HookWatch() end end)
+	end
+end
+
 local function Watching()
-	if not watcher then return end
+	if not frame then return end
 	local to = G("dock")
 	local on = G("enabled") == true and (to == "meters" or (to == "chat" and G("chatFade") == true))
 	if on then
-		watcher:Show()
-	elseif watcher:IsShown() then
-		watcher:Hide()
+		watchOn = true
+		HookWatch()
+		LookSoon()
+	elseif watchOn then
+		watchOn = false
 		P.MakeWay()
 		frame:SetAlpha(1)
 	end
@@ -1362,36 +1467,14 @@ local function Build()
 	frame:SetClampedToScreen(true)
 	frame:Hide()
 	-- Docked to the chat with "Fade with the Chat": as see-through as the chat window is now.
-	-- Docked to the damage meters: making way for the threat meter (MakeWay). A small child frame
-	-- does it, shown only for those two (Watching), so nothing runs otherwise.
-	-- (The fade follows the chat's closely. Making way looks ten times a second while no threat
-	-- meter is up, and as closely as the fade while one is, so the box keeps up with its slide.)
-	local fadeWait, wayWait = 0, 0
-	watcher = CreateFrame("Frame", nil, frame)
-	watcher:Hide()
-	watcher:SetScript("OnUpdate", function(_, dt)
-		fadeWait = fadeWait + (dt or 0)
-		if fadeWait < 0.03 then return end
-		wayWait = wayWait + fadeWait
-		fadeWait = 0
-		local threat = _G.DaylightUIThreatMeter
-		if wayWait >= 0.1 or makeWay ~= 0 or makeWayX ~= 0
-			or (type(threat) == "table" and threat.IsVisible and threat:IsVisible()) then
-			wayWait = 0
-			P.MakeWay()
-		end
-		local a = 1
-		if G("chatFade") and G("dock") == "chat" then
-			local chat = _G.DaylightUIChatPanel
-			if type(chat) == "table" and chat.GetEffectiveAlpha then
-				local ok, v = pcall(chat.GetEffectiveAlpha, chat)
-				if ok and Safe(v) and type(v) == "number" then a = v end
-			end
-		end
-		if math.abs(frame:GetAlpha() - a) > 0.01 then frame:SetAlpha(a) end
-	end)
+	-- Docked to the damage meters: making way for the threat meter (MakeWay). Both followed by
+	-- hooks on DaylightUI's frames, only for those two (Watching), so nothing runs otherwise.
+	-- (Shown again, the box looks once: it may have missed changes while hidden.)
+	frame:HookScript("OnShow", LookSoon)
 	body = CreateFrame("Frame", nil, frame)
 	body:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
+	-- (The box grown or shrunk to its text: the threat meter's way worked out again.)
+	body:HookScript("OnSizeChanged", LookSoon)
 	-- The window on its own layer so it can be left off; the text on a layer over it.
 	shell = CreateFrame("Frame", nil, body)
 	shell:SetAllPoints()

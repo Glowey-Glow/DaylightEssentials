@@ -24,9 +24,13 @@
 -- see more players. In a fight, or under the game's restrictions, these reads can be secret: then
 -- nothing is read (every read is wrapped in pcall and checked with ns.Safe).
 --
--- What it costs: nothing while it's off. On, out of a fight, one look every 1.5 seconds; the buffs
--- of each player are read once and kept until that player's buffs change (UNIT_AURA). No timers in
--- a fight.
+-- What it costs: nothing while it's off. On, it looks when the game says something changed (a
+-- buff, a target, a nameplate, the mouse over a player, the group, a mount...). A look every 1.5
+-- seconds runs only while it waits on something the game sends no word of: a prompt on screen (its
+-- player may walk off, your rebuff counts down), or a player who wants your buff but is out of
+-- reach (range has no event). With nobody to offer, nothing runs; something due later (your own
+-- buff reaching its rebuff time, a "Not Now" running out) wakes it once, then. The buffs of each
+-- player are read once and kept until that player's buffs change (UNIT_AURA). No timers in a fight.
 
 local _, ns = ...
 if ns.off then return end
@@ -336,6 +340,13 @@ end
 -- (time passes without a UNIT_AURA). Out of a fight only, and any field the game keeps secret
 -- (Safe) passes that aura over: the same reads as the game's own buff frame, expirationTime minus
 -- GetTime() and duration 0 for a buff that never runs out (Blizzard_BuffFrame/BuffFrame.lua 733-734).
+-- What a look leaves behind: whether it waits on something with no event (a player out of
+-- reach), and the soonest time something is due without one (Wake): see Settle.
+local reach, wakeAt = false, nil
+local function Wake(t)
+	if not wakeAt or t < wakeAt then wakeAt = t end
+end
+
 local function SelfDue()
 	if not G("selfTopUp") or not (C_UnitAuras and C_UnitAuras.GetAuraDataByIndex) then return nil end
 	local list = class == "PALADIN" and { KINGS, WISDOM, MIGHT } or BUFFS[class]
@@ -351,12 +362,16 @@ local function SelfDue()
 			and type(ends) == "number" and ends > 0 and type(length) == "number" and length > 0 then
 			local left = ends - now
 			local due = math.min(lead, length / 2)
-			if left > 0 and left <= due and (not bestLeft or left < bestLeft) then
+			if left > 0 and (not bestLeft or left < bestLeft) then
 				for _, b in ipairs(list) do
 					-- (A paladin's: only a blessing of ours, as one per paladin is allowed.)
 					if (class ~= "PALADIN" or src == "player") and Switched(b) and Known(b.id) and Prepare(b)
 						and b.names[name] and Wants(b, "player") and Usable(b.name) then
-						best, bestLeft = b, left
+						if left <= due then
+							best, bestLeft = b, left
+						else
+							Wake(ends - due)   -- (not due yet: a look then)
+						end
 						break
 					end
 				end
@@ -408,8 +423,8 @@ local function Candidate(unit)
 	local guid, name = Read(UnitGUID, unit), FullName(unit)
 	if type(guid) ~= "string" or not name then return nil end
 	local now = GetTime()
-	if tried[guid] and now - tried[guid] < TRIED then return nil end
-	if snoozed[guid] and now - snoozed[guid] < SNOOZE then return nil end
+	if tried[guid] and now - tried[guid] < TRIED then Wake(tried[guid] + TRIED) return nil end
+	if snoozed[guid] and now - snoozed[guid] < SNOOZE then Wake(snoozed[guid] + SNOOZE) return nil end
 	if NeverDB()[ns.Fold(name)] then return nil end
 	return guid, name
 end
@@ -710,20 +725,31 @@ local function Try(unit, reason, seen, thanksFor)
 	local guid, name = Candidate(unit)
 	if not guid or seen[guid] then return nil end
 	seen[guid] = true
-	-- (A passer-by too far away: no need to read their buffs.)
-	if reason == "nearby" and G("nearby") == "beside" and not Beside(unit) then return nil end
+	-- (A passer-by too far away: not offered. Their buffs are kept per player, so whether they
+	-- want yours is a cheap read: if they do, the look waits for them to come close.)
+	local far = reason == "nearby" and G("nearby") == "beside" and not Beside(unit)
 	local buffs = Buffs(unit)
 	if not buffs then return nil end
 	local spell = Pick(unit, buffs)
+	if far then
+		if spell then reach = true end
+		return nil
+	end
 	local thanks = thanksFor and thanksFor[guid] or nil
 	if spell then
-		if not InRange(spell.name, unit) then return nil end
+		if not InRange(spell.name, unit) then
+			reach = true
+			return nil
+		end
 	elseif thanks then
 		local inInstance = IsInInstance and IsInInstance() or false
 		local emote, say = ThanksWanted(inInstance, true)
 		if not (emote or say) then return nil end
 		-- (An emote or a line in say: only to someone close enough to see it, about 28 yards.)
-		if say ~= "whisper" and CheckInteractDistance and Read(CheckInteractDistance, unit, 4) ~= true then return nil end
+		if say ~= "whisper" and CheckInteractDistance and Read(CheckInteractDistance, unit, 4) ~= true then
+			reach = true
+			return nil
+		end
 	else
 		return nil
 	end
@@ -764,8 +790,8 @@ local function SelfOffer()
 	local guid = Read(UnitGUID, "player")
 	if type(guid) ~= "string" then return nil end
 	local now = GetTime()
-	if tried[guid] and now - tried[guid] < TRIED then return nil end
-	if snoozed[guid] and now - snoozed[guid] < SNOOZE then return nil end
+	if tried[guid] and now - tried[guid] < TRIED then Wake(tried[guid] + TRIED) return nil end
+	if snoozed[guid] and now - snoozed[guid] < SNOOZE then Wake(snoozed[guid] + SNOOZE) return nil end
 	local short = Read(UnitName, "player") or ""
 	return { guid = guid, unit = "player", name = FullName("player") or short, short = short, class = class,
 		spell = spell, reason = "self", left = left, missing = missing }
@@ -886,9 +912,11 @@ local function Hold(list, limit)
 end
 
 local looking = false
+local Settle   -- below
 local function Look()
 	looking = false
 	if not frame or InCombatLockdown() then return end
+	reach, wakeAt = false, nil
 	previewing = G("enabled") and ns.Previewing(KEY) or false
 	if previewing then
 		-- A buff of yours to give, or for a class with none, the thank-you on its own; then as many
@@ -909,14 +937,17 @@ local function Look()
 			list[#list + 1] = { unit = "player", name = e[1], short = e[1], class = e[2], reason = e[3], spell = sample }
 		end
 		ShowOffers(list)
+		Settle()
 		return
 	end
 	if Quiet() or not class then
 		ShowOffers(nil)
+		Settle()
 		return
 	end
 	local limit = Limit()
 	ShowOffers(Hold(Find(), limit))
+	Settle()
 end
 
 local function LookSoon(delay)
@@ -925,28 +956,48 @@ local function LookSoon(delay)
 	C_Timer.After(delay or 0.1, Look)
 end
 
--- One look every 1.5 seconds while on and out of a fight.
+-- A look every 1.5 seconds only while it waits on what the game sends no word of: the prompt
+-- showing someone (they may walk off; your rebuff's minutes count down), a player who wants your
+-- buff out of reach, or a warlock on the move (swimming has no event: looked at while you move).
+-- Else it rests, woken by events, and once at the soonest time something falls due (Wake).
 local ticker
-local function Tick(on)
-	if on and not ticker then
-		ticker = C_Timer.NewTicker(1.5, function()
-			if not looking then Look() end
-			-- Nothing to give and nobody to thank: rests until someone buffs you (NoteBuffs wakes
-			-- it). A warlock keeps looking: swimming has no event of its own.
-			if not previewing and class ~= "WARLOCK" and not CanGive() and not next(buffedBy) and ticker then
-				ticker:Cancel()
-				ticker = nil
-			end
-		end)
-	elseif not on and ticker then
+local moving = false   -- a warlock moving (PLAYER_STARTED_MOVING .. PLAYER_STOPPED_MOVING)
+local wakeSet, wakeToken = nil, 0
+local function Rest()
+	if ticker then
 		ticker:Cancel()
 		ticker = nil
+	end
+	wakeSet, wakeToken = nil, wakeToken + 1
+end
+Settle = function()
+	local waiting = not previewing and (offers[1] ~= nil or reach or (class == "WARLOCK" and moving))
+	if waiting and G("enabled") and not InCombatLockdown() then
+		if not ticker then
+			ticker = C_Timer.NewTicker(1.5, function()
+				if not looking then Look() end
+			end)
+		end
+		return
+	end
+	if ticker then
+		ticker:Cancel()
+		ticker = nil
+	end
+	-- (Only an earlier time than the one already set: one wake waiting at most.)
+	if wakeAt and G("enabled") and (not wakeSet or wakeAt < wakeSet - 0.05) then
+		wakeSet, wakeToken = wakeAt, wakeToken + 1
+		local mine = wakeToken
+		C_Timer.After(math.max(0.1, wakeAt - GetTime() + 0.05), function()
+			if mine ~= wakeToken then return end
+			wakeSet = nil
+			if not looking then Look() end
+		end)
 	end
 end
 
 function P.Wake()
 	if frame and G("enabled") and not InCombatLockdown() then
-		Tick(true)
 		LookSoon()
 	end
 end
@@ -1025,15 +1076,22 @@ end
 -- Events
 -- ---------------------------------------------------------------------------------------------
 
+-- (What the old steady look used to catch, now heard: a group member coming in or out of range,
+-- online, into your phase; the mouse onto a player; a flight path's start and end; a buff castable
+-- again with the mana for it.)
 local EVENTS = { "PLAYER_ENTERING_WORLD", "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED", "GROUP_ROSTER_UPDATE",
 	"PLAYER_TARGET_CHANGED", "PLAYER_FOCUS_CHANGED", "UNIT_AURA", "NAME_PLATE_UNIT_ADDED", "NAME_PLATE_UNIT_REMOVED",
 	"READY_CHECK", "SPELLS_CHANGED", "PLAYER_UPDATE_RESTING", "PLAYER_MOUNT_DISPLAY_CHANGED", "ZONE_CHANGED_NEW_AREA",
-	"PLAYER_DEAD", "PLAYER_ALIVE", "PLAYER_UNGHOST" }
+	"PLAYER_DEAD", "PLAYER_ALIVE", "PLAYER_UNGHOST", "UNIT_IN_RANGE_UPDATE", "UNIT_CONNECTION", "UNIT_PHASE",
+	"UPDATE_MOUSEOVER_UNIT", "PLAYER_CONTROL_LOST", "PLAYER_CONTROL_GAINED", "SPELL_UPDATE_USABLE" }
+-- A warlock's breath is offered only while swimming, which has no event: moving is.
+local WARLOCK_EVENTS = { "PLAYER_STARTED_MOVING", "PLAYER_STOPPED_MOVING" }
 
 -- Heard only out of a fight: nothing reads players' buffs or the nameplates in one (Look waits,
 -- NoteBuffs too), and the end of the fight forgets every buff read before it. The nameplates up
 -- then are read again (SeePlates).
-local QUIET_IN_COMBAT = { "UNIT_AURA", "NAME_PLATE_UNIT_ADDED", "NAME_PLATE_UNIT_REMOVED" }
+local QUIET_IN_COMBAT = { "UNIT_AURA", "NAME_PLATE_UNIT_ADDED", "NAME_PLATE_UNIT_REMOVED", "UNIT_IN_RANGE_UPDATE",
+	"UNIT_CONNECTION", "UNIT_PHASE", "UPDATE_MOUSEOVER_UNIT", "SPELL_UPDATE_USABLE" }
 
 local function SeePlates()
 	wipe(plates)
@@ -1075,7 +1133,7 @@ local function OnEvent(_, event, unit, info)
 	elseif event == "PLAYER_REGEN_DISABLED" then
 		QuietInCombat(true)
 		wipe(plates)
-		Tick(false)
+		Rest()
 		offers = {}
 		wipe(hovered)
 		body:Hide()   -- (the secure part is hidden by its state driver)
@@ -1084,7 +1142,6 @@ local function OnEvent(_, event, unit, info)
 		QuietInCombat(false)
 		SeePlates()
 		Forget()
-		Tick(G("enabled"))
 		LookSoon(0.5)
 		return
 	elseif event == "GROUP_ROSTER_UPDATE" or event == "PLAYER_ENTERING_WORLD" then
@@ -1096,6 +1153,10 @@ local function OnEvent(_, event, unit, info)
 		Forget("focus")
 	elseif event == "SPELLS_CHANGED" then
 		blessingNames = nil
+	elseif event == "PLAYER_STARTED_MOVING" then
+		moving = true
+	elseif event == "PLAYER_STOPPED_MOVING" then
+		moving = false
 	end
 	LookSoon()
 end
@@ -1191,6 +1252,12 @@ local function Listen(on)
 	for _, e in ipairs(EVENTS) do
 		if on then pcall(frame.RegisterEvent, frame, e) else pcall(frame.UnregisterEvent, frame, e) end
 	end
+	if class == "WARLOCK" then
+		for _, e in ipairs(WARLOCK_EVENTS) do
+			if on then pcall(frame.RegisterEvent, frame, e) else pcall(frame.UnregisterEvent, frame, e) end
+		end
+		moving = on and _G.IsPlayerMoving and _G.IsPlayerMoving() and true or false
+	end
 	if not on then
 		wipe(plates)
 		Forget()
@@ -1200,7 +1267,8 @@ local function Listen(on)
 		-- (Switched on in a fight: the buffs and nameplates wait for its end.)
 		if InCombatLockdown() then QuietInCombat(true) end
 	end
-	Tick(on and not InCombatLockdown())
+	-- (On: the next look decides whether anything waits. Off: nothing runs.)
+	if not on then Rest() end
 end
 
 -- "Not Now" on a key too (Key Bindings, AddOns), so the offer can be turned down without a

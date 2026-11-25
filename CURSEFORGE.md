@@ -6,9 +6,9 @@ By Glowey. A standalone addon that **integrates with Daylight UI** when it's ins
 
 ---
 
-## New in 1.11.1
-- **Buff Manners offers your own missing buff:** a Fortitude or Mark of the Wild that wore off or was lost to a death mid-dungeon now gets a row of its own ("Missing on you") that casts it on you, not only one that's running out. The option is now **Rebuff Me When Missing or Low**.
-- **Lighter in combat:** the Stance text, Healer Mana, Buff Manners, Cursor Cooldowns and the nameplate numbers do less work on every update, and parts you've switched off no longer listen to the game at all.
+## New in 1.11.2
+- **Smoother:** Secondary Stats and Buff Manners no longer check anything on a timer while nothing happens; they follow the game's changes instead.
+- **Quick Loot:** a loot addon switched off for this character no longer counts.
 ---
 
 ## What's in it

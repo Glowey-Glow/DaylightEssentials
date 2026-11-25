@@ -1,5 +1,10 @@
 # Glowey's Essentials
 
+## 1.11.2
+- No more checking several times a second while nothing happens. Secondary Stats docked to the meters or the chat no longer re-measures its place up to 30 times a second; it follows the threat meter and the chat's fade as they change. Its fold tab shows as the mouse comes near and stops looking once it's gone. Buff Manners no longer looks every 1.5 seconds for the whole session: it listens to range, group, aura and movement changes, and looks on a timer only while someone it can't reach yet wants your buff.
+- Quick Loot no longer counts a loot addon that's switched off for this character.
+- While Secondary Stats is docked, its box notices the mouse (clicks still pass through), so a unit standing right behind it doesn't show its mouseover tooltip.
+
 ## 1.11.1
 - Buff Manners offers your own buff when it's missing on you, not only when it's running out: a Fortitude or Mark of the Wild that wore off or was lost to a death mid-dungeon gets a row of its own ("Missing on you") that casts it on you, until it's back. The option is now Rebuff Me When Missing or Low. Daylight UI's buff reminder only shows missing buffs on a ready check and on entering a dungeon, so these were never offered.
 - Lighter in combat: the Stance text, Healer Mana's low-mana glow, Buff Manners, Cursor Cooldowns and the nameplate numbers do less work on every update, so fights run smoother.

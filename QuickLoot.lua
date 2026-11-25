@@ -13,7 +13,7 @@
 -- never take the same loot. Turned on here, it works alongside them. A choice made on its page is
 -- kept; the start follows the addons installed until then.
 
--- luacheck: read globals C_AddOns GetCVarBool IsModifiedClick GetNumLootItems LootSlot
+-- luacheck: read globals C_AddOns GetCVarBool IsModifiedClick GetNumLootItems LootSlot UnitGUID
 
 local _, ns = ...
 if ns.off then return end
@@ -40,7 +40,9 @@ local function Others()
 	if type(A) ~= "table" or type(A.DoesAddOnExist) ~= "function" or type(A.GetAddOnEnableState) ~= "function" then
 		return out
 	end
-	local me = UnitName and UnitName("player") or nil
+	-- (This character by GUID, as the game's own addon list asks: by name it answered for all
+	-- characters, so a loot addon switched off here still counted.)
+	local me = UnitGUID and UnitGUID("player") or nil
 	for _, o in ipairs(OTHERS) do
 		local okE, exists = pcall(A.DoesAddOnExist, o[1])
 		if okE and exists then
