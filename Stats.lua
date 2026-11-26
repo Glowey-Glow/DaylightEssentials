@@ -758,11 +758,20 @@ end
 -- The frame it's docked to and what's in it (the minimap, the meter's rows, data texts), hooked
 -- once each: the mouse coming onto any of them starts the look. (A frame takes OnEnter only with
 -- the mouse on it, and a parent none while the mouse is on a child: so the children too.)
+-- Only frames that already take the mouse are hooked: a mouse script hooked onto one that doesn't
+-- can turn its mouse on, and a holder of the minimap's (the panel round it, the data texts' strip,
+-- the addon drawer's) would then take the hover and the clicks meant for what's under it.
 local nearHooked = setmetatable({}, { __mode = "k" })
+local function TakesMouse(f)
+	local ok, on = pcall(f.IsMouseMotionEnabled or f.IsMouseEnabled, f)
+	if ok and on then return true end
+	ok, on = pcall(f.IsMouseEnabled, f)
+	return ok and on and true or false
+end
 local function HookNear(f, depth)
 	if type(f) ~= "table" or nearHooked[f] or not f.HookScript then return end
 	nearHooked[f] = true
-	pcall(f.HookScript, f, "OnEnter", HoverStart)
+	if TakesMouse(f) then pcall(f.HookScript, f, "OnEnter", HoverStart) end
 	if depth < 3 and f.GetChildren then
 		local kids = { pcall(f.GetChildren, f) }
 		if kids[1] then

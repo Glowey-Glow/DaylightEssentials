@@ -1,5 +1,12 @@
 # Glowey's Essentials
 
+## 1.12.0
+- New: Casts Left (mages). How many more casts your mana allows, as a small number on each attack and defense spell's button (Daylight UI's bars, the game's bars and Halo), in a fight too. It turns the warning color at Warn At casts and red at 0, reads Free while a cast costs nothing (Clearcasting), and can show only when low or only in a fight, in the corner you pick. Main Spell shows one spell's count as a larger line of its own, moved with /dui unlock.
+- Secondary Stats docked to the minimap, the meters or the chat no longer hooks frames there that don't take the mouse, so data text panels and addon drawers near it get their hovers and clicks again.
+- Settings dropdowns no longer catch the click outside them: a click on a data text, an addon drawer or anything else closes the menu and reaches what you clicked the first time.
+- After Escape closes a tour card, the card no longer keeps your keys to itself (it could stop movement keys in a later fight).
+- BugSack reports now end with this addon's name and version on its own errors, so a report says which version it came from.
+
 ## 1.11.2
 - No more checking several times a second while nothing happens. Secondary Stats docked to the meters or the chat no longer re-measures its place up to 30 times a second; it follows the threat meter and the chat's fade as they change. Its fold tab shows as the mouse comes near and stops looking once it's gone. Buff Manners no longer looks every 1.5 seconds for the whole session: it listens to range, group, aura and movement changes, and looks on a timer only while someone it can't reach yet wants your buff.
 - Quick Loot no longer counts a loot addon that's switched off for this character.

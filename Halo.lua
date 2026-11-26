@@ -1251,6 +1251,8 @@ local function OnShow()
 	end
 	-- (Each opening draws its countdowns anew: a slot may hold another action by now.)
 	for _, t in ipairs(tiles[open]) do CoolOff(t) end
+	-- (Casts Left's numbers on the mage's spells: CastsLeft.lua.)
+	if ns.CastsLeft then ns.CastsLeft.Halo(tiles[open], #shownBy[open]) end
 end
 
 local function Build()
