@@ -1,5 +1,11 @@
 # Glowey's Essentials
 
+## 1.12.1
+- Casts Left is lighter in a fight: an absorb ticking down on Mana Shield or Ice Barrier no longer re-reads every spell's cost and repaints every button (only a cost that changed does), hidden buttons wait until they show, and nothing runs while Only in a Fight has it hidden.
+- Buff Manners no longer looks every 1.5 seconds for the whole session in a crowd because someone far off wants your buff: it looks for 30 seconds after the game's last word, and at most twice a second on mana ticks and mouseovers.
+- The Stance text no longer works its name out again when a buff's timer or stacks refresh.
+- The welcome no longer keeps asking every 5 seconds for the whole session while Daylight UI is busy: it gives up after ten minutes and asks at the next login.
+
 ## 1.12.0
 - New: Casts Left (mages). How many more casts your mana allows, as a small number on each attack and defense spell's button (Daylight UI's bars, the game's bars and Halo), in a fight too. It turns the warning color at Warn At casts and red at 0, reads Free while a cast costs nothing (Clearcasting), and can show only when low or only in a fight, in the corner you pick. Main Spell shows one spell's count as a larger line of its own, moved with /dui unlock.
 - Secondary Stats docked to the minimap, the meters or the chat no longer hooks frames there that don't take the mouse, so data text panels and addon drawers near it get their hovers and clicks again.

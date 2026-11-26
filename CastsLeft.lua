@@ -282,6 +282,7 @@ local function Font(fs, scale)
 	if not fs:SetFont(API.Font(), size, "OUTLINE") then fs:SetFontObject("NumberFontNormalSmall") end
 end
 
+local PaintSpot   -- (below: one spot painted on its own, as its button shows)
 local function Spot(owner, host, scale, kind)
 	local s = spots[owner]
 	if s then return s end
@@ -291,14 +292,20 @@ local function Spot(owner, host, scale, kind)
 	Font(fs, scale)
 	Place(s)
 	spots[owner] = s
+	-- (A hidden button is skipped by a paint, so it's painted as it shows: a bar paged in, the
+	-- Halo ring opening. OnShow only, never a mouse script.)
+	if owner.HookScript then pcall(owner.HookScript, owner, "OnShow", function() PaintSpot(s) end) end
 	return s
 end
 
--- One spell's count and color now, worked out once a paint and shared by its buttons.
+-- One spell's count and color now, worked out once a paint and shared by its buttons. (The
+-- answer tables are kept per spell and filled again: a paint makes no tables.)
+local answers = {}
 local function Read(spell, cache)
 	local r = cache[spell]
 	if r then return r end
-	r = {}
+	r = answers[spell]
+	if r then wipe(r) else r = {} answers[spell] = r end
 	cache[spell] = r
 	local cost = costs[spell]
 	if cost == nil then
@@ -361,9 +368,17 @@ end
 local function PaintOne(s, cache, showing)
 	local fs = s.fs
 	if not (showing and s.spell) then
-		fs:SetText("")
+		-- (Emptied once, not on every paint.)
+		if not s.blank then
+			fs:SetText("")
+			s.blank = true
+		end
 		return
 	end
+	-- (A hidden button, such as the game's own twin under a Daylight UI bar or a closed Halo, waits
+	-- for its OnShow.)
+	if not s.owner:IsVisible() then return end
+	s.blank = false
 	if not Write(fs, Read(s.spell, cache)) then fs:SetText("") end
 end
 
@@ -379,12 +394,19 @@ local function Knows(id)
 	return false
 end
 
+-- (Looked up again only when the spells or the setting change: mainSpell = nil.)
+local mainSpell
 local function MainSpell()
+	if mainSpell ~= nil then return mainSpell or nil end
+	mainSpell = false
 	local key = G("main")
 	local ids = key and GROUP_OF[key]
 	if not ids then return nil end
 	for i = #ids, 1, -1 do
-		if Knows(ids[i]) then return ids[i] end
+		if Knows(ids[i]) then
+			mainSpell = ids[i]
+			return mainSpell
+		end
 	end
 	return nil
 end
@@ -399,7 +421,8 @@ local function PaintMain(cache, showing)
 	end
 	-- (Named by its first rank: every rank has the name.)
 	local name = SpellName((GROUP_OF[G("main")] or GROUP_OF.frostbolt)[1]) or L["Main Spell"]
-	mainFrame:SetScale(G("mainScale") or 1)
+	local scale = G("mainScale") or 1
+	if mainFrame:GetScale() ~= scale then mainFrame:SetScale(scale) end
 	if spell and Write(mainText, Read(spell, cache), name) then
 		mainFrame:Show()
 	elseif preview then
@@ -412,11 +435,22 @@ local function PaintMain(cache, showing)
 	end
 end
 
+local paintCache = {}
+local hidAll = false   -- the last paint showed nothing (Only in a Fight, out of one)
 local function Paint()
-	local cache = {}
 	local showing = Showing()
-	for _, s in pairs(spots) do PaintOne(s, cache, showing) end
-	PaintMain(cache, showing)
+	-- (Nothing shows and nothing did: a mana change has nothing to do.)
+	if not showing and hidAll and not ns.Previewing(KEY) then return end
+	hidAll = not showing
+	wipe(paintCache)
+	for _, s in pairs(spots) do PaintOne(s, paintCache, showing) end
+	PaintMain(paintCache, showing)
+end
+
+function PaintSpot(s)
+	if not s.spell or not Showing() then return end
+	wipe(paintCache)
+	PaintOne(s, paintCache, true)
 end
 
 -- ---------------------------------------------------------------------------------------------
@@ -516,9 +550,17 @@ local function ScanSoon()
 end
 local function CostNow()
 	costSoon = false
-	-- (Every cost read again; the curves stay for any cost already met.)
-	wipe(costs)
-	Paint()
+	-- (Every cost read again; the curves stay for any cost already met. Most aura changes, such
+	-- as a shield's absorb ticking down, change no cost: then nothing is painted.)
+	local changed = false
+	for spell, was in pairs(costs) do
+		local now = CostOf(spell) or false
+		if now ~= was then
+			costs[spell] = now
+			changed = true
+		end
+	end
+	if changed then Paint() end
 end
 local function CostSoon()
 	if costSoon then return end
@@ -532,8 +574,12 @@ local function OnEvent(_, event, unit, kind)
 		Paint()
 	elseif event == "UNIT_MAXPOWER" then
 		if unit == "player" then Paint() end
-	elseif event == "UNIT_AURA" or event == "SPELLS_CHANGED" or event == "PLAYER_LEVEL_UP" then
+	elseif event == "UNIT_AURA" then
 		CostSoon()
+	elseif event == "SPELLS_CHANGED" or event == "PLAYER_LEVEL_UP" then
+		mainSpell = nil
+		wipe(costs)
+		ScanSoon()
 	elseif event == "PLAYER_REGEN_DISABLED" then
 		Paint()
 	elseif event == "PLAYER_REGEN_ENABLED" then
@@ -589,6 +635,8 @@ end
 function P.Setting()
 	if not driver then return end
 	Listen()
+	mainSpell = nil
+	hidAll = false
 	-- (A look setting: the curves are made again with it.)
 	wipe(curves)
 	for _, s in pairs(spots) do
@@ -608,6 +656,7 @@ end
 function P.Style()
 	if not driver then return end
 	wipe(curves)
+	hidAll = false
 	for _, s in pairs(spots) do Font(s.fs, s.scale) end
 	Paint()
 end

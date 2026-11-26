@@ -359,7 +359,17 @@ watch:SetScript("OnUpdate", function(self)
 		for f in pairs(drawn) do pcall(redraw, f, KIND) end
 	end
 end)
-watch:SetScript("OnEvent", function(self)
+watch:SetScript("OnEvent", function(self, event, _, info)
+	-- (A buff's timer or stacks refreshed change no stance, aura or form: only one added or taken
+	-- away does. Hidden lists count as a change.)
+	if event == "UNIT_AURA" and type(info) == "table" and ns.Safe(info) and ns.Safe(info.isFullUpdate)
+		and not info.isFullUpdate then
+		local added, removed = info.addedAuras, info.removedAuraInstanceIDs
+		if ns.Safe(added) and ns.Safe(removed) and not (type(added) == "table" and #added > 0)
+			and not (type(removed) == "table" and #removed > 0) then
+			return
+		end
+	end
 	dirty = true
 	if redraw then self:Show() end
 end)

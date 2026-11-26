@@ -961,6 +961,10 @@ end
 -- buff out of reach, or a warlock on the move (swimming has no event: looked at while you move).
 -- Else it rests, woken by events, and once at the soonest time something falls due (Wake).
 local ticker
+-- (Someone out of reach and nothing on screen: looked at for 30 seconds after the last word from
+-- the game, then it rests until the next one. In a city someone always wants a buff from afar.)
+local REACH_LOOKS = 20
+local reachLeft = REACH_LOOKS
 local moving = false   -- a warlock moving (PLAYER_STARTED_MOVING .. PLAYER_STOPPED_MOVING)
 local wakeSet, wakeToken = nil, 0
 local function Rest()
@@ -971,10 +975,12 @@ local function Rest()
 	wakeSet, wakeToken = nil, wakeToken + 1
 end
 Settle = function()
-	local waiting = not previewing and (offers[1] ~= nil or reach or (class == "WARLOCK" and moving))
+	local held = offers[1] ~= nil or (class == "WARLOCK" and moving)
+	local waiting = not previewing and (held or (reach and reachLeft > 0))
 	if waiting and G("enabled") and not InCombatLockdown() then
 		if not ticker then
 			ticker = C_Timer.NewTicker(1.5, function()
+				if not (offers[1] ~= nil or (class == "WARLOCK" and moving)) then reachLeft = reachLeft - 1 end
 				if not looking then Look() end
 			end)
 		end
@@ -1108,6 +1114,7 @@ local function QuietInCombat(on)
 	end
 end
 
+local SLOW_WORD = { SPELL_UPDATE_USABLE = true, UPDATE_MOUSEOVER_UNIT = true, UNIT_IN_RANGE_UPDATE = true }
 local function OnEvent(_, event, unit, info)
 	if event == "UNIT_AURA" then
 		-- Only a buff added or taken away changes what we read (refreshed timers and stacks don't).
@@ -1158,7 +1165,10 @@ local function OnEvent(_, event, unit, info)
 	elseif event == "PLAYER_STOPPED_MOVING" then
 		moving = false
 	end
-	LookSoon()
+	reachLeft = REACH_LOOKS
+	-- (The chatty ones, a mana tick, a mouseover, a range flip: half a second, so a stream of them
+	-- is two looks a second at most.)
+	LookSoon(SLOW_WORD[event] and 0.5 or nil)
 end
 
 local function Build()
