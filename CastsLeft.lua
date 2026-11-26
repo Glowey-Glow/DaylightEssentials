@@ -1,6 +1,7 @@
 -- Casts Left: for mages, how many more times your mana lets you cast each of your attack and
 -- defense spells, as a small number on its button: on Daylight UI's action bars, the game's own
--- bars, and Halo's icons. Buffs, armors, conjures, teleports and portals have none.
+-- bars, Halo's icons and the Cooldown Manager's icons (Daylight UI's, else the game's own). Buffs,
+-- armors, conjures, teleports and portals have none.
 --   * Colors: the value ink, the warning ink once you're down to Warn At casts, the bad red at 0.
 --   * Only Show When Low: the number stays hidden until you're down to Show at casts.
 --   * Only in a Fight: no numbers out of one.
@@ -110,6 +111,7 @@ P.defaults = {
 	enabled = true,
 	bars = true,
 	halo = true,
+	cdm = true,
 	size = 11,
 	corner = "TOPLEFT",
 	warnAt = 2,
@@ -128,6 +130,8 @@ P.page = { id = KEY, label = L["Casts Left"],
 			  desc = L["Attack and defense spells only. It reads 0 in red once you can't afford another cast."] },
 			{ type = "toggle", key = KEY .. ".bars", label = L["On Action Bars"] },
 			{ type = "toggle", key = KEY .. ".halo", label = L["On Halo"] },
+			{ type = "toggle", key = KEY .. ".cdm", label = L["On the Cooldown Manager"],
+			  desc = L["Daylight UI's Cooldown Manager icons, or the game's own without it."] },
 			{ type = "toggle", key = KEY .. ".combatOnly", label = L["Only in a Fight"],
 			  desc = L["No numbers until a fight starts."] },
 		} },
@@ -293,8 +297,9 @@ local function Spot(owner, host, scale, kind)
 	Place(s)
 	spots[owner] = s
 	-- (A hidden button is skipped by a paint, so it's painted as it shows: a bar paged in, the
-	-- Halo ring opening. OnShow only, never a mouse script.)
-	if owner.HookScript then pcall(owner.HookScript, owner, "OnShow", function() PaintSpot(s) end) end
+	-- Halo ring opening, a Cooldown Manager icon coming back. Hooked on the frame the text is on,
+	-- which shows with its button. OnShow only, never a mouse script.)
+	if host.HookScript then pcall(host.HookScript, host, "OnShow", function() PaintSpot(s) end) end
 	return s
 end
 
@@ -447,7 +452,9 @@ local function Paint()
 	PaintMain(paintCache, showing)
 end
 
+local CdmSoon   -- (below: a Cooldown Manager icon shown again may hold another spell now)
 function PaintSpot(s)
+	if s.kind == "cdm" then CdmSoon() end
 	if not s.spell or not Showing() then return end
 	wipe(paintCache)
 	PaintOne(s, paintCache, true)
@@ -517,6 +524,174 @@ function CastsLeft.Halo(tiles, shown)
 end
 
 -- ---------------------------------------------------------------------------------------------
+-- The Cooldown Manager
+-- ---------------------------------------------------------------------------------------------
+-- Daylight UI's own Cooldown Manager: each placed piece is a frame of kind "cdmpiece", told by its
+-- API (FrameMade, FrameUnitChanged, FrameRemoved); API.CooldownPieceInfo names its spell and
+-- shape, and the number goes on API.Attach's holder, never on Daylight UI's own parts
+-- (DaylightUI/API.md, "The Cooldown Manager"). Icons only: a bar has no corner for it.
+-- Without it, the game's own viewers (Blizzard_CooldownViewer: EssentialCooldownViewer,
+-- UtilityCooldownViewer): each icon is a pooled item whose cooldownInfo names its spell
+-- (CooldownViewerItemData.lua:192-266), read only, with the number on a frame of ours over it
+-- (above its cooldown swipe). No hooks on the game's own methods (Daylight UI found they broke
+-- its calls: DaylightUI_ActionBars\Cooldowns.lua:819-829): the viewers' OnShow and
+-- OnSizeChanged, an item's OnShow (a pooled item shown again may hold another spell), and the
+-- game's callbacks for its Cooldown Manager settings and Edit Mode.
+-- A spell a Daylight UI piece shows is left off the game's item: a placed game icon sits inside
+-- the piece, which has the number already.
+-- A piece names one rank of its spell: the count is asked by the spell's name, as Halo's are,
+-- which the game answers for the rank you know.
+
+local GROUP_KEY = {}
+for _, g in ipairs(GROUPS) do
+	for _, id in ipairs(g[2]) do GROUP_KEY[id] = g[1] end
+end
+
+local CDM_VIEWERS = { "EssentialCooldownViewer", "UtilityCooldownViewer" }
+local pieces = setmetatable({}, { __mode = "k" })   -- Daylight UI piece frame -> { group, spell }
+local pieceGroups = {}                              -- group -> true while a piece shows it
+local overs = setmetatable({}, { __mode = "k" })    -- game item -> our frame over it
+
+local function CdmOn() return On() and G("cdm") and true or false end
+local function PlainID(v) return Safe(v) and type(v) == "number" and v or nil end
+
+local function GroupsNow()
+	wipe(pieceGroups)
+	for _, p in pairs(pieces) do pieceGroups[p.group] = true end
+end
+
+-- One of Daylight UI's pieces placed, changed or taken away (gone: true).
+local function Piece(frame, gone)
+	local id
+	if not gone and API and type(API.CooldownPieceInfo) == "function" then
+		local ok, info = pcall(API.CooldownPieceInfo, frame)
+		if ok and type(info) == "table" and info.shape == "icon" then id = PlainID(info.spellID) end
+	end
+	local group = id and GROUP_KEY[id]
+	pieces[frame] = group and { group = group, spell = SpellName(id) or id } or nil
+	GroupsNow()
+	local s = spots[frame]
+	if group and CdmOn() and not s and API and type(API.Attach) == "function" then
+		local ok, holder = pcall(API.Attach, frame)
+		if ok and type(holder) == "table" and holder.CreateFontString then
+			s = Spot(frame, holder, (frame:GetWidth() or 36) / 36, "cdm")
+		end
+	end
+	if s then
+		-- (The piece's size can change with its group's look.)
+		local scale = (frame:GetWidth() or 36) / 36
+		if scale > 0 and math.abs(scale - (s.scale or 1)) > 0.01 then
+			s.scale = scale
+			Font(s.fs, scale)
+		end
+		s.spell = group and CdmOn() and pieces[frame].spell or nil
+	end
+	CdmSoon()
+end
+
+local function ItemSpell(item)
+	local info = rawget(item, "cooldownInfo")
+	if type(info) ~= "table" then return nil end
+	return PlainID(info.overrideSpellID) or PlainID(info.spellID)
+end
+
+local function ScanCdm()
+	local want = CdmOn()
+	for _, name in ipairs(CDM_VIEWERS) do
+		local v = _G[name]
+		local pool = type(v) == "table" and rawget(v, "itemFramePool")
+		if type(pool) == "table" and type(pool.EnumerateActive) == "function" then
+			for item in pool:EnumerateActive() do
+				local id = want and ItemSpell(item)
+				local group = id and GROUP_KEY[id]
+				if group and pieceGroups[group] then group = nil end
+				local s = spots[item]
+				if group and not s then
+					local over = overs[item]
+					if not over then
+						over = CreateFrame("Frame", nil, item)
+						over:SetAllPoints(item)
+						over:SetFrameLevel(item:GetFrameLevel() + 5)
+						overs[item] = over
+					end
+					s = Spot(item, over, (item:GetWidth() or 36) / 36, "cdm")
+				end
+				if s then s.spell = group and (SpellName(id) or id) or nil end
+			end
+		end
+	end
+end
+
+local cdmSoon = false
+local function CdmNow()
+	cdmSoon = false
+	if not pcall(ScanCdm) then return end
+	-- (Each shown icon, by itself: the other buttons didn't change.)
+	local showing = Showing()
+	wipe(paintCache)
+	for _, s in pairs(spots) do
+		if s.kind == "cdm" then PaintOne(s, paintCache, showing) end
+	end
+end
+function CdmSoon()
+	if cdmSoon or not driver then return end
+	cdmSoon = true
+	C_Timer.After(0, CdmNow)
+end
+
+local hookedViewers = setmetatable({}, { __mode = "k" })
+local function HookViewers()
+	local all = true
+	for _, name in ipairs(CDM_VIEWERS) do
+		local v = _G[name]
+		if type(v) ~= "table" or not v.HookScript then
+			all = false
+		elseif not hookedViewers[v] then
+			hookedViewers[v] = true
+			pcall(v.HookScript, v, "OnShow", function() CdmSoon() end)
+			pcall(v.HookScript, v, "OnSizeChanged", function() CdmSoon() end)
+		end
+	end
+	return all
+end
+
+local cdmStarted = false
+local CDM_OWNER = {}   -- (our name on the game's callbacks)
+local function StartCdm()
+	if cdmStarted then return end
+	cdmStarted = true
+	-- Daylight UI's pieces (it tells of every one already made, too).
+	local me = ns.me
+	if me and type(me.On) == "function" then
+		for _, e in ipairs({ "FrameMade", "FrameUnitChanged", "FrameRemoved" }) do
+			local gone = e == "FrameRemoved"
+			pcall(me.On, e, function(kind, frame, _, isPreview)
+				if kind ~= "cdmpiece" or isPreview or type(frame) ~= "table" then return end
+				Piece(frame, gone)
+			end)
+		end
+	end
+	-- The game's viewers, now or when their addon loads.
+	if not HookViewers() then
+		local wait = CreateFrame("Frame")
+		wait:RegisterEvent("ADDON_LOADED")
+		wait:SetScript("OnEvent", function(self, _, name)
+			if name ~= "Blizzard_CooldownViewer" then return end
+			self:UnregisterEvent("ADDON_LOADED")
+			HookViewers()
+			CdmSoon()
+		end)
+	end
+	local R = _G.EventRegistry
+	if type(R) == "table" and type(R.RegisterCallback) == "function" then
+		for _, e in ipairs({ "CooldownViewerSettings.OnDataChanged", "EditMode.Exit" }) do
+			pcall(R.RegisterCallback, R, e, function() CdmSoon() end, CDM_OWNER)
+		end
+	end
+	CdmSoon()
+end
+
+-- ---------------------------------------------------------------------------------------------
 -- The Main Spell line
 -- ---------------------------------------------------------------------------------------------
 
@@ -541,6 +716,7 @@ local scanSoon, costSoon = false, false
 local function ScanNow()
 	scanSoon = false
 	ScanBars()
+	pcall(ScanCdm)
 	Paint()
 end
 local function ScanSoon()
@@ -629,6 +805,7 @@ function P.Login()
 	driver = CreateFrame("Frame")
 	driver:SetScript("OnEvent", OnEvent)
 	Listen()
+	StartCdm()
 	ScanSoon()
 end
 
@@ -644,6 +821,8 @@ function P.Setting()
 		Place(s)
 	end
 	ScanBars()
+	for frame in pairs(pieces) do Piece(frame) end
+	pcall(ScanCdm)
 	if not (On() and G("halo")) then
 		for _, s in pairs(spots) do
 			if s.kind == "halo" then s.spell = nil end

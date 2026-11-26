@@ -1,5 +1,10 @@
 # Glowey's Essentials
 
+## 1.13.0
+- Casts Left also shows on the Cooldown Manager's icons (Daylight UI's, or the game's own without it), with its own On the Cooldown Manager switch.
+- Buff Manners: Rows Grow up or down from the prompt, and Blessing by Class picks the blessing each class gets from you (As Above follows your Paladin blessing, None offers none).
+- With another of Glowey's plugins on, Essentials' pages sit under one "Glowey's" entry on Daylight UI's options rail.
+
 ## 1.12.1
 - Casts Left is lighter in a fight: an absorb ticking down on Mana Shield or Ice Barrier no longer re-reads every spell's cost and repaints every button (only a cost that changed does), hidden buttons wait until they show, and nothing runs while Only in a Fight has it hidden.
 - Buff Manners no longer looks every 1.5 seconds for the whole session in a crowd because someone far off wants your buff: it looks for 30 seconds after the game's last word, and at most twice a second on mana ticks and mouseovers.

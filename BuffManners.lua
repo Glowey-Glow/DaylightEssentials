@@ -57,6 +57,11 @@ P.defaults = {
 	priestShadow = false,
 	thorns = "tanks",
 	blessing = "kings",
+	-- (Per class: "auto" follows Blessing above; else that blessing, or "none". See BLESS_FOR.)
+	bless_WARRIOR = "auto", bless_ROGUE = "auto", bless_HUNTER = "auto", bless_MAGE = "auto",
+	bless_PRIEST = "auto", bless_WARLOCK = "auto", bless_DRUID = "auto", bless_PALADIN = "auto",
+	bless_SHAMAN = "auto",
+	grow = "down",          -- the rows under the top one ("down") or over it ("up")
 	emote = false,
 	say = "off",
 	line = "thanks",
@@ -74,6 +79,50 @@ local function BusyOff() return not (G("enabled") and G("busyHide")) end
 local function SelfOff() return not (G("enabled") and G("selfTopUp")) end
 
 local class   -- the player's class token, read at login
+
+-- Paladin blessings: one per paladin on a player, so never one over a blessing of ours. Each can
+-- be the one a class gets (Blessing by Class); the Greater one counts as the same buff.
+local KINGS = { id = 20217, also = { 25898 }, who = "all" }
+local WISDOM = { id = 19742, also = { 25894 }, who = "mana" }
+local MIGHT = { id = 19740, also = { 25782 }, who = "physical" }
+local SALVATION = { id = 1038, also = { 25895 }, who = "all" }
+local LIGHT = { id = 19977, also = { 25890 }, who = "all" }
+local SANCTUARY = { id = 20911, also = { 25899 }, who = "all" }
+local BLESSINGS = { KINGS, WISDOM, MIGHT, SALVATION, LIGHT, SANCTUARY }
+local BLESS_BY_KEY = { kings = KINGS, wisdom = WISDOM, might = MIGHT, salvation = SALVATION, light = LIGHT,
+	sanctuary = SANCTUARY }
+local BLESS_ORDER = { "auto", "kings", "wisdom", "might", "salvation", "light", "sanctuary", "none" }
+-- The classes of this game, in the order the game's class lists use.
+local CLASSES = { "WARRIOR", "PALADIN", "HUNTER", "ROGUE", "PRIEST", "SHAMAN", "MAGE", "WARLOCK", "DRUID" }
+
+local function IsPaladin()
+	local ok, _, token = pcall(UnitClass, "player")
+	return ok and token == "PALADIN"
+end
+
+local function GameSpellName(id, english)
+	local name
+	if C_Spell and C_Spell.GetSpellName then
+		local ok, n = pcall(C_Spell.GetSpellName, id)
+		if ok and type(n) == "string" then name = n end
+	end
+	return name or english
+end
+
+-- The dropdown for each class: its name in the game's words, the blessings in the game's words.
+local function BlessingItems()
+	local values = { auto = L["As Above"], none = L["None"],
+		kings = GameSpellName(KINGS.id, L["Blessing of Kings"]), wisdom = GameSpellName(WISDOM.id, L["Blessing of Wisdom"]),
+		might = GameSpellName(MIGHT.id, L["Blessing of Might"]), salvation = GameSpellName(SALVATION.id, L["Blessing of Salvation"]),
+		light = GameSpellName(LIGHT.id, L["Blessing of Light"]), sanctuary = GameSpellName(SANCTUARY.id, L["Blessing of Sanctuary"]) }
+	local names = _G.LOCALIZED_CLASS_NAMES_MALE or {}
+	local items = {}
+	for _, c in ipairs(CLASSES) do
+		items[#items + 1] = { type = "dropdown", key = KEY .. ".bless_" .. c, label = names[c] or c,
+			values = values, order = BLESS_ORDER }
+	end
+	return items
+end
 
 -- The lines of thanks ({name} = their name). "custom" is typed with /manners line.
 local LINES = {
@@ -109,6 +158,9 @@ P.page = { id = KEY, label = L["Buff Manners"],
 			{ type = "toggle", key = KEY .. ".quietResting", label = L["Mute in Towns and Inns"] },
 			{ type = "toggle", key = KEY .. ".quietInstances", label = L["Mute in Dungeons and Raids"] },
 			{ type = "slider", key = KEY .. ".scale", label = L["Size"], min = 0.7, max = 2, step = 0.05, unit = "%" },
+			{ type = "dropdown", key = KEY .. ".grow", label = L["Rows Grow"],
+			  values = { down = L["Down"], up = L["Up"] }, order = { "down", "up" },
+			  desc = L["Where the rows after the top one go: under it, or over it. The top row, the one its key gives, stays where you put the prompt."] },
 		} },
 		{ label = L["My Buffs"],
 		  desc = L["Mages give Arcane Intellect, Priests Fortitude, Druids Mark of the Wild, Paladins a blessing, Warlocks Unending Breath (only while you're swimming). Intellect, Wisdom and Divine Spirit only go to players who use mana."],
@@ -143,6 +195,14 @@ P.page = { id = KEY, label = L["Buff Manners"],
 		} },
 	} }
 
+-- Blessing by Class: on the page for a paladin only (the class is known as the addon loads; a
+-- group of the page can't be hidden, only its rows), after My Buffs.
+if IsPaladin() then
+	table.insert(P.page.groups, 3, { label = L["Blessing by Class"],
+		desc = L["The blessing each class gets from you. As Above follows Blessing (Paladins); None offers that class no blessing. When another paladin's is already on them, or you don't know it yet, As Above is used."],
+		items = BlessingItems() })
+end
+
 -- ---------------------------------------------------------------------------------------------
 -- The buffs
 -- ---------------------------------------------------------------------------------------------
@@ -164,11 +224,6 @@ local BUFFS = {
 	WARLOCK = { { id = 5697, who = "all", swim = true } },                             -- Unending Breath
 }
 
--- Paladin blessings: one per paladin on a player, so never one over a blessing of ours.
-local KINGS = { id = 20217, also = { 25898 }, who = "all" }
-local WISDOM = { id = 19742, also = { 25894 }, who = "mana" }
-local MIGHT = { id = 19740, also = { 25782 }, who = "physical" }
-local OTHER_BLESSINGS = { 1038, 25895, 19977, 25890, 20911, 25899 }  -- Salvation, Light, Sanctuary
 
 local MANA = { MAGE = true, PRIEST = true, WARLOCK = true, DRUID = true, PALADIN = true, SHAMAN = true, HUNTER = true }
 local PHYSICAL = { WARRIOR = true, ROGUE = true }
@@ -216,12 +271,8 @@ local blessingNames
 local function BlessingNames()
 	if blessingNames then return blessingNames end
 	local t, all = {}, true
-	for _, b in ipairs({ KINGS, WISDOM, MIGHT }) do
+	for _, b in ipairs(BLESSINGS) do
 		if Prepare(b) then for n in pairs(b.names) do t[n] = true end else all = false end
-	end
-	for _, id in ipairs(OTHER_BLESSINGS) do
-		local n = SpellName(id)
-		if n then t[n] = true else all = false end
 	end
 	if all then blessingNames = t end
 	return t
@@ -321,6 +372,19 @@ local function Pick(unit, buffs)
 		local c = UnitClassOf(unit)
 		local fits = (c and PHYSICAL[c]) and MIGHT or WISDOM
 		if G("blessing") == "class" then order = { fits } else order = { KINGS, fits } end
+		-- Blessing by Class: that class's own pick first (None: no blessing for it), then
+		-- Blessing's order, for one already on them from another paladin; one you don't know
+		-- yet leaves Blessing's order to stand.
+		local own = c and G("bless_" .. c)
+		if own == "none" then return nil end
+		local chosen = own and BLESS_BY_KEY[own]
+		if chosen and Known(chosen.id) then
+			local first = { chosen }
+			for _, b in ipairs(order) do
+				if b ~= chosen then first[#first + 1] = b end
+			end
+			order = first
+		end
 		for _, b in ipairs(order) do
 			if Known(b.id) and Prepare(b) and not Has(buffs, b) and Usable(b.name) then return b end
 		end
@@ -349,7 +413,7 @@ end
 
 local function SelfDue()
 	if not G("selfTopUp") or not (C_UnitAuras and C_UnitAuras.GetAuraDataByIndex) then return nil end
-	local list = class == "PALADIN" and { KINGS, WISDOM, MIGHT } or BUFFS[class]
+	local list = class == "PALADIN" and BLESSINGS or BUFFS[class]
 	if not list then return nil end
 	local lead = (tonumber(G("selfMinutes")) or 3) * 60
 	local now = GetTime()
@@ -365,8 +429,10 @@ local function SelfDue()
 			if left > 0 and (not bestLeft or left < bestLeft) then
 				for _, b in ipairs(list) do
 					-- (A paladin's: only a blessing of ours, as one per paladin is allowed.)
+					-- (A paladin's blessing of its own on itself is cast again whichever it is: Blessing by
+					-- Class may give a paladin Might.)
 					if (class ~= "PALADIN" or src == "player") and Switched(b) and Known(b.id) and Prepare(b)
-						and b.names[name] and Wants(b, "player") and Usable(b.name) then
+						and b.names[name] and (class == "PALADIN" or Wants(b, "player")) and Usable(b.name) then
 						if left <= due then
 							best, bestLeft = b, left
 						else
@@ -583,8 +649,33 @@ local function PaintRow(r, o)
 	return math.max(ns.TextWidth(r.title) or 0, ns.TextWidth(r.sub) or 0)
 end
 
--- The rows on show. The frame (what /dui unlock moves) stays one row high and the rows below hang
--- from its top, so the top row never moves as the list grows or shrinks.
+-- Rows Grow: "down" hangs the rows from the frame's top (the top row first, under it the rest),
+-- "up" stands them on its bottom (the top row lowest, the rest over it). Either way the frame
+-- (what /dui unlock moves) stays one row high and holds the top row, so that row never moves as
+-- the list grows or shrinks. The secure buttons follow (PlaceButton).
+local function Up() return G("grow") == "up" end
+local laidUp    -- how the rows were last laid (nil: not yet)
+local function LayRows()
+	local up = Up()
+	if laidUp == up then return end
+	laidUp = up
+	body:ClearAllPoints()
+	if up then
+		body:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 0, 0)
+	else
+		body:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
+	end
+	for i, r in ipairs(rows) do
+		r.iconEdge:ClearAllPoints()
+		if up then
+			r.iconEdge:SetPoint("LEFT", body, "BOTTOMLEFT", PAD - 1, (i - 0.5) * H)
+		else
+			r.iconEdge:SetPoint("LEFT", body, "TOPLEFT", PAD - 1, -(i - 0.5) * H)
+		end
+	end
+end
+
+-- The rows on show.
 local sizedAs   -- the box's last size and scale (skinned again only when they change)
 local function Paint(list)
 	local tw = 0
@@ -603,7 +694,8 @@ local function Paint(list)
 	local w = math.max(W, math.ceil(PAD * 2 + ICON + GAP + tw + 2))
 	local n = math.max(1, #list)
 	local scale = G("scale") or 1
-	local sig = w .. ":" .. n .. ":" .. scale
+	LayRows()
+	local sig = w .. ":" .. n .. ":" .. scale .. ":" .. tostring(laidUp)
 	if sig == sizedAs then return end
 	sizedAs = sig
 	body:SetSize(w, H * n)
@@ -633,7 +725,8 @@ local function PlaceButton()
 	local s = body:GetEffectiveScale() / UIParent:GetEffectiveScale()
 	local w, h = body:GetWidth() * s, body:GetHeight() * s
 	local rowH = H * s
-	local spot = l * s .. ":" .. t * s .. ":" .. w .. ":" .. h
+	local up = Up()
+	local spot = l * s .. ":" .. t * s .. ":" .. w .. ":" .. h .. (up and ":up" or "")
 	if spot ~= placedAs then
 		placedAs = spot
 		holder:ClearAllPoints()
@@ -644,7 +737,11 @@ local function PlaceButton()
 		for i = 1, MAX_ROWS do
 			local b = buttons[i]
 			b:ClearAllPoints()
-			b:SetPoint("TOPLEFT", holder, "TOPLEFT", 0, -(i - 1) * rowH)
+			if up then
+				b:SetPoint("BOTTOMLEFT", holder, "BOTTOMLEFT", 0, (i - 1) * rowH)
+			else
+				b:SetPoint("TOPLEFT", holder, "TOPLEFT", 0, -(i - 1) * rowH)
+			end
 			b:SetSize(w, rowH)
 		end
 	end
@@ -1180,12 +1277,11 @@ local function Build()
 	body:SetSize(W, H)
 	body:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
 	body:Hide()
-	-- The rows, top to bottom, each H high: icon, then the buff over who and why.
+	-- The rows, each H high: icon, then the buff over who and why (placed by LayRows).
 	for i = 1, MAX_ROWS do
 		local r = {}
 		r.iconEdge = body:CreateTexture(nil, "ARTWORK", nil, 1)
 		r.iconEdge:SetSize(ICON + 2, ICON + 2)
-		r.iconEdge:SetPoint("LEFT", body, "TOPLEFT", PAD - 1, -(i - 0.5) * H)
 		r.iconEdge:SetColorTexture(0, 0, 0, 1)
 		r.icon = body:CreateTexture(nil, "ARTWORK", nil, 2)
 		r.icon:SetSize(ICON, ICON)
@@ -1197,6 +1293,7 @@ local function Build()
 		r.sub:SetPoint("TOPLEFT", r.iconEdge, "RIGHT", GAP - 1, -1)
 		rows[i] = r
 	end
+	LayRows()
 
 	-- The secure part: hidden in every fight by its state driver; shown, placed and given its macros
 	-- out of a fight only. One secure button per row, all made here (never in a fight); the first
@@ -1304,6 +1401,11 @@ end
 
 function P.Setting()
 	if not frame then return end
+	-- (Rows Grow: laid again, and the box and its buttons with them.)
+	if laidUp ~= nil and laidUp ~= Up() then
+		LayRows()
+		sizedAs, shownAs, placedAs = nil, nil, nil
+	end
 	Listen(G("enabled"))
 	Forget()
 	LookSoon()

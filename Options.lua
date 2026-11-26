@@ -105,15 +105,26 @@ ns.firstPage = pages[1] and pages[1].id
 if ns.UpdateGroup and pages[1] then table.insert(pages[1].groups, ns.UpdateGroup()) end
 
 local ok, err = pcall(function()
-	ns.DUI:RegisterPlugin(ADDON, {
-		title = "Glowey's Essentials",
-		icon = "Interface\\AddOns\\" .. ADDON .. "\\Media\\icon-glyph.png",
-		needs = { 1, 1 },
-		short = L["Essentials"],
-		color = { 0.45, 0.6, 1 },
-		blurb = L["Healer mana, a combat timer and alert, a pet reminder, cursor cooldowns, enemies nearby, your secondary stats, Buff Manners, Halo and Nameplate Dmg Text."],
-	})
-	ns.DUI:RegisterModule(ADDON, { plugin = ADDON, label = L["Essentials"], defaults = ns.defaults,
-		options = { pages = pages } })
+	-- (With Daylight UI and another of Glowey's plugins on, its pages go under one "Glowey's" entry
+	-- on the options rail: Hub.lua.)
+	local spec = { addon = ADDON, dui = ns.DUI,
+		plugin = {
+			title = "Glowey's Essentials",
+			icon = "Interface\\AddOns\\" .. ADDON .. "\\Media\\icon-glyph.png",
+			needs = { 1, 1 },
+			short = L["Essentials"],
+			color = { 0.45, 0.6, 1 },
+			blurb = L["Healer mana, a combat timer and alert, a pet reminder, cursor cooldowns, enemies nearby, your secondary stats, Buff Manners, Halo and Nameplate Dmg Text."],
+		},
+		module = { plugin = ADDON, label = L["Essentials"], defaults = ns.defaults, options = { pages = pages } },
+		words = { open = L["Open"], pages = L["Its settings, a page each."] },
+		hubIcon = "Interface\\AddOns\\" .. ADDON .. "\\Media\\glowey-hub.png",
+		hubBlurb = L["Glowey's plugins, in one place."],
+		hubDesc = L["Glowey's plugins, in one place."],
+	}
+	if ns.Hub then ns.Hub.Join(spec) else
+		ns.DUI:RegisterPlugin(ADDON, spec.plugin)
+		ns.DUI:RegisterModule(ADDON, spec.module)
+	end
 end)
 if not ok then geterrorhandler()(err) end
