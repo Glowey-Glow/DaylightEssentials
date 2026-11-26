@@ -6,9 +6,10 @@ By Glowey. A standalone addon that **integrates with Daylight UI** when it's ins
 
 ---
 
-## New in 1.11.2
-- **Smoother:** Secondary Stats and Buff Manners no longer check anything on a timer while nothing happens; they follow the game's changes instead.
-- **Quick Loot:** a loot addon switched off for this character no longer counts.
+## New in 1.13.0
+- **Casts Left on the Cooldown Manager:** the number of casts your mana allows shows on its icons too (Daylight UI's, or the game's own).
+- **Buff Manners:** rows can grow up or down, and Blessing by Class picks the blessing each class gets from you.
+- **Glowey's on the options rail:** with another of Glowey's plugins on, they all sit under one "Glowey's" entry.
 ---
 
 ## What's in it
