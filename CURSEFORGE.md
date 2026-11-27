@@ -6,6 +6,9 @@ By Glowey. A standalone addon that **integrates with Daylight UI** when it's ins
 
 ---
 
+## New in 1.14.1
+- **Stance / Aura / Form text is always white** now, like Daylight UI's own texts: on a light health bar (a gold class or accent gradient) it had turned near-black under its outline.
+
 ## New in 1.14.0
 - **New: XP Bar** (off to start). An experience bar with the numbers you level by: time to level at your rate, XP per hour, XP per kill, kills to level, the quests ready to turn in and where they take the bar, your quest log's XP and rested XP. It docks under the quest tracker, flush with the minimap panel, and fades with it; or set it free, with or without its window.
 - **Casts Left fades with its button:** when a bar fades out or a button dims (out of range, short of mana, on cooldown), its number goes with it.
@@ -69,7 +72,7 @@ For paladins: "Seal Missing" while you have no seal up, in the same gentle pulse
 ### Stance / Aura / Form (new in 1.7.0)
 - **Your stance, form or paladin aura by name** on your player frame ("Battle Stance", "Bear Form", "Devotion Aura"). Turn it on from its page, and set its position, size and nudges right there.
 - **Shaman weapon imbues (new in 1.7.1):** Rockbiter, Flametongue, Frostbrand or Windfury Weapon, both hands when they differ.
-- **Always readable:** white or dark, whichever reads best across your health bar's colors, gradients included.
+- **Always readable:** white with a dark outline, like Daylight UI's own texts, on any health bar color.
 
 ### Nameplate Dmg Text (new in 1.3.0)
 - **Damage numbers pop off enemy nameplates** as they're hit, in Daylight UI's font, colored by school (fire orange, frost blue...), crits bigger with a quick pop, misses, dodges and parries as words.

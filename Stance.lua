@@ -2,8 +2,8 @@
 -- imbues ("Windfury Weapon"), as one of DaylightUI's
 -- unit frame texts (API's AddText). Its page's switch puts it on your player frame (below); on any
 -- frame it can also be picked as an extra text's part, and is placed like DaylightUI's own texts.
--- Its color is whichever of white or near-black reads best on that frame's health fill, at both
--- ends of a gradient (the Daylight gradient, your accent's, a class gradient or one color).
+-- It's white, as DaylightUI's own texts are: they're drawn with a black outline, which a dark ink
+-- would turn into a smudge.
 
 local _, ns = ...
 if ns.off then return end
@@ -142,92 +142,6 @@ local function StanceName()
 end
 
 -- ---------------------------------------------------------------------------------------------
--- A color that reads on the health fill
--- ---------------------------------------------------------------------------------------------
--- The fill's colors as DaylightUI painted them (its two ends, or every stop of a gradient in more
--- colors). Not part of DaylightUI's promised API, so read with care: white when it can't be read.
-
-local WHITE, DARK = { 1, 1, 1 }, { 0.08, 0.08, 0.08 }
-
-local function Channel(v)
-	v = math.max(0, math.min(1, v or 0))
-	return v <= 0.03928 and v / 12.92 or ((v + 0.055) / 1.055) ^ 2.4
-end
-
-local function Luminance(r, g, b)
-	return 0.2126 * Channel(r) + 0.7152 * Channel(g) + 0.0722 * Channel(b)
-end
-
-local function Contrast(la, lb)
-	if la < lb then la, lb = lb, la end
-	return (la + 0.05) / (lb + 0.05)
-end
-
-local WHITE_LUM, DARK_LUM = Luminance(WHITE[1], WHITE[2], WHITE[3]), Luminance(DARK[1], DARK[2], DARK[3])
-
--- Each frame's ink and the fill colors it was worked out from, flat (r, g, b of each in turn). The
--- text is drawn again on every health change (for a gradient that follows your health), so the
--- ink is worked out again only when one of the fill's colors has changed.
-local inks = setmetatable({}, { __mode = "k" })
-
--- Notes one fill color (the i-th) in the frame's memo. Returns false when it can't be read (a
--- secret or no number), else whether it differs from the one noted before.
-local function Note(memo, i, c)
-	if type(c) ~= "table" then return nil end
-	local r, g, b = c[1] or c.r, c[2] or c.g, c[3] or c.b
-	if type(r) ~= "number" or not (ns.Safe(r) and ns.Safe(g) and ns.Safe(b)) then return false end
-	local k = i * 3
-	if memo[k - 2] == r and memo[k - 1] == g and memo[k] == b then return nil end
-	memo[k - 2], memo[k - 1], memo[k] = r, g, b
-	return true
-end
-
--- White or near-black: the one whose worst contrast across the fill is best. The fill's colors as
--- DaylightUI painted them (its two ends, or every stop of a gradient in more colors).
-local function Ink(frame)
-	local Style = ns.DUI and ns.DUI.Style
-	if not (Style and Style.FillColors) then return WHITE end
-	local tex = API.GetPart and API.GetPart(frame, "healthFill")
-	if not tex then return WHITE end
-	local ok, lo, hi = pcall(Style.FillColors, tex)
-	if not ok or type(lo) ~= "table" then return WHITE end
-	local stops
-	if Style.FillStops then
-		local got, list = pcall(Style.FillStops, tex)
-		if got and type(list) == "table" then stops = list end
-	end
-	local memo = inks[frame]
-	if not memo then memo = {} inks[frame] = memo end
-	local n, changed = 2, false
-	local seen = Note(memo, 1, lo)
-	if seen == false then memo.n = nil return WHITE end
-	changed = changed or seen
-	seen = Note(memo, 2, type(hi) == "table" and hi or lo)
-	if seen == false then memo.n = nil return WHITE end
-	changed = changed or seen
-	if stops then
-		for _, c in ipairs(stops) do
-			if type(c) == "table" then
-				n = n + 1
-				seen = Note(memo, n, c)
-				if seen == false then memo.n = nil return WHITE end
-				changed = changed or seen
-			end
-		end
-	end
-	if not changed and memo.n == n then return memo.ink end
-	local white, dark = math.huge, math.huge
-	for i = 1, n do
-		local k = i * 3
-		local l = Luminance(memo[k - 2], memo[k - 1], memo[k])
-		white = math.min(white, Contrast(WHITE_LUM, l))
-		dark = math.min(dark, Contrast(DARK_LUM, l))
-	end
-	memo.n, memo.ink = n, dark > white * 1.15 and DARK or WHITE
-	return memo.ink
-end
-
--- ---------------------------------------------------------------------------------------------
 -- Its page: one switch that puts it on your player frame (or takes it off)
 -- ---------------------------------------------------------------------------------------------
 -- DaylightUI's Add piece menu can't add a plugin's text (its menu choice "text:<kind>" is read
@@ -254,7 +168,7 @@ P.page = { id = KEY, label = L["Stance / Aura / Form"],
 	groups = {
 		{ label = L["Stance / Aura / Form"], items = {
 			{ type = "toggle", key = KEY .. ".player", label = L["On My Player Frame"],
-			  desc = L["Adds it to your player frame as one of Daylight UI's extra texts. Move it in Frames, Player, with Design mode on. Its color is white or dark, whichever reads best on your health bar."] },
+			  desc = L["Adds it to your player frame as one of Daylight UI's extra texts, in white like its own. Move it in Frames, Player, with Design mode on."] },
 			{ type = "dropdown", key = KEY .. ".spot", label = L["Position"], values = SPOT_LABELS, order = SPOT_ORDER,
 			  desc = L["Where it sits on your player frame, or just outside it."], disabled = off },
 			{ type = "slider", key = KEY .. ".size", label = L["Text Size"], min = 6, max = 30, step = 1, disabled = off },
@@ -376,10 +290,9 @@ end)
 
 local added = me.AddText("stance", {
 	label = L["Stance/Aura/Form"],
-	-- (Stances and forms are auras on you: UNIT_AURA; a form's new power type too. "health" and
-	-- "identity" so a gradient that follows your health, or a new color pick, gets its ink again.
-	-- A stance's rage cut needs no "power": the stance's own aura and form events come with it.)
-	on = { "identity", "health", "flags" },
+	-- (Stances and forms are auras on you: UNIT_AURA; a form's new power type too. A stance's rage
+	-- cut needs no "power": the stance's own aura and form events come with it.)
+	on = { "identity", "flags" },
 	-- (A weapon imbue put on or run out: the weapon changes, UNIT_INVENTORY_CHANGED.)
 	events = { "UNIT_AURA", "UNIT_DISPLAYPOWER", "UNIT_INVENTORY_CHANGED" },
 	sample = SpellName(2457) or "Battle Stance",
@@ -391,9 +304,7 @@ local added = me.AddText("stance", {
 		end
 		if frame then drawn[frame] = true end
 		if dirty or not redraw then name, dirty = StanceName(), false end
-		if not name then return nil end
-		local c = Ink(frame)
-		return name, c[1], c[2], c[3]
+		return name   -- (no color: DaylightUI's own white)
 	end,
 })
 
