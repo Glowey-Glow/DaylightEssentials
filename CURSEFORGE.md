@@ -6,6 +6,10 @@ By Glowey. A standalone addon that **integrates with Daylight UI** when it's ins
 
 ---
 
+## New in 1.15.0
+- **New: Loot Sparkles** (off to start). Quest items keep the game's loot sparkle after a graphics preset turns it off. Herbs, ore veins, quest objects, corpses with loot, corpses to skin and lockboxes glint as you near them, a color per kind, grey while you can't use them yet. **Safe Self-Cast** pauses the interact key in a fight so a spell with no target can't land on what it picked.
+- **Every text in all six languages:** German, Spanish, French, Korean, Russian and Chinese.
+
 ## New in 1.14.1
 - **Stance / Aura / Form text is always white** now, like Daylight UI's own texts: on a light health bar (a gold class or accent gradient) it had turned near-black under its outline.
 
@@ -90,6 +94,12 @@ For paladins: "Seal Missing" while you have no seal up, in the same gentle pulse
 - **Docked under the quest tracker:** as wide as the minimap panel when the tracker hangs under it, following the tracker as it grows and moves, and under RestedXP's guide when that's docked there. Or **Free**, anywhere you move it, with or without its window (Windowless).
 - **Fades with the UI:** out and back with the quest tracker, by the tracker's fade choices (free, with Daylight UI's XP bar's).
 - **Replace Other XP Bars:** Daylight UI's XP bar (or the game's) steps aside while it shows, and comes back at the level cap, where this one hides. Off to start: turn it on on its page.
+
+### Loot Sparkles (new in 1.15.0)
+- **Quest items keep their sparkle:** the game's own loot sparkle is set again whenever a graphics preset turns it off. **Outline Off Too** turns off the outline round what you point at, so the sparkle always shows (the game draws one or the other).
+- **Sparkle What's Near:** herbs, ore veins, quest objects, corpses with loot, corpses to skin and lockboxes to pick get glints as you near them, in a color per kind (Color Strength keeps them seen on snow and sand), grey while you can't use them yet. **Only Your Professions** keeps herbs, ore and skinning to the professions you know.
+- **Safe Self-Cast:** pauses the interact key in a fight (or near other units too), so a spell cast with no target can't land on what it picked.
+- **Plays well with others:** while Daylight UI's Show Quest Item Sparkles is on, Daylight UI keeps quest sparkles (Essentials Keeps Quest Sparkles hands that over); while Forever Loot Sparkles - Herbs & Ores is loaded, the glints wait. Every game setting it changes is put back when it's off.
 
 ---
 

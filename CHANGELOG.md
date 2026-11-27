@@ -1,5 +1,10 @@
 # Glowey's Essentials
 
+## 1.15.0
+- New: Loot Sparkles (off to start). Quest items keep the game's loot sparkle after a graphics preset turns it off, with your outline left as it is or turned off too. Herbs, ore veins, quest objects, corpses with loot, corpses to skin and lockboxes get glints as you near them, in a color per kind, grey while you can't use them yet, and only for your own gathering professions if you like. Safe Self-Cast pauses the interact key in a fight, or near other units too, so a spell with no target can't land on what it picked. Every game setting it changes is put back when it's off.
+- Loot Sparkles and Daylight UI: while Daylight UI's Show Quest Item Sparkles is on, Daylight UI keeps them; Essentials Keeps Quest Sparkles hands that job to Essentials for the session. While Forever Loot Sparkles - Herbs & Ores is loaded, the glints wait (the two would hide each other's).
+- Translations: every text is now in all six languages (German, Spanish, French, Korean, Russian and Chinese), Casts Left, the blessings by class in Buff Manners, Loot Sparkles and the Glowey's plugins window included.
+
 ## 1.14.1
 - Fixed: the Stance / Aura / Form text showed near-black on a light health bar (a gold class or accent gradient), where Daylight UI's black outline turned it into a smudge. It's now white like Daylight UI's own texts.
 
