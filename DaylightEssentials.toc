@@ -41,4 +41,5 @@ BuffManners.lua
 Halo.lua
 NameplateText.lua
 Stance.lua
+XPBar.lua
 Options.lua

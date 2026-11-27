@@ -286,16 +286,130 @@ local function Font(fs, scale)
 	if not fs:SetFont(API.Font(), size, "OUTLINE") then fs:SetFontObject("NumberFontNormalSmall") end
 end
 
+-- Fading with the button. Daylight UI fades a bar button three ways, and the number follows each:
+--   * Its icon dims by itself (out of range, short of mana, Opacity on Cooldown, a form that's off):
+--     Daylight UI sets the icon's alpha, not the button's (DaylightUI_ActionBars\Skin.lua, setTint).
+--   * The whole bar fades (its fade choices: mouseover, out of a fight...): the fade engine sets the
+--     bar holder's alpha, and draws the holder "as one picture" (DaylightUI\Fade.lua, Fade.Whole:
+--     SetIsFrameBuffer with flattened layers). Text added to a button afterwards didn't fade with
+--     that picture: it stayed bright where the faded bar had been.
+--   * The bar is put away (parked under a hidden frame) or the button hides.
+-- So a bar's number isn't drawn inside the bar at all: it sits on a layer of ours over the button,
+-- parented to UIParent (outside any bar's picture), at the button's strata, above it, at its scale.
+-- Its alpha is worked out here: the icon's alpha times the button's and every frame's it sits in up
+-- to UIParent (whose own fade, the AFK screen, reaches the layer by itself). Each of those frames'
+-- SetAlpha is hooked (once each), and the button's OnShow and OnHide, so it's worked
+-- out again exactly when one changes (during a fade, each step the engine paints), never on a
+-- clock. A secret alpha is skipped (the last plain one stays).
+-- The Cooldown Manager's and Halo's numbers stay on their icons: those fade by their own alpha or
+-- hide, which a child follows (CdmRows.lua: item:SetAlpha(0); pieces hide or their layout fades).
+local function IconOf(btn)
+	local icon = rawget(btn, "icon") or rawget(btn, "Icon")
+	if type(icon) == "table" and type(icon.SetAlpha) == "function" then return icon end
+	return nil
+end
+
+local function Alpha(f)
+	local ok, a = pcall(f.GetAlpha, f)
+	if ok and Safe(a) and type(a) == "number" then return a end
+	return nil
+end
+
+local Sync
+local under = setmetatable({}, { __mode = "k" })   -- a frame -> { spot = true } of the numbers over it
+local function Follow(f, s)
+	local list = under[f]
+	if not list then
+		list = setmetatable({}, { __mode = "k" })
+		under[f] = list
+		hooksecurefunc(f, "SetAlpha", function(self)
+			local l = under[self]
+			if l then for spot in pairs(l) do Sync(spot) end end
+		end)
+	end
+	list[s] = true
+end
+
+-- Every frame from the button up to (not with) UIParent, followed.
+local function FollowChain(s)
+	local f = s.owner
+	while type(f) == "table" and f ~= UIParent and f.GetParent do
+		Follow(f, s)
+		f = f:GetParent()
+	end
+end
+
+Sync = function(s)
+	local layer, btn = s.layer, s.owner
+	if s.kind ~= "bar" or not (layer and btn) then return end
+	local shown = btn:IsVisible() == true
+	layer:SetShown(shown)
+	if not shown then return end
+	local a = s.iconAlpha or 1
+	local f = btn
+	while type(f) == "table" and f ~= UIParent and f.GetParent do
+		local fa = Alpha(f)
+		if fa then a = a * fa end
+		f = f:GetParent()
+	end
+	layer:SetAlpha(a)
+	-- (Its strata, level and scale too: a bar's look or a /dui unlock can change them.)
+	local okS, strata = pcall(btn.GetFrameStrata, btn)
+	if okS and strata and layer:GetFrameStrata() ~= strata then layer:SetFrameStrata(strata) end
+	layer:SetFrameLevel(math.min(9000, (btn:GetFrameLevel() or 1) + 520))
+	local bs, us = btn:GetEffectiveScale(), UIParent:GetEffectiveScale()
+	if Safe(bs) and type(bs) == "number" and us and us > 0 then
+		local want = bs / us
+		if math.abs((layer:GetScale() or 1) - want) > 0.001 then layer:SetScale(want) end
+	end
+end
+
+local function BarLayer(s, btn)
+	local layer = CreateFrame("Frame", nil, UIParent)
+	layer:SetAllPoints(btn)
+	s.layer = layer
+	local icon = IconOf(btn)
+	if icon then
+		s.iconAlpha = Alpha(icon) or 1
+		hooksecurefunc(icon, "SetAlpha", function(_, v)
+			if Safe(v) and type(v) == "number" then
+				s.iconAlpha = v
+				Sync(s)
+			end
+		end)
+	end
+	FollowChain(s)
+	-- (Moved under another frame, a bar laid out again or parked: its new frames are followed as it
+	-- shows, and on each look at the bars (ScanBars). No hook on the button's own SetParent.)
+	btn:HookScript("OnShow", function()
+		FollowChain(s)
+		Sync(s)
+	end)
+	btn:HookScript("OnHide", function() Sync(s) end)
+	return layer
+end
+
 local PaintSpot   -- (below: one spot painted on its own, as its button shows)
 local function Spot(owner, host, scale, kind)
 	local s = spots[owner]
 	if s then return s end
-	local fs = host:CreateFontString(nil, "OVERLAY")
+	s = { scale = scale, kind = kind, owner = owner }
+	local layer
+	if kind == "bar" then
+		layer = BarLayer(s, owner)
+	else
+		layer = CreateFrame("Frame", nil, host)
+		layer:SetAllPoints(host)
+		layer:SetFrameLevel(host:GetFrameLevel() + 1)
+		s.layer = layer
+	end
+	local fs = layer:CreateFontString(nil, "OVERLAY")
 	fs:SetJustifyH("LEFT")
-	s = { fs = fs, scale = scale, kind = kind, owner = owner }
+	s.fs = fs
 	Font(fs, scale)
 	Place(s)
 	spots[owner] = s
+	if kind == "bar" then Sync(s) end
 	-- (A hidden button is skipped by a paint, so it's painted as it shows: a bar paged in, the
 	-- Halo ring opening, a Cooldown Manager icon coming back. Hooked on the frame the text is on,
 	-- which shows with its button. OnShow only, never a mouse script.)
@@ -500,7 +614,11 @@ local function ScanBars()
 						s = Spot(btn, rawget(btn, "TextOverlayContainer") or btn, 1, "bar")
 					end
 				end
-				if s then s.spell = spell end
+				if s then
+					s.spell = spell
+					FollowChain(s)
+					Sync(s)
+				end
 			end
 		end
 	end

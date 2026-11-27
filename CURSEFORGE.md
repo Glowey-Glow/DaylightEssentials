@@ -6,10 +6,9 @@ By Glowey. A standalone addon that **integrates with Daylight UI** when it's ins
 
 ---
 
-## New in 1.13.0
-- **Casts Left on the Cooldown Manager:** the number of casts your mana allows shows on its icons too (Daylight UI's, or the game's own).
-- **Buff Manners:** rows can grow up or down, and Blessing by Class picks the blessing each class gets from you.
-- **Glowey's on the options rail:** with another of Glowey's plugins on, they all sit under one "Glowey's" entry.
+## New in 1.14.0
+- **New: XP Bar** (off to start). An experience bar with the numbers you level by: time to level at your rate, XP per hour, XP per kill, kills to level, the quests ready to turn in and where they take the bar, your quest log's XP and rested XP. It docks under the quest tracker, flush with the minimap panel, and fades with it; or set it free, with or without its window.
+- **Casts Left fades with its button:** when a bar fades out or a button dims (out of range, short of mana, on cooldown), its number goes with it.
 ---
 
 ## What's in it
@@ -81,6 +80,13 @@ For paladins: "Seal Missing" while you have no seal up, in the same gentle pulse
 - **See and place it:** a live preview on its page shows a nameplate with numbers coming off it as you change the settings; in Design mode, drag where the numbers start.
 - **Turn Off Daylight UI's Combat Text:** all of Daylight UI's combat text (damage numbers and the scrolling text around you) switches off while it's on, so no hit shows twice, and comes back as it was when it's off.
 - **Only yours and your pet's:** the game gives addons no combat log on Forever, only each hit on a nameplate without who struck it. Alone, that's yours and your pet's; in a group (new in 1.3.1) the nameplate numbers pause and the game's own damage numbers show instead, which are only yours and your pet's. Off to start: turn it on on its page.
+
+### XP Bar (new in 1.14.0)
+- **An experience bar with the numbers you level by:** your level and percent on the bar, with the XP from quests ready to turn in (green) and rested XP (purple) right after the fill.
+- **Under it, each on its own switch:** time to level at your rate, XP per hour, XP per kill over the last hour, kills to level, the quests ready to turn in (their XP and where the bar goes when you do), your whole quest log's XP, rested XP and this session's totals. Hover it for everything at once, including the time to level after turning in your quests.
+- **Docked under the quest tracker:** as wide as the minimap panel when the tracker hangs under it, following the tracker as it grows and moves, and under RestedXP's guide when that's docked there. Or **Free**, anywhere you move it, with or without its window (Windowless).
+- **Fades with the UI:** out and back with the quest tracker, by the tracker's fade choices (free, with Daylight UI's XP bar's).
+- **Replace Other XP Bars:** Daylight UI's XP bar (or the game's) steps aside while it shows, and comes back at the level cap, where this one hides. Off to start: turn it on on its page.
 
 ---
 

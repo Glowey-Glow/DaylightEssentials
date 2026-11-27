@@ -9,7 +9,7 @@ local L = ns.L
 -- Window opacity, on the page of each part that shows a box (ns.SkinWindow): "Use DaylightUI's
 -- opacity" and its own opacity, in the page's Look group (or a Window group of their own).
 local WINDOWED = { combatTimer = true, healerMana = true, enemyNearby = true, stats = true,
-	buffManners = true, halo = true }
+	buffManners = true, halo = true, xpBar = true }
 
 -- (Without Daylight UI, Host.lua, both are left out: the boxes take the Glowey window opacity.)
 local function NoDaylight() return ns.standalone == true end
@@ -64,7 +64,7 @@ end)
 -- Glowey unlock without). A second press locks them again. In the page's first group, after its
 -- On switch.
 local MOVABLE = { combatTimer = true, healerMana = true, enemyNearby = true, stats = true,
-	buffManners = true, combatAlert = true, petReminder = true, sealReminder = true }
+	buffManners = true, combatAlert = true, petReminder = true, sealReminder = true, xpBar = true }
 
 local function Unlocked()
 	local H = ns.Host

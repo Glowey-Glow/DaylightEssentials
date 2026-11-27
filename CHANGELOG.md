@@ -1,5 +1,8 @@
 # Glowey's Essentials
 
+## 1.14.0
+- New: XP Bar (off to start). An experience bar with the numbers you level by: time to level at your rate, XP per hour, XP per kill over the last hour, kills to level, the quests ready to turn in (their XP, and where the bar goes when you do), your whole quest log's XP, rested XP and this session's totals, each on its own switch. It docks under the quest tracker (or RestedXP's guide docked there) at its width and follows it, or is free to move anywhere; with its window or Windowless. Replace Other XP Bars puts Daylight UI's XP bar (or the game's) away while it shows; at the level cap it hides and they come back. Docked, it lines up flush with the minimap panel's edges and fits its text to that width, and it fades out and back with Daylight UI's quest tracker (free, with Daylight UI's XP bar's fade).
+- Casts Left: the number fades with its button instead of staying bright: when Daylight UI dims the button's icon (out of range, short of mana, Opacity on Cooldown, a form that's off), when its whole bar fades out (mouseover, out of a fight and the rest of its fade choices) and when the bar is put away. The Cooldown Manager's numbers already went with their icons.
 ## 1.13.0
 - Casts Left also shows on the Cooldown Manager's icons (Daylight UI's, or the game's own without it), with its own On the Cooldown Manager switch.
 - Buff Manners: Rows Grow up or down from the prompt, and Blessing by Class picks the blessing each class gets from you (As Above follows your Paladin blessing, None offers none).
