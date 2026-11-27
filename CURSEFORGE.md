@@ -10,12 +10,6 @@ By Glowey. A standalone addon that **integrates with Daylight UI** when it's ins
 - **New: Loot Sparkles** (off to start). Quest items keep the game's loot sparkle after a graphics preset turns it off. Herbs, ore veins, quest objects, corpses with loot, corpses to skin and lockboxes glint as you near them, a color per kind, grey while you can't use them yet. **Safe Self-Cast** pauses the interact key in a fight so a spell with no target can't land on what it picked.
 - **Every text in all six languages:** German, Spanish, French, Korean, Russian and Chinese.
 
-## New in 1.14.1
-- **Stance / Aura / Form text is always white** now, like Daylight UI's own texts: on a light health bar (a gold class or accent gradient) it had turned near-black under its outline.
-
-## New in 1.14.0
-- **New: XP Bar** (off to start). An experience bar with the numbers you level by: time to level at your rate, XP per hour, XP per kill, kills to level, the quests ready to turn in and where they take the bar, your quest log's XP and rested XP. It docks under the quest tracker, flush with the minimap panel, and fades with it; or set it free, with or without its window.
-- **Casts Left fades with its button:** when a bar fades out or a button dims (out of range, short of mana, on cooldown), its number goes with it.
 ---
 
 ## What's in it
